@@ -4,8 +4,6 @@ import { logger } from '../utils/logger';
 
 dotenv.config();
 
-let mongoMemoryServerInstance: any = null;
-
 export async function connectDatabase(): Promise<typeof mongoose> {
   if (mongoose.connection.readyState === 1) {
     return mongoose;
@@ -15,36 +13,23 @@ export async function connectDatabase(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI || process.env.MONGO_URI || defaultAtlasUri;
 
   try {
-    // Attempt connecting to configured MongoDB (local or Atlas)
     const sanitizedUri = uri.replace(/:([^:@]+)@/, ':****@');
     logger.info(`Attempting connection to MongoDB at: ${sanitizedUri}`);
+
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
     });
+
     logger.info('Successfully connected to MongoDB Server.');
     return mongoose;
   } catch (err: any) {
-    logger.warn(`Could not connect to external MongoDB (${err.message}). Starting embedded high-performance MongoDB instance...`);
-    try {
-      const { MongoMemoryServer } = await import('mongodb-memory-server');
-      mongoMemoryServerInstance = await MongoMemoryServer.create();
-      const memUri = mongoMemoryServerInstance.getUri();
-      logger.info(`Embedded MongoDB Server started at: ${memUri}`);
-      await mongoose.connect(memUri);
-      logger.info('Connected to Embedded MongoDB successfully.');
-      return mongoose;
-    } catch (memErr: any) {
-      logger.error('Failed to initialize embedded MongoDB engine:', memErr);
-      throw memErr;
-    }
+    logger.error('Failed to connect to MongoDB Atlas:', err.message);
+    throw err;
   }
 }
 
 export async function disconnectDatabase(): Promise<void> {
   await mongoose.disconnect();
-  if (mongoMemoryServerInstance) {
-    await mongoMemoryServerInstance.stop();
-  }
 }
 
 export { mongoose };
