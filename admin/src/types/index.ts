@@ -1,0 +1,461 @@
+// TypeScript Data Contracts for Restaurant ERP Client
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  roleId: string;
+  roleName: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'LOCKED';
+  avatarUrl?: string;
+  permissionOverrides?: Array<{
+    permissionId: string;
+    overrideType: 'ALLOW' | 'DENY' | 'INHERIT';
+  }>;
+}
+
+export interface PermissionDetail {
+  permissionId: string;
+  source: 'SYSTEM' | 'ROLE' | 'USER_OVERRIDE_ALLOW' | 'USER_OVERRIDE_DENY';
+  granted: boolean;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  description?: string;
+  isSystem: boolean;
+  permissions: string[];
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  loyaltyPoints: number;
+  totalSpent: number;
+  notes?: string;
+  isActive: boolean;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  companyName: string;
+  email?: string;
+  phone: string;
+  taxId?: string;
+  address?: string;
+  paymentTerms?: string;
+  outstandingBalance: number;
+  isActive: boolean;
+}
+
+export interface MenuCategory {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  displayOrder: number;
+  imageUrl?: string;
+  isActive: boolean;
+}
+
+export interface MenuItem {
+  id: string;
+  categoryId: string;
+  name: string;
+  code: string;
+  description?: string;
+  price: number;
+  costPrice: number;
+  taxId?: string;
+  isVeg: boolean;
+  isAvailable: boolean;
+  preparationTimeMinutes: number;
+  imageUrl?: string;
+  displayOrder: number;
+}
+
+export interface DiningTable {
+  id: string;
+  tableNumber: string;
+  capacity: number;
+  floorZone: 'MAIN_HALL' | 'AC_HALL' | 'ROOFTOP' | 'GARDEN' | 'VIP';
+  status: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'BLOCKED' | 'MAINTENANCE';
+  currentOrderId?: string;
+  activeOrder?: {
+    id: string;
+    orderNumber: string;
+    netAmount: number;
+    itemCount: number;
+    status: string;
+    createdAt: string;
+  } | null;
+  isActive: boolean;
+}
+
+export interface Booking {
+  id: string;
+  bookingNumber: string;
+  customerId?: string;
+  customerName: string;
+  customerPhone: string;
+  tableId?: string;
+  guestCount: number;
+  advanceAmount?: number;
+  functionType?: string;
+  acceptedBy?: string;
+  notes?: string;
+  isLocked?: boolean;
+  bookingDate: string;
+  bookingTime?: string;
+  status: 'PENDING' | 'CONFIRMED' | 'LOCKED' | 'CHECKED_IN' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED';
+  specialRequests?: string;
+  createdAt: string;
+}
+
+export interface QueueToken {
+  id: string;
+  tokenNumber: number;
+  tokenCode: string;
+  customerName: string;
+  customerPhone: string;
+  partySize: number;
+  status: 'WAITING' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'SEATED' | 'CANCELLED';
+  tableId?: string;
+  estimatedWaitMinutes: number;
+  calledAt?: string;
+  seatedAt?: string;
+  createdAt: string;
+}
+
+export interface OrderItem {
+  id: string;
+  menuItemId: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  taxAmount: number;
+  discountAmount: number;
+  notes?: string;
+  status: string;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'ONLINE';
+  tableId?: string;
+  tableNumber?: string;
+  customerId?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  status: 'NEW' | 'IN_KITCHEN' | 'READY' | 'SERVED' | 'BILLED' | 'COMPLETED' | 'CANCELLED' | 'ON_HOLD';
+  items: OrderItem[];
+  totalAmount: number;
+  taxAmount: number;
+  discountAmount: number;
+  netAmount: number;
+  waiterId?: string;
+  notes?: string;
+  isHeld?: boolean;
+  createdAt: string;
+}
+
+export interface KOTTicket {
+  id: string;
+  kotNumber: string;
+  orderId: string;
+  tableId?: string;
+  tableNumber?: string;
+  orderType: string;
+  status: 'NEW' | 'ACCEPTED' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
+  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+  chefNotes?: string;
+  items: Array<{
+    id: string;
+    itemName: string;
+    quantity: number;
+    notes?: string;
+    status: string;
+  }>;
+  createdAt: string;
+}
+
+export interface Bill {
+  id: string;
+  billNumber: string;
+  orderId: string;
+  customerName?: string;
+  items: Array<{
+    id: string;
+    itemName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    taxAmount: number;
+  }>;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  serviceCharge: number;
+  roundOff: number;
+  totalPayable: number;
+  paidAmount: number;
+  balanceAmount: number;
+  status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED' | 'REFUNDED';
+  createdAt: string;
+}
+
+export interface Payment {
+  id: string;
+  paymentNumber: string;
+  billId: string;
+  amount: number;
+  paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'ONLINE' | 'SPLIT';
+  status: 'COMPLETED' | 'REFUNDED' | 'RECONCILED';
+  referenceNumber?: string;
+  isReconciled: boolean;
+  transactions?: Array<{
+    method: string;
+    amount: number;
+    transactionRef?: string;
+  }>;
+  createdAt: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  itemCode: string;
+  name: string;
+  category: string;
+  unitId: string;
+  unitSymbol?: string;
+  currentStock: number;
+  minimumStockLevel: number;
+  reorderQuantity: number;
+  costPerUnit: number;
+  isActive: boolean;
+}
+
+export interface Recipe {
+  id: string;
+  menuItemId: string;
+  menuItemName?: string;
+  yieldQuantity: number;
+  totalCost: number;
+  foodCostPercentage: number;
+  instructions?: string;
+  ingredients: Array<{
+    id: string;
+    inventoryItemId: string;
+    itemName: string;
+    quantity: number;
+    unitSymbol?: string;
+    cost: number;
+  }>;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierId: string;
+  supplierName?: string;
+  orderDate: string;
+  totalAmount: number;
+  status: 'PENDING' | 'APPROVED' | 'RECEIVED' | 'CANCELLED';
+  items: Array<{
+    inventoryItemId: string;
+    itemName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }>;
+  createdAt: string;
+}
+
+export interface ChartOfAccount {
+  id: string;
+  accountCode: string;
+  accountName: string;
+  accountType: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+  subType?: string;
+  currentBalance: number;
+  isActive: boolean;
+}
+
+export interface JournalEntry {
+  id: string;
+  entryNumber: string;
+  entryDate: string;
+  referenceType?: string;
+  referenceId?: string;
+  narration: string;
+  totalDebit: number;
+  totalCredit: number;
+  status: string;
+  items: Array<{
+    accountId: string;
+    accountName: string;
+    debit: number;
+    credit: number;
+  }>;
+  createdAt: string;
+}
+
+export interface Expense {
+  id: string;
+  expenseNumber: string;
+  title: string;
+  category: string;
+  amount: number;
+  paymentMethod: string;
+  expenseDate: string;
+  status: string;
+  notes?: string;
+}
+
+export interface DayClosing {
+  id: string;
+  closingDate: string;
+  openingCash: number;
+  totalSales: number;
+  cashSales: number;
+  upiSales: number;
+  cardSales: number;
+  totalExpenses: number;
+  cashExpenses: number;
+  expectedCash: number;
+  actualCash: number;
+  cashDifference: number;
+  totalOrders: number;
+  status: string;
+}
+
+export interface Employee {
+  id: string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  departmentName?: string;
+  designationTitle?: string;
+  baseSalary: number;
+  status: string;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  date: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  totalHours: number;
+  status: string;
+}
+
+export interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  reason: string;
+  status: string;
+  rejectionReason?: string;
+}
+
+export interface PayrollRun {
+  id: string;
+  payrollCode: string;
+  month: number;
+  year: number;
+  totalGrossSalary: number;
+  totalDeductions: number;
+  totalNetSalary: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface Payslip {
+  id: string;
+  employeeName: string;
+  month: number;
+  year: number;
+  presentDays: number;
+  basicSalary: number;
+  allowances: number;
+  grossSalary: number;
+  deductions: number;
+  netSalary: number;
+  paymentStatus: string;
+}
+
+export interface AuditLog {
+  id: string;
+  username: string;
+  roleName?: string;
+  module: string;
+  submodule?: string;
+  action: string;
+  recordId?: string;
+  oldValue?: any;
+  newValue?: any;
+  ipAddress?: string;
+  status: string;
+  timestamp: string;
+}
+
+export interface SystemNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  roleId: string;
+  roleName: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'LOCKED';
+  permissionOverridesCount?: number;
+  lastLogin?: string;
+}
+
+export interface AdminRole {
+  id: string;
+  name: string;
+  description?: string;
+  isSystem: boolean;
+  permissions: string[];
+}
+
+export interface SystemHealthMetrics {
+  serverStatus: string;
+  uptimeSeconds: number;
+  memoryUsageMb: number;
+  activeSockets: number;
+  dbStatus: string;
+  dbCollections: number;
+  dbTotalRecords: number;
+}

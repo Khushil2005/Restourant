@@ -1,0 +1,32 @@
+import { Router } from 'express';
+import { authRouter, dashboardRouter } from './authRoutes';
+import { masterRouter } from './masterRoutes';
+import { bookingRouter, tokenRouter, tableRouter } from './bookingRoutes';
+import { orderRouter, kotRouter, billingRouter, paymentRouter, discountRouter } from './orderRoutes';
+import { inventoryRouter, purchaseRouter } from './inventoryRoutes';
+import { accountRouter, expenseRouter } from './accountRoutes';
+import { hrRouter } from './hrRoutes';
+import { reportRouter, userRoleRouter } from './reportRoutes';
+import { systemRouter } from './systemRoutes';
+
+export const apiRouter = Router();
+
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/dashboard', dashboardRouter);
+apiRouter.use('/masters', masterRouter);
+apiRouter.use('/bookings', bookingRouter);
+apiRouter.use('/tokens', tokenRouter);
+apiRouter.use('/tables', tableRouter);
+apiRouter.use('/orders', orderRouter);
+apiRouter.use('/kot', kotRouter);
+apiRouter.use('/billing', billingRouter);
+apiRouter.use('/payments', paymentRouter);
+apiRouter.use('/discounts', discountRouter);
+apiRouter.use('/inventory', inventoryRouter);
+apiRouter.use('/purchases', purchaseRouter);
+apiRouter.use('/accounts', accountRouter);
+apiRouter.use('/expenses', expenseRouter);
+apiRouter.use('/hr', hrRouter);
+apiRouter.use('/reports', reportRouter);
+apiRouter.use('/access-control', userRoleRouter);
+apiRouter.use('/system', systemRouter);

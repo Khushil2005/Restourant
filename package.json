@@ -1,0 +1,52 @@
+{
+  "name": "restaurant-management-erp",
+  "version": "1.0.0",
+  "description": "Production-Ready Enterprise Restaurant Management ERP System",
+  "scripts": {
+    "start": "node server.js",
+    "dev:server": "npm run dev --prefix server",
+    "dev:admin": "npm run dev --prefix admin",
+    "dev": "npm run dev:admin",
+    "build:server": "npm run build --prefix server",
+    "build:admin": "npm run build --prefix admin",
+    "build:all": "npm run build:server && npm run build:admin",
+    "seed": "npm run seed --prefix server"
+  },
+  "keywords": [
+    "restaurant",
+    "erp",
+    "pos",
+    "kds",
+    "billing",
+    "inventory",
+    "accounts",
+    "payroll",
+    "rbac"
+  ],
+  "author": "Antigravity ERP Architect",
+  "license": "ISC",
+  "main": "index.js",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^6.21.0",
+    "mongodb-memory-server": "^10.4.3",
+    "mongoose": "^8.24.4",
+    "multer": "^2.2.0",
+    "socket.io": "^4.8.3",
+    "uuid": "^14.0.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^26.2.0",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}

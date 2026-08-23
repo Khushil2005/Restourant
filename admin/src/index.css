@@ -1,0 +1,220 @@
+/* ========================================================
+   ભાતીગળ ભાણું (Bhatigal Bhanu) - Traditional Restaurant ERP Theme
+   ======================================================== */
+
+:root {
+  --brand-maroon: #7A1B28;
+  --brand-maroon-dark: #56101B;
+  --brand-maroon-light: #962536;
+  --brand-maroon-subtle: #FBECEE;
+  
+  --brand-gold: #D48B28;
+  --brand-gold-dark: #A86616;
+  --brand-gold-light: #F7D591;
+  --brand-gold-subtle: #FDF5E6;
+  
+  --brand-cream: #FAF5EE;
+  --brand-surface: #FFFFFF;
+  --brand-text-dark: #2B181C;
+  --brand-text-muted: #6E5A5E;
+  --brand-border: #E8DCCF;
+
+  --sidebar-width: 260px;
+  
+  /* Override Bootstrap Primary */
+  --bs-primary: #7A1B28;
+  --bs-primary-rgb: 122, 27, 40;
+}
+
+body {
+  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--brand-cream);
+  color: var(--brand-text-dark);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Primary Theme Overrides */
+.bg-primary {
+  background-color: var(--brand-maroon) !important;
+}
+
+.text-primary {
+  color: var(--brand-maroon) !important;
+}
+
+.border-primary {
+  border-color: var(--brand-maroon) !important;
+}
+
+.bg-primary-subtle {
+  background-color: var(--brand-maroon-subtle) !important;
+}
+
+.btn-primary {
+  background-color: var(--brand-maroon) !important;
+  border-color: var(--brand-maroon) !important;
+  color: #FFFFFF !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--brand-maroon-dark) !important;
+  border-color: var(--brand-gold) !important;
+  box-shadow: 0 0 10px rgba(212, 139, 40, 0.35) !important;
+}
+
+.btn-outline-primary {
+  color: var(--brand-maroon) !important;
+  border-color: var(--brand-maroon) !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--brand-maroon) !important;
+  color: #FFFFFF !important;
+}
+
+/* Brand Gold Accents */
+.bg-gold {
+  background-color: var(--brand-gold) !important;
+  color: #FFFFFF !important;
+}
+
+.bg-gold-subtle {
+  background-color: var(--brand-gold-subtle) !important;
+  color: var(--brand-gold-dark) !important;
+}
+
+.text-gold {
+  color: var(--brand-gold) !important;
+}
+
+.border-gold {
+  border-color: var(--brand-gold) !important;
+}
+
+.btn-gold {
+  background-color: var(--brand-gold) !important;
+  border-color: var(--brand-gold-dark) !important;
+  color: #FFFFFF !important;
+}
+
+.btn-gold:hover {
+  background-color: var(--brand-gold-dark) !important;
+  color: #FFFFFF !important;
+}
+
+/* Sidebar styling */
+.sidebar {
+  transition: all 0.3s ease;
+  z-index: 1040;
+  border-right: 1px solid var(--brand-border) !important;
+  background-color: #FFFFFF !important;
+}
+
+.hover-bg-light:hover {
+  background-color: #F8EFE4 !important;
+  color: var(--brand-maroon) !important;
+}
+
+.hover-bg-dark:hover {
+  background-color: #1e293b;
+}
+
+.nav-link.active {
+  background-color: var(--brand-maroon) !important;
+  color: #FFFFFF !important;
+  border-left: 4px solid var(--brand-gold) !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4ECE1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBB9A7;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-maroon-light);
+}
+
+/* Responsive main content offset */
+@media (max-width: 991.98px) {
+  .main-content {
+    margin-left: 0 !important;
+  }
+  .admin-main-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* Cards & Containers */
+.card {
+  border-color: var(--brand-border) !important;
+  box-shadow: 0 2px 8px rgba(122, 27, 40, 0.04) !important;
+  background-color: #FFFFFF;
+}
+
+/* POS Item Cards */
+.pos-item-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-color: var(--brand-border) !important;
+}
+
+.pos-item-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.6rem 1.2rem rgba(122, 27, 40, 0.12) !important;
+  border-color: var(--brand-gold) !important;
+}
+
+/* Brand Banner & Logos */
+.brand-logo-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--brand-gold);
+  background-color: #FFFFFF;
+}
+
+.brand-logo-lg {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--brand-gold);
+  background-color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(122, 27, 40, 0.2);
+}
+
+/* Printable Invoices & Payslips */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area, .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+
