@@ -42,7 +42,10 @@ export const EmployeesPage: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/hr/employees', formData);
+      await apiClient.post('/hr/employees', {
+        ...formData,
+        joiningDate: formData.hireDate
+      });
       alert('Staff member registered successfully.');
       setIsModalOpen(false);
       loadEmployees();

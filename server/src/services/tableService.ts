@@ -60,10 +60,12 @@ export class TableService {
       throw { statusCode: 400, message: 'Destination table is currently occupied.' };
     }
 
-    // Find active order on source table
+    // Find active order on source table (including BILLED status)
     const activeOrder = await Order.findOne({ 
-      tableId: sourceTableId, 
-      status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED'] } 
+      $or: [
+        { tableId: sourceTableId, status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] } },
+        ...(sourceTable.currentOrderId ? [{ id: sourceTable.currentOrderId, status: { $ne: 'PAID' } }] : [])
+      ]
     });
 
     if (activeOrder) {

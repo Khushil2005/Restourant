@@ -2,6 +2,14 @@ import { SystemNotification, AuditLog, SystemSetting, MaintenanceLog } from '../
 import { SocketEvents } from '../sockets/socketManager';
 import { createAuditLog } from '../middleware/auditMiddleware';
 import { v4 as uuidv4 } from 'uuid';
+import { runDatabaseMigrationsAndSeeds } from '../database/seedRunner';
+import { User } from '../models/User';
+import { Role, Permission } from '../models/Role';
+import { Department, Designation, MenuCategory, MenuItem, DiningTable, Supplier, Customer } from '../models/Master';
+import { InventoryItem, Recipe } from '../models/Inventory';
+import { DiscountRule } from '../models/Discount';
+import { ChartOfAccount } from '../models/Account';
+import { Employee } from '../models/HR';
 
 export class NotificationService {
   static async getNotifications(userId?: string, roleId?: string) {
@@ -92,6 +100,20 @@ export class SystemControlService {
     return { status, log, message: `System operational mode updated to ${status}` };
   }
 
+  static async getSettings() {
+    const settings = await SystemSetting.find();
+    const settingsMap: Record<string, string> = {};
+    for (const s of settings) {
+      settingsMap[s.key] = s.value;
+    }
+    if (settingsMap['restaurant_phone'] && !settingsMap['phone']) settingsMap['phone'] = settingsMap['restaurant_phone'];
+    if (settingsMap['restaurant_email'] && !settingsMap['email']) settingsMap['email'] = settingsMap['restaurant_email'];
+    if (settingsMap['restaurant_address'] && !settingsMap['address']) settingsMap['address'] = settingsMap['restaurant_address'];
+    if (settingsMap['restaurant_tagline'] && !settingsMap['tagline']) settingsMap['tagline'] = settingsMap['restaurant_tagline'];
+    if (settingsMap['service_charge_percentage'] && !settingsMap['service_charge_rate']) settingsMap['service_charge_rate'] = settingsMap['service_charge_percentage'];
+    return settingsMap;
+  }
+
   static async updateSettings(settings: Array<{ key: string; value: string }>, userId?: string, username?: string) {
     for (const s of settings) {
       await SystemSetting.findOneAndUpdate(
@@ -99,6 +121,18 @@ export class SystemControlService {
         { $set: { value: s.value, updatedAt: new Date() } },
         { upsert: true }
       );
+      // Sync aliases
+      if (s.key === 'phone') {
+        await SystemSetting.findOneAndUpdate({ key: 'restaurant_phone' }, { $set: { value: s.value, updatedAt: new Date() } }, { upsert: true });
+      } else if (s.key === 'email') {
+        await SystemSetting.findOneAndUpdate({ key: 'restaurant_email' }, { $set: { value: s.value, updatedAt: new Date() } }, { upsert: true });
+      } else if (s.key === 'address') {
+        await SystemSetting.findOneAndUpdate({ key: 'restaurant_address' }, { $set: { value: s.value, updatedAt: new Date() } }, { upsert: true });
+      } else if (s.key === 'tagline') {
+        await SystemSetting.findOneAndUpdate({ key: 'restaurant_tagline' }, { $set: { value: s.value, updatedAt: new Date() } }, { upsert: true });
+      } else if (s.key === 'service_charge_rate') {
+        await SystemSetting.findOneAndUpdate({ key: 'service_charge_percentage' }, { $set: { value: s.value, updatedAt: new Date() } }, { upsert: true });
+      }
     }
 
     await createAuditLog({
@@ -110,5 +144,96 @@ export class SystemControlService {
     });
 
     return { success: true, message: 'Settings updated successfully.' };
+  }
+
+  static async createDatabaseSnapshot() {
+    const [
+      users,
+      roles,
+      permissions,
+      departments,
+      designations,
+      menuCategories,
+      menuItems,
+      tables,
+      suppliers,
+      customers,
+      inventoryItems,
+      recipes,
+      discountRules,
+      chartOfAccounts,
+      employees,
+      systemSettings
+    ] = await Promise.all([
+      User.find().select('-passwordHash'),
+      Role.find(),
+      Permission.find(),
+      Department.find(),
+      Designation.find(),
+      MenuCategory.find(),
+      MenuItem.find(),
+      DiningTable.find(),
+      Supplier.find(),
+      Customer.find(),
+      InventoryItem.find(),
+      Recipe.find(),
+      DiscountRule.find(),
+      ChartOfAccount.find(),
+      Employee.find(),
+      SystemSetting.find()
+    ]);
+
+    return {
+      metadata: {
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+        appName: 'Royal Heritage Restaurant ERP'
+      },
+      counts: {
+        users: users.length,
+        roles: roles.length,
+        permissions: permissions.length,
+        menuItems: menuItems.length,
+        tables: tables.length,
+        inventoryItems: inventoryItems.length,
+        employees: employees.length
+      },
+      data: {
+        users,
+        roles,
+        permissions,
+        departments,
+        designations,
+        menuCategories,
+        menuItems,
+        tables,
+        suppliers,
+        customers,
+        inventoryItems,
+        recipes,
+        discountRules,
+        chartOfAccounts,
+        employees,
+        systemSettings
+      }
+    };
+  }
+
+  static async reseedDatabase() {
+    await runDatabaseMigrationsAndSeeds();
+    const [permCount, roleCount, userCount] = await Promise.all([
+      Permission.countDocuments(),
+      Role.countDocuments(),
+      User.countDocuments()
+    ]);
+    return {
+      success: true,
+      message: 'Database schema and seed integrity verified.',
+      counts: {
+        permissions: permCount,
+        roles: roleCount,
+        users: userCount
+      }
+    };
   }
 }

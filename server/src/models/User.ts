@@ -1,17 +1,5 @@
 import { Schema, model, Document } from 'mongoose';
 
-export interface IUserPermissionOverride {
-  permissionId: string;
-  overrideType: 'ALLOW' | 'DENY' | 'INHERIT';
-  updatedAt: Date;
-}
-
-const UserPermissionOverrideSchema = new Schema<IUserPermissionOverride>({
-  permissionId: { type: String, required: true },
-  overrideType: { type: String, enum: ['ALLOW', 'DENY', 'INHERIT'], required: true },
-  updatedAt: { type: Date, default: Date.now }
-}, { _id: false });
-
 export interface IUser extends Document {
   id: string;
   username: string;
@@ -26,7 +14,7 @@ export interface IUser extends Document {
   failedLoginAttempts: number;
   lockedUntil?: Date;
   lastLogin?: Date;
-  permissionOverrides: IUserPermissionOverride[];
+  permissionOverrides?: any[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,7 +33,7 @@ const UserSchema = new Schema<IUser>({
   failedLoginAttempts: { type: Number, default: 0 },
   lockedUntil: { type: Date },
   lastLogin: { type: Date },
-  permissionOverrides: [UserPermissionOverrideSchema]
+  permissionOverrides: { type: Array, default: [] }
 }, { timestamps: true });
 
 export interface IUserSession extends Document {

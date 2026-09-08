@@ -1,6 +1,6 @@
 import { Order, IOrderItem } from '../models/Order';
 import { KOTTicket, IKOTItem } from '../models/KOT';
-import { DiningTable } from '../models/Master';
+import { DiningTable, MenuItem } from '../models/Master';
 import { Recipe } from '../models/Inventory';
 import { InventoryItem, StockTransaction } from '../models/Inventory';
 import { SocketEvents } from '../sockets/socketManager';
@@ -32,24 +32,41 @@ export class OrderService {
     const orderNumber = `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
     const id = `ord_${uuidv4().slice(0, 8)}`;
 
+    // Look up menu items if missing details
+    const itemIds = (data.items || []).map((it: any) => it.menuItemId).filter(Boolean);
+    const dbMenuItems = await MenuItem.find({ id: { $in: itemIds } });
+    const menuItemMap = new Map(dbMenuItems.map(m => [m.id, m]));
+
+    // Also look up tableNumber if tableId is provided
+    let tableNumber = data.tableNumber;
+    if (!tableNumber && data.tableId) {
+      const tbl = await DiningTable.findOne({ id: data.tableId });
+      tableNumber = tbl?.tableNumber;
+    }
+
     // Process items & calculations
     let totalAmount = 0;
     let taxAmount = 0;
 
-    const items: IOrderItem[] = data.items.map((it: any) => {
-      const lineTotal = it.quantity * it.unitPrice;
-      const lineTax = (lineTotal * (it.taxRate || 5)) / 100;
+    const items: IOrderItem[] = (data.items || []).map((it: any) => {
+      const dbItem = menuItemMap.get(it.menuItemId);
+      const itemName = it.itemName || dbItem?.name || 'Dish';
+      const unitPrice = Number(it.unitPrice ?? it.price ?? dbItem?.price ?? 0);
+      const quantity = Number(it.quantity || 1);
+      const lineTotal = quantity * unitPrice;
+      const taxRate = Number(it.taxRate ?? (dbItem as any)?.taxRate ?? 5);
+      const lineTax = (lineTotal * taxRate) / 100;
       totalAmount += lineTotal;
       taxAmount += lineTax;
       return {
         id: uuidv4(),
         menuItemId: it.menuItemId,
-        itemName: it.itemName,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
+        itemName,
+        quantity,
+        unitPrice,
         totalPrice: lineTotal,
         taxAmount: lineTax,
-        discountAmount: 0,
+        discountAmount: Number(it.discountAmount || 0),
         notes: it.notes,
         status: 'KOT_SENT',
         createdAt: new Date()
@@ -63,7 +80,7 @@ export class OrderService {
       orderNumber,
       orderType: data.orderType || 'DINE_IN',
       tableId: data.tableId,
-      tableNumber: data.tableNumber,
+      tableNumber: data.tableNumber || tableNumber,
       customerId: data.customerId,
       customerName: data.customerName,
       customerPhone: data.customerPhone,
@@ -108,7 +125,7 @@ export class OrderService {
       kotNumber,
       orderId: id,
       tableId: data.tableId,
-      tableNumber: data.tableNumber,
+      tableNumber: data.tableNumber || tableNumber,
       orderType: data.orderType || 'DINE_IN',
       status: 'NEW',
       priority: data.priority || 'NORMAL',
@@ -136,25 +153,34 @@ export class OrderService {
     const order = await Order.findOne({ id: orderId });
     if (!order) throw { statusCode: 404, message: 'Order not found.' };
 
+    const itemIds = (newItems || []).map((it: any) => it.menuItemId).filter(Boolean);
+    const dbMenuItems = await MenuItem.find({ id: { $in: itemIds } });
+    const menuItemMap = new Map(dbMenuItems.map(m => [m.id, m]));
+
     let addedTotal = 0;
     let addedTax = 0;
     const processedItems: IOrderItem[] = [];
 
-    newItems.forEach((it: any) => {
-      const lineTotal = it.quantity * it.unitPrice;
-      const lineTax = (lineTotal * (it.taxRate || 5)) / 100;
+    (newItems || []).forEach((it: any) => {
+      const dbItem = menuItemMap.get(it.menuItemId);
+      const itemName = it.itemName || dbItem?.name || 'Dish';
+      const unitPrice = Number(it.unitPrice ?? it.price ?? dbItem?.price ?? 0);
+      const quantity = Number(it.quantity || 1);
+      const lineTotal = quantity * unitPrice;
+      const taxRate = Number(it.taxRate ?? (dbItem as any)?.taxRate ?? 5);
+      const lineTax = (lineTotal * taxRate) / 100;
       addedTotal += lineTotal;
       addedTax += lineTax;
 
       const itemObj: IOrderItem = {
         id: uuidv4(),
         menuItemId: it.menuItemId,
-        itemName: it.itemName,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
+        itemName,
+        quantity,
+        unitPrice,
         totalPrice: lineTotal,
         taxAmount: lineTax,
-        discountAmount: 0,
+        discountAmount: Number(it.discountAmount || 0),
         notes: it.notes,
         status: 'KOT_SENT',
         createdAt: new Date()

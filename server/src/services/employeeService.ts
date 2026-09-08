@@ -22,16 +22,30 @@ export class EmployeeService {
     const count = await Employee.countDocuments();
     const employeeCode = `EMP-${String(count + 1).padStart(3, '0')}`;
 
-    const dept = data.departmentId ? await Department.findOne({ id: data.departmentId }) : null;
-    const desig = data.designationId ? await Designation.findOne({ id: data.designationId }) : null;
+    const dept = data.departmentId
+      ? await Department.findOne({ $or: [{ id: data.departmentId }, { name: data.departmentId }, { code: data.departmentId }] })
+      : (data.departmentName ? await Department.findOne({ $or: [{ id: data.departmentName }, { name: data.departmentName }, { code: data.departmentName }] }) : null);
+
+    const desig = data.designationId
+      ? await Designation.findOne({ $or: [{ id: data.designationId }, { title: data.designationId }] })
+      : (data.designationTitle ? await Designation.findOne({ $or: [{ id: data.designationTitle }, { title: data.designationTitle }] }) : null);
+
+    const departmentName = dept?.name || data.departmentName || 'General';
+    const designationTitle = desig?.title || data.designationTitle || 'Staff';
+    const departmentId = dept?.id || data.departmentId || undefined;
+    const designationId = desig?.id || data.designationId || undefined;
+    const joiningDate = data.joiningDate || data.hireDate || new Date().toISOString().split('T')[0];
 
     const employee = await Employee.create({
       ...data,
       id,
       employeeCode,
-      departmentName: dept?.name,
-      designationTitle: desig?.title,
-      status: 'ACTIVE'
+      departmentId,
+      departmentName,
+      designationId,
+      designationTitle,
+      joiningDate,
+      status: data.status || 'ACTIVE'
     });
 
     const baseSalary = Number(data.baseSalary || 25000);
@@ -63,18 +77,30 @@ export class EmployeeService {
 
   static async updateEmployee(id: string, data: any, userId?: string, username?: string) {
     const old = await Employee.findOne({ id });
-    const dept = data.departmentId ? await Department.findOne({ id: data.departmentId }) : null;
-    const desig = data.designationId ? await Designation.findOne({ id: data.designationId }) : null;
+    const dept = data.departmentId
+      ? await Department.findOne({ $or: [{ id: data.departmentId }, { name: data.departmentId }, { code: data.departmentId }] })
+      : (data.departmentName ? await Department.findOne({ $or: [{ id: data.departmentName }, { name: data.departmentName }, { code: data.departmentName }] }) : null);
+
+    const desig = data.designationId
+      ? await Designation.findOne({ $or: [{ id: data.designationId }, { title: data.designationId }] })
+      : (data.designationTitle ? await Designation.findOne({ $or: [{ id: data.designationTitle }, { title: data.designationTitle }] }) : null);
+
+    const updateSet: any = { ...data };
+    if (dept?.name || data.departmentName) {
+      updateSet.departmentName = dept?.name || data.departmentName;
+      if (dept?.id) updateSet.departmentId = dept.id;
+    }
+    if (desig?.title || data.designationTitle) {
+      updateSet.designationTitle = desig?.title || data.designationTitle;
+      if (desig?.id) updateSet.designationId = desig.id;
+    }
+    if (data.hireDate && !data.joiningDate) {
+      updateSet.joiningDate = data.hireDate;
+    }
 
     const updated = await Employee.findOneAndUpdate(
       { id },
-      {
-        $set: {
-          ...data,
-          departmentName: dept?.name || old?.departmentName,
-          designationTitle: desig?.title || old?.designationTitle
-        }
-      },
+      { $set: updateSet },
       { new: true }
     );
 

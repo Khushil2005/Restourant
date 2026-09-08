@@ -37,16 +37,21 @@ export const AccountsPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      const canChart = can('accounts.chart.view');
+      const canJournal = can('accounts.journal.view') || can('accounts.ledger.view');
+      const canDayClosing = can('accounts.dayclosing.view');
+      const canSummary = can('accounts.dashboard.view') || can('accounts.report.view');
+
       const [cRes, jRes, dRes, sRes]: any = await Promise.all([
-        apiClient.get('/accounts/chart'),
-        apiClient.get('/accounts/journal'),
-        apiClient.get('/accounts/day-closing'),
-        apiClient.get('/accounts/financial-summary')
+        canChart ? apiClient.get('/accounts/chart').catch(() => null) : null,
+        canJournal ? apiClient.get('/accounts/journal').catch(() => null) : null,
+        canDayClosing ? apiClient.get('/accounts/day-closing').catch(() => null) : null,
+        canSummary ? apiClient.get('/accounts/financial-summary').catch(() => null) : null
       ]);
-      if (cRes.success) setAccounts(cRes.data);
-      if (jRes.success) setJournals(jRes.data);
-      if (dRes.success) setDayClosings(dRes.data);
-      if (sRes.success) setFinancialSummary(sRes.data);
+      if (cRes?.success) setAccounts(cRes.data);
+      if (jRes?.success) setJournals(jRes.data);
+      if (dRes?.success) setDayClosings(dRes.data);
+      if (sRes?.success) setFinancialSummary(sRes.data);
     } catch (err) {
       console.error('Failed to load accounts:', err);
     } finally {
@@ -55,8 +60,24 @@ export const AccountsPage: React.FC = () => {
   };
 
   useEffect(() => {
+    const tabs: Array<{ id: 'summary' | 'chart' | 'journal' | 'dayclosing'; perms: string[] }> = [
+      { id: 'summary', perms: ['accounts.dashboard.view', 'accounts.report.view'] },
+      { id: 'chart', perms: ['accounts.chart.view'] },
+      { id: 'journal', perms: ['accounts.journal.view', 'accounts.ledger.view'] },
+      { id: 'dayclosing', perms: ['accounts.dayclosing.view'] }
+    ];
+    const isCurrentAllowed = tabs.find(t => t.id === activeTab && t.perms.some(p => can(p)));
+    if (!isCurrentAllowed) {
+      const firstAllowed = tabs.find(t => t.perms.some(p => can(p)));
+      if (firstAllowed) {
+        setActiveTab(firstAllowed.id);
+      }
+    }
+  }, [can]);
+
+  useEffect(() => {
     loadData();
-  }, []);
+  }, [activeTab]);
 
   const handleExecuteDayClosing = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,26 +161,34 @@ export const AccountsPage: React.FC = () => {
 
       {/* Navigation Tabs */}
       <ul className="nav nav-pills bg-white p-2 rounded shadow-sm border gap-1">
-        <li className="nav-item">
-          <button className={`nav-link btn-sm ${activeTab === 'summary' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('summary')}>
-            Financial Statements (P&L)
-          </button>
-        </li>
-        <li className="nav-item">
-          <button className={`nav-link btn-sm ${activeTab === 'chart' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('chart')}>
-            Chart of Accounts ({accounts.length})
-          </button>
-        </li>
-        <li className="nav-item">
-          <button className={`nav-link btn-sm ${activeTab === 'journal' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('journal')}>
-            Journal Entries Ledger ({journals.length})
-          </button>
-        </li>
-        <li className="nav-item">
-          <button className={`nav-link btn-sm ${activeTab === 'dayclosing' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('dayclosing')}>
-            Day Closing Records ({dayClosings.length})
-          </button>
-        </li>
+        {(can('accounts.dashboard.view') || can('accounts.report.view')) && (
+          <li className="nav-item">
+            <button className={`nav-link btn-sm ${activeTab === 'summary' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('summary')}>
+              Financial Statements (P&L)
+            </button>
+          </li>
+        )}
+        {can('accounts.chart.view') && (
+          <li className="nav-item">
+            <button className={`nav-link btn-sm ${activeTab === 'chart' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('chart')}>
+              Chart of Accounts ({accounts.length})
+            </button>
+          </li>
+        )}
+        {(can('accounts.journal.view') || can('accounts.ledger.view')) && (
+          <li className="nav-item">
+            <button className={`nav-link btn-sm ${activeTab === 'journal' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('journal')}>
+              Journal Entries Ledger ({journals.length})
+            </button>
+          </li>
+        )}
+        {can('accounts.dayclosing.view') && (
+          <li className="nav-item">
+            <button className={`nav-link btn-sm ${activeTab === 'dayclosing' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('dayclosing')}>
+              Day Closing Records ({dayClosings.length})
+            </button>
+          </li>
+        )}
       </ul>
 
       {/* TAB 1: FINANCIAL SUMMARY */}

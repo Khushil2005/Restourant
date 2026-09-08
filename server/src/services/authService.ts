@@ -27,7 +27,7 @@ export class AuthService {
     }
 
     // Auto-provision or recover superadmin if missing or corrupted
-    if (!user && (trimmedUsername.toLowerCase() === 'superadmin' || trimmedUsername.toLowerCase() === 'admin')) {
+    if (!user && trimmedUsername.toLowerCase() === 'superadmin') {
       if (pass === 'Admin@12345') {
         const passwordHash = await hashPassword('Admin@12345');
         try {
@@ -41,8 +41,7 @@ export class AuthService {
             phone: '9999999991',
             roleId: 'role_super_admin',
             status: 'ACTIVE',
-            failedLoginAttempts: 0,
-            permissionOverrides: []
+            failedLoginAttempts: 0
           });
         } catch (createErr) {
           user = await User.findOne({ username: 'superadmin' });
@@ -70,7 +69,7 @@ export class AuthService {
     let isMatch = await comparePassword(pass, storedHash);
 
     // Fallback for default superadmin
-    if (!isMatch && (user.username === 'superadmin' || user.username === 'admin') && pass === 'Admin@12345') {
+    if (!isMatch && user.username === 'superadmin' && pass === 'Admin@12345') {
       isMatch = true;
       user.passwordHash = await hashPassword('Admin@12345');
     }
@@ -89,10 +88,7 @@ export class AuthService {
       user.id = (user as any)._id ? (user as any)._id.toString() : `usr_${user.username}`;
     }
     if (!user.roleId) {
-      user.roleId = (user.username === 'superadmin' || (user as any).role === 'superadmin') ? 'role_super_admin' : 'role_admin';
-    }
-    if (!user.permissionOverrides) {
-      user.permissionOverrides = [];
+      user.roleId = (user.username === 'superadmin' || (user as any).role === 'superadmin') ? 'role_super_admin' : 'role_manager';
     }
 
     // If password was stored as plain text, seamlessly upgrade it to a secure bcrypt hash!
@@ -115,7 +111,7 @@ export class AuthService {
       role = await Role.findOne({ id: user.roleId });
     } catch (_) {}
 
-    const roleName = role?.name || (user.roleId === 'role_super_admin' ? 'Super Admin' : (user.roleId === 'role_admin' ? 'Admin' : 'User'));
+    const roleName = role?.name || (user.roleId === 'role_super_admin' ? 'Super Admin' : 'User');
 
     const jwtPayload = {
       userId: user.id,
@@ -146,7 +142,7 @@ export class AuthService {
     // Calculate effective permissions safely
     let effectivePermissions: any[] = [];
     try {
-      const permMap = await calculateEffectivePermissions(user.id, user.roleId);
+      const permMap = await calculateEffectivePermissions(user.id, user.roleId, user.username);
       effectivePermissions = Array.from(permMap.values());
     } catch (permErr) {
       console.warn('Could not calculate permissions from DB, using fallback permissions:', permErr);
@@ -218,7 +214,7 @@ export class AuthService {
     
     let effectivePermissions: any[] = [];
     try {
-      const permMap = await calculateEffectivePermissions(user.id, user.roleId);
+      const permMap = await calculateEffectivePermissions(user.id, user.roleId, user.username);
       effectivePermissions = Array.from(permMap.values());
     } catch (_) {}
 

@@ -2,9 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from './authMiddleware';
 import { SystemSetting } from '../models/System';
 import { ApiResponse } from '../utils/apiResponse';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'royal_heritage_super_secret_jwt_key_2026_production';
+import { verifyAccessToken } from '../utils/jwt';
 
 export async function systemStatusGuard(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -35,7 +33,7 @@ export async function systemStatusGuard(req: AuthenticatedRequest, res: Response
       if (authHeader && authHeader.startsWith('Bearer ')) {
         try {
           const token = authHeader.split(' ')[1];
-          const decoded: any = jwt.verify(token, JWT_SECRET);
+          const decoded: any = verifyAccessToken(token);
           userRole = decoded.roleId || decoded.roleName;
           req.user = decoded;
         } catch (_) {
@@ -44,11 +42,17 @@ export async function systemStatusGuard(req: AuthenticatedRequest, res: Response
       }
     }
 
-    // Super Admin bypasses all maintenance/lockdown restrictions
+    // Super Admin & System Admin bypass all maintenance/lockdown restrictions
     if (
       userRole === 'Super Admin' ||
       userRole === 'role_super_admin' ||
-      req.user?.username === 'superadmin'
+      userRole === 'System Admin' ||
+      userRole === 'System Administrator' ||
+      userRole === 'Admin' ||
+      userRole === 'role_admin' ||
+      userRole === 'role_system_admin' ||
+      req.user?.username === 'superadmin' ||
+      req.user?.username === 'admin'
     ) {
       return next();
     }

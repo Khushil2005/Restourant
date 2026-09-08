@@ -29,25 +29,29 @@ export const MastersPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      if (activeTab === 'menu') {
+      if (activeTab === 'menu' && can('masters.menu.view')) {
         const [mRes, cRes]: any = await Promise.all([
-          apiClient.get('/masters/menu-items'),
-          apiClient.get('/masters/menu-categories')
+          apiClient.get('/masters/menu-items').catch(() => null),
+          apiClient.get('/masters/menu-categories').catch(() => null)
         ]);
-        if (mRes.success) setMenuItems(mRes.data);
-        if (cRes.success) setCategories(cRes.data);
-      } else if (activeTab === 'tables') {
-        const res: any = await apiClient.get('/masters/tables');
-        if (res.success) setTables(res.data);
-      } else if (activeTab === 'customers') {
-        const res: any = await apiClient.get('/masters/customers');
-        if (res.success) setCustomers(res.data);
-      } else if (activeTab === 'suppliers') {
-        const res: any = await apiClient.get('/masters/suppliers');
-        if (res.success) setSuppliers(res.data);
-      } else if (activeTab === 'categories') {
-        const res: any = await apiClient.get('/masters/menu-categories');
-        if (res.success) setCategories(res.data);
+        if (mRes?.success) setMenuItems(mRes.data);
+        if (cRes?.success) setCategories(cRes.data);
+      } else if (activeTab === 'tables' && can('masters.table.view')) {
+        const res: any = await apiClient.get('/masters/tables').catch(() => null);
+        if (res?.success) setTables(res.data);
+      } else if (activeTab === 'customers' && can('masters.customer.view')) {
+        const res: any = await apiClient.get('/masters/customers').catch(() => null);
+        if (res?.success) setCustomers(res.data);
+      } else if (activeTab === 'suppliers' && can('masters.supplier.view')) {
+        const res: any = await apiClient.get('/masters/suppliers').catch(() => null);
+        if (res?.success) setSuppliers(res.data);
+      } else if (activeTab === 'categories' && can('masters.menu.view')) {
+        const [cRes, mRes]: any = await Promise.all([
+          apiClient.get('/masters/menu-categories').catch(() => null),
+          apiClient.get('/masters/menu-items').catch(() => null)
+        ]);
+        if (cRes?.success) setCategories(cRes.data);
+        if (mRes?.success) setMenuItems(mRes.data);
       }
     } catch (err) {
       console.error('Failed to load master data:', err);
@@ -55,6 +59,23 @@ export const MastersPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const tabs: Array<{ id: 'menu' | 'categories' | 'tables' | 'customers' | 'suppliers'; perms: string[] }> = [
+      { id: 'menu', perms: ['masters.menu.view'] },
+      { id: 'categories', perms: ['masters.menu.view'] },
+      { id: 'tables', perms: ['masters.table.view'] },
+      { id: 'customers', perms: ['masters.customer.view'] },
+      { id: 'suppliers', perms: ['masters.supplier.view'] }
+    ];
+    const isCurrentAllowed = tabs.find(t => t.id === activeTab && t.perms.some(p => can(p)));
+    if (!isCurrentAllowed) {
+      const firstAllowed = tabs.find(t => t.perms.some(p => can(p)));
+      if (firstAllowed) {
+        setActiveTab(firstAllowed.id);
+      }
+    }
+  }, [can]);
 
   useEffect(() => {
     loadData();
@@ -76,7 +97,8 @@ export const MastersPage: React.FC = () => {
       } else if (type === 'supplier') {
         setFormData({ name: '', companyName: '', phone: '', email: '', taxId: '', paymentTerms: 'NET30' });
       } else if (type === 'category') {
-        setFormData({ name: '', code: '', description: '', displayOrder: 1 });
+        const nextOrder = categories.length > 0 ? Math.max(...categories.map(c => Number(c.displayOrder) || 0)) + 1 : 1;
+        setFormData({ name: '', code: '', description: '', displayOrder: nextOrder, isActive: true });
       }
     }
     setIsModalOpen(true);
@@ -110,10 +132,17 @@ export const MastersPage: React.FC = () => {
           await apiClient.post('/masters/suppliers', formData);
         }
       } else if (modalType === 'category') {
+        const payload = {
+          name: formData.name?.trim(),
+          code: formData.code?.trim() || undefined,
+          description: formData.description?.trim() || '',
+          displayOrder: Number(formData.displayOrder || 1),
+          isActive: formData.isActive !== false
+        };
         if (editingId) {
-          await apiClient.put(`/masters/menu-categories/${editingId}`, formData);
+          await apiClient.put(`/masters/menu-categories/${editingId}`, payload);
         } else {
-          await apiClient.post('/masters/menu-categories', formData);
+          await apiClient.post('/masters/menu-categories', payload);
         }
       }
       setIsModalOpen(false);
@@ -130,6 +159,7 @@ export const MastersPage: React.FC = () => {
       else if (deleteConfirm.type === 'table') await apiClient.delete(`/masters/tables/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'customer') await apiClient.delete(`/masters/customers/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'supplier') await apiClient.delete(`/masters/suppliers/${deleteConfirm.id}`);
+      else if (deleteConfirm.type === 'category') await apiClient.delete(`/masters/menu-categories/${deleteConfirm.id}`);
       setDeleteConfirm(null);
       loadData();
     } catch (err: any) {
@@ -195,7 +225,7 @@ export const MastersPage: React.FC = () => {
         {can('masters.menu.view') && (
           <li className="nav-item">
             <button className={`nav-link btn-sm ${activeTab === 'categories' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('categories')}>
-              Menu Categories
+              Menu Categories ({categories.length})
             </button>
           </li>
         )}
@@ -278,6 +308,70 @@ export const MastersPage: React.FC = () => {
               )}
               {can('masters.menu.delete') && (
                 <button className="btn btn-outline-danger btn-sm p-1" onClick={() => setDeleteConfirm({ isOpen: true, id: row.id, type: 'menuItem' })} title="Delete">
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </>
+          )}
+        />
+      )}
+
+      {activeTab === 'categories' && (
+        <DataTable<MenuCategory>
+          columns={[
+            {
+              header: 'Code',
+              accessor: (row) => <span className="badge bg-dark font-monospace">{row.code}</span>,
+              width: 130
+            },
+            {
+              header: 'Category Name',
+              accessor: (row) => (
+                <div>
+                  <span className="fw-bold text-dark">{row.name}</span>
+                  {row.description && <div className="text-muted small">{row.description}</div>}
+                </div>
+              )
+            },
+            {
+              header: 'Display Order',
+              accessor: (row) => <span className="badge bg-light text-dark border">#{row.displayOrder ?? 0}</span>,
+              width: 120
+            },
+            {
+              header: 'Dishes Linked',
+              accessor: (row) => {
+                const count = menuItems.filter(m => m.categoryId === row.id).length;
+                return (
+                  <span className={`badge ${count > 0 ? 'bg-primary' : 'bg-secondary'}`}>
+                    {count} {count === 1 ? 'Dish' : 'Dishes'}
+                  </span>
+                );
+              },
+              width: 130
+            },
+            {
+              header: 'Status',
+              accessor: (row) => (
+                <span className={`badge ${row.isActive !== false ? 'bg-success' : 'bg-danger'}`}>
+                  {row.isActive !== false ? 'Active' : 'Inactive'}
+                </span>
+              ),
+              width: 100
+            }
+          ]}
+          data={categories}
+          searchPlaceholder="Search menu categories..."
+          searchField={(row) => `${row.name} ${row.code} ${row.description || ''}`}
+          actions={(row) => (
+            <>
+              {can('masters.menu.edit') && (
+                <button className="btn btn-outline-primary btn-sm p-1" onClick={() => handleOpenModal('category', row)} title="Edit Category">
+                  <Edit2 size={14} />
+                </button>
+              )}
+              {can('masters.menu.delete') && (
+                <button className="btn btn-outline-danger btn-sm p-1" onClick={() => setDeleteConfirm({ isOpen: true, id: row.id, type: 'category' })} title="Delete Category">
                   <Trash2 size={14} />
                 </button>
               )}
@@ -471,6 +565,68 @@ export const MastersPage: React.FC = () => {
                 <input type="text" className="form-control form-control-sm" required value={formData.phone || ''} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
               </div>
             </div>
+          )}
+
+          {modalType === 'category' && (
+            <>
+              <div className="row g-2">
+                <div className="col-8">
+                  <label className="form-label small fw-bold">Category Name <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    placeholder="e.g. Starters, Main Course, Desserts, Beverages"
+                    required
+                    value={formData.name || ''}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div className="col-4">
+                  <label className="form-label small fw-bold">Code <span className="text-muted small">(Optional)</span></label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm text-uppercase"
+                    placeholder="e.g. STARTER"
+                    value={formData.code || ''}
+                    onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                  />
+                </div>
+              </div>
+              <div className="row g-2 mt-1">
+                <div className="col-6">
+                  <label className="form-label small fw-bold">Display Order</label>
+                  <input
+                    type="number"
+                    className="form-control form-control-sm"
+                    value={formData.displayOrder ?? 1}
+                    min={1}
+                    onChange={e => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="col-6 d-flex align-items-end">
+                  <div className="form-check form-switch mb-1">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="categoryActiveSwitch"
+                      checked={formData.isActive !== false}
+                      onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
+                    />
+                    <label className="form-check-label small fw-bold" htmlFor="categoryActiveSwitch">Active Category</label>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 mt-1">
+                <label className="form-label small fw-bold">Description <span className="text-muted small">(Optional)</span></label>
+                <textarea
+                  className="form-control form-control-sm"
+                  rows={2}
+                  placeholder="Short description of items under this category..."
+                  value={formData.description || ''}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+            </>
           )}
 
           <div className="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">

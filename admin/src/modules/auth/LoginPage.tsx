@@ -248,7 +248,7 @@ export const LoginPage: React.FC = () => {
             className="small text-muted" 
             style={{ fontSize: '0.76rem', cursor: 'pointer' }}
             onClick={handleQuickFill}
-            title="Click to auto-fill default admin login"
+            title="Click to auto-fill Super Admin login"
           >
             Demo Admin: <code className="text-secondary">superadmin</code> / <code className="text-secondary">Admin@12345</code>
           </span>

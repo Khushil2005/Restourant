@@ -21,7 +21,9 @@ export class PaymentService {
   }
 
   static async createPayment(data: any, userId?: string, username?: string) {
-    const bill = await Bill.findOne({ id: data.billId });
+    const bill = data.billId 
+      ? await Bill.findOne({ id: data.billId }) 
+      : (data.orderId ? await Bill.findOne({ orderId: data.orderId }).sort({ createdAt: -1 }) : null);
     if (!bill) throw { statusCode: 404, message: 'Bill not found.' };
 
     if (bill.status === 'PAID') {
@@ -88,13 +90,13 @@ export class PaymentService {
       const entryNumber = `JRN-${new Date().getFullYear()}-${String(journalCount + 1).padStart(4, '0')}`;
       const journalId = `jrn_${uuidv4().slice(0, 8)}`;
 
-      const debitAccountId = (data.paymentMethod === 'CASH' || (transactions[0]?.method === 'CASH'))
-        ? 'acc_cash_drawer'
-        : 'acc_bank_hdfc';
+      const isCash = (data.paymentMethod === 'CASH' || (transactions[0]?.method === 'CASH'));
+      const debitAccount = isCash
+        ? await ChartOfAccount.findOne({ $or: [{ id: 'acc_cash_drawer' }, { subType: 'CASH' }] })
+        : await ChartOfAccount.findOne({ $or: [{ id: 'acc_bank_sbi' }, { id: 'acc_bank_hdfc' }, { subType: 'BANK' }] });
 
-      const debitAccount = await ChartOfAccount.findOne({ id: debitAccountId });
-      const revenueAccount = await ChartOfAccount.findOne({ id: 'acc_food_sales' });
-      const taxAccount = await ChartOfAccount.findOne({ id: 'acc_gst_payable' });
+      const revenueAccount = await ChartOfAccount.findOne({ $or: [{ id: 'acc_food_sales' }, { subType: 'OPERATING_REVENUE' }] });
+      const taxAccount = await ChartOfAccount.findOne({ $or: [{ id: 'acc_gst_payable' }, { accountCode: '2020' }] });
 
       if (debitAccount && revenueAccount && taxAccount) {
         const netRevenue = Math.max(0, paidThisTime - bill.taxAmount);

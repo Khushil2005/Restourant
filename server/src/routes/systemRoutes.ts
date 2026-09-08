@@ -73,11 +73,38 @@ systemRouter.post('/system-control/status', authenticate, authorize('system.cont
   }
 });
 
+systemRouter.get('/settings', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const settings = await SystemControlService.getSettings();
+    return ApiResponse.success(res, settings, 'System settings loaded.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
 systemRouter.post('/settings', authenticate, authorize('settings.edit'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await SystemControlService.updateSettings(req.body.settings, req.user!.userId, req.user!.username);
     return ApiResponse.success(res, result, result.message);
   } catch (err: any) {
     return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+systemRouter.post('/database/snapshot', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const snapshot = await SystemControlService.createDatabaseSnapshot();
+    return ApiResponse.success(res, snapshot, 'Database snapshot generated successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+systemRouter.post('/database/reseed', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await SystemControlService.reseedDatabase();
+    return ApiResponse.success(res, result, result.message);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
   }
 });

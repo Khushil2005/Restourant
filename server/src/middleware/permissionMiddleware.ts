@@ -2,21 +2,18 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from './authMiddleware';
 import { ApiResponse } from '../utils/apiResponse';
 import { Role, Permission } from '../models/Role';
-import { User } from '../models/User';
 import { ALL_PERMISSIONS } from '../constants/permissions';
 
 export interface PermissionDetails {
   permissionId: string;
-  source: 'SYSTEM' | 'ROLE' | 'USER_OVERRIDE_ALLOW' | 'USER_OVERRIDE_DENY';
+  source: 'SYSTEM' | 'ROLE';
   granted: boolean;
 }
 
 /**
- * Calculates effective permissions for a user taking into account:
- * 1. Role-assigned permissions
- * 2. User-specific overrides (ALLOW, DENY, INHERIT)
+ * Calculates effective permissions for a user based on Role assignment
  */
-export async function calculateEffectivePermissions(userId: string, roleId: string): Promise<Map<string, PermissionDetails>> {
+export async function calculateEffectivePermissions(userId: string, roleId: string, username?: string): Promise<Map<string, PermissionDetails>> {
   const result = new Map<string, PermissionDetails>();
 
   // Fetch Role
@@ -27,26 +24,18 @@ export async function calculateEffectivePermissions(userId: string, roleId: stri
 
   const isSuperAdmin = 
     role?.name === 'Super Admin' || 
+    role?.name === 'System Admin' ||
+    role?.name === 'System Administrator' ||
     role?.name === 'Admin' ||
     roleId === 'role_super_admin' || 
     roleId === 'role_admin' ||
+    roleId === 'role_system_admin' ||
     roleId === 'superadmin' ||
-    roleId === 'admin';
+    roleId === 'admin' ||
+    username === 'superadmin' ||
+    username === 'admin';
 
   const rolePerms = new Set<string>(role?.permissions || []);
-
-  // Fetch User Overrides
-  let user: any = null;
-  try {
-    user = await User.findOne({ $or: [{ id: userId }, { username: userId }] });
-  } catch (_) {}
-
-  const overrideMap = new Map<string, string>();
-  if (user && user.permissionOverrides) {
-    for (const ov of user.permissionOverrides) {
-      overrideMap.set(ov.permissionId, ov.overrideType);
-    }
-  }
 
   // Get all permission IDs from DB or fallback to ALL_PERMISSIONS constant
   let allPerms: Array<{ id: string }> = [];
@@ -58,36 +47,19 @@ export async function calculateEffectivePermissions(userId: string, roleId: stri
 
   for (const perm of permList) {
     const permId = (perm as any).id || (perm as any)._doc?.id;
-    const override = overrideMap.get(permId);
-
-    if (override === 'DENY') {
+    if (isSuperAdmin) {
       result.set(permId, {
         permissionId: permId,
-        source: 'USER_OVERRIDE_DENY',
-        granted: false
-      });
-    } else if (override === 'ALLOW') {
-      result.set(permId, {
-        permissionId: permId,
-        source: 'USER_OVERRIDE_ALLOW',
+        source: 'SYSTEM',
         granted: true
       });
     } else {
-      // INHERIT or no override
-      if (isSuperAdmin) {
-        result.set(permId, {
-          permissionId: permId,
-          source: 'SYSTEM',
-          granted: true
-        });
-      } else {
-        const hasRole = rolePerms.has(permId);
-        result.set(permId, {
-          permissionId: permId,
-          source: 'ROLE',
-          granted: hasRole
-        });
-      }
+      const hasRole = rolePerms.has(permId);
+      result.set(permId, {
+        permissionId: permId,
+        source: 'ROLE',
+        granted: hasRole
+      });
     }
   }
 
@@ -104,8 +76,8 @@ export function authorize(requiredPermission: string | string[]) {
         return ApiResponse.forbidden(res, 'Authentication required.');
       }
 
-      const { userId, roleId } = req.user;
-      const permMap = await calculateEffectivePermissions(userId, roleId);
+      const { userId, roleId, username } = req.user;
+      const permMap = await calculateEffectivePermissions(userId, roleId, username);
 
       const permsToCheck = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
       const hasPermission = permsToCheck.some(p => permMap.get(p)?.granted === true);

@@ -38,9 +38,10 @@ export class ExpenseService {
     // Auto-update Account Balances and Post Journal Entry
     try {
       const expenseAcc = await ChartOfAccount.findOne({ id: data.accountId });
-      const payAcc = await ChartOfAccount.findOne({ 
-        id: data.paymentMethod === 'CASH' ? 'acc_cash_drawer' : 'acc_bank_hdfc' 
-      });
+      const isCash = (data.paymentMethod === 'CASH');
+      const payAcc = isCash
+        ? await ChartOfAccount.findOne({ $or: [{ id: 'acc_cash_drawer' }, { subType: 'CASH' }] })
+        : await ChartOfAccount.findOne({ $or: [{ id: 'acc_bank_sbi' }, { id: 'acc_bank_hdfc' }, { subType: 'BANK' }] });
 
       if (expenseAcc && payAcc) {
         expenseAcc.currentBalance += Number(data.amount);

@@ -11,15 +11,11 @@ export interface User {
   roleName: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'LOCKED';
   avatarUrl?: string;
-  permissionOverrides?: Array<{
-    permissionId: string;
-    overrideType: 'ALLOW' | 'DENY' | 'INHERIT';
-  }>;
 }
 
 export interface PermissionDetail {
   permissionId: string;
-  source: 'SYSTEM' | 'ROLE' | 'USER_OVERRIDE_ALLOW' | 'USER_OVERRIDE_DENY';
+  source: 'SYSTEM' | 'ROLE';
   granted: boolean;
 }
 
@@ -81,6 +77,25 @@ export interface MenuItem {
   preparationTimeMinutes: number;
   imageUrl?: string;
   displayOrder: number;
+}
+
+export type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+
+export interface DailyMenu {
+  id: string;
+  dayOfWeek: DayOfWeek;
+  itemIds: string[];
+  isActive: boolean;
+  notes?: string;
+  itemCount?: number;
+  items?: MenuItem[];
+  isToday?: boolean;
+}
+
+export interface DailyMenuConfig {
+  id: string;
+  isStrictEnforced: boolean;
+  activeOverrideDay?: DayOfWeek;
 }
 
 export interface DiningTable {
@@ -438,7 +453,6 @@ export interface AdminUser {
   roleId: string;
   roleName: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'LOCKED';
-  permissionOverridesCount?: number;
   lastLogin?: string;
 }
 

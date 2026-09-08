@@ -16,9 +16,12 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const isSuperAdmin = 
     user?.roleName === 'Super Admin' || 
+    user?.roleName === 'System Admin' || 
+    user?.roleName === 'System Administrator' || 
     user?.roleName === 'Admin' ||
     user?.roleId === 'role_super_admin' || 
     user?.roleId === 'role_admin' ||
+    user?.roleId === 'role_system_admin' ||
     user?.username === 'superadmin' ||
     user?.username === 'admin';
 

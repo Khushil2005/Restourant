@@ -95,7 +95,7 @@ export const SystemDiagnosticsPage: React.FC = () => {
           </div>
           <div className="col-6 col-md-3">
             <span className="text-secondary d-block">Client Port:</span>
-            <strong className="text-light">5173</strong>
+            <strong className="text-light">{window.location.port || '3000'}</strong>
           </div>
         </div>
       </div>
@@ -105,9 +105,44 @@ export const SystemDiagnosticsPage: React.FC = () => {
 
 export const DatabaseToolsPage: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isSnapshotting, setIsSnapshotting] = useState(false);
 
-  const handleExportDump = () => {
-    alert('Simulated JSON database snapshot created and downloaded.');
+  const handleExportDump = async () => {
+    setIsSnapshotting(true);
+    try {
+      const res: any = await apiClient.post('/system/database/snapshot');
+      if (res.success && res.data) {
+        const jsonStr = JSON.stringify(res.data, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `restaurant_erp_snapshot_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('Database snapshot generated and downloaded successfully!');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to generate database snapshot.');
+    } finally {
+      setIsSnapshotting(false);
+    }
+  };
+
+  const handleReseed = async () => {
+    setIsSeeding(true);
+    try {
+      const res: any = await apiClient.post('/system/database/reseed');
+      if (res.success) {
+        alert(`Seed Integrity Verified!\nPermissions: ${res.data?.counts?.permissions ?? 'OK'}\nRoles: ${res.data?.counts?.roles ?? 'OK'}\nUsers: ${res.data?.counts?.users ?? 'OK'}`);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to verify seed integrity.');
+    } finally {
+      setIsSeeding(false);
+    }
   };
 
   return (
@@ -127,8 +162,8 @@ export const DatabaseToolsPage: React.FC = () => {
             <p className="small text-secondary mb-4">
               Generate an immediate JSON snapshot of all collections (Masters, Orders, Billing, Inventory, Accounts, HR, and Audit Logs).
             </p>
-            <button className="btn btn-outline-info btn-sm mt-auto" onClick={handleExportDump}>
-              Generate Database Snapshot
+            <button className="btn btn-outline-info btn-sm mt-auto" disabled={isSnapshotting} onClick={handleExportDump}>
+              {isSnapshotting ? 'Generating Snapshot...' : 'Generate Database Snapshot'}
             </button>
           </div>
         </div>
@@ -136,7 +171,7 @@ export const DatabaseToolsPage: React.FC = () => {
         <div className="col-12 col-md-6">
           <div className="card bg-black border border-secondary p-4 h-100">
             <h5 className="fw-bold text-white mb-2 d-flex align-items-center gap-2">
-              <RefreshCw size={20} className="text-warning" /> Permissions & Role Reseed
+              <RefreshCw size={20} className={`text-warning ${isSeeding ? 'spin' : ''}`} /> Permissions & Role Reseed
             </h5>
             <p className="small text-secondary mb-4">
               Re-verify and ensure all 264+ permission definitions and 11 default role templates are up-to-date in MongoDB.
@@ -144,11 +179,9 @@ export const DatabaseToolsPage: React.FC = () => {
             <button
               className="btn btn-warning btn-sm fw-bold text-dark mt-auto"
               disabled={isSeeding}
-              onClick={() => {
-                alert('Database schema & permissions verified.');
-              }}
+              onClick={handleReseed}
             >
-              Verify Seed Integrity
+              {isSeeding ? 'Verifying Seed...' : 'Verify Seed Integrity'}
             </button>
           </div>
         </div>

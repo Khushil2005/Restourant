@@ -94,7 +94,7 @@ export class PurchaseService {
       purchaseOrderId: po.id,
       receivedDate: new Date().toISOString().split('T')[0],
       receivedBy: userId,
-      invoiceNumber: data.invoiceNumber,
+      invoiceNumber: data.invoiceNumber || data.vendorInvoiceNumber || data.vendorInvoiceNo,
       notes: data.notes
     });
 
@@ -133,7 +133,7 @@ export class PurchaseService {
 
     // Auto-generate Purchase Invoice and Supplier Payable
     const invCount = await PurchaseInvoice.countDocuments();
-    const invoiceNumber = data.invoiceNumber || `PINV-${new Date().getFullYear()}-${String(invCount + 1).padStart(4, '0')}`;
+    const invoiceNumber = data.invoiceNumber || data.vendorInvoiceNumber || data.vendorInvoiceNo || `PINV-${new Date().getFullYear()}-${String(invCount + 1).padStart(4, '0')}`;
 
     const invoice = await PurchaseInvoice.create({
       id: `pinv_${uuidv4().slice(0, 8)}`,
@@ -175,15 +175,15 @@ export class PurchaseService {
           {
             id: uuidv4(),
             accountId: 'acc_inventory_asset',
-            accountName: 'Food & Beverage Inventory Asset',
-            debit: po.subtotal,
+            accountName: 'Food & Kathiyawadi Provision Inventory Asset',
+            debit: po.totalAmount,
             credit: 0,
             description: `Stock added from PO ${po.poNumber}`
           },
           {
             id: uuidv4(),
             accountId: 'acc_supplier_payable',
-            accountName: 'Accounts Payable (Suppliers)',
+            accountName: 'Accounts Payable (Farm & Spice Suppliers)',
             debit: 0,
             credit: po.totalAmount,
             description: `Payable obligation to ${po.supplierName}`

@@ -133,8 +133,8 @@ export class PayrollService {
       const jrnCount = await JournalEntry.countDocuments();
       const entryNumber = `JRN-${new Date().getFullYear()}-${String(jrnCount + 1).padStart(4, '0')}`;
       
-      const salaryExpAcc = await ChartOfAccount.findOne({ id: 'acc_exp_salaries' });
-      const bankAcc = await ChartOfAccount.findOne({ id: 'acc_bank_hdfc' });
+      const salaryExpAcc = await ChartOfAccount.findOne({ $or: [{ id: 'acc_exp_salaries' }, { subType: 'INDIRECT_EXPENSE' }] });
+      const bankAcc = await ChartOfAccount.findOne({ $or: [{ id: 'acc_bank_sbi' }, { id: 'acc_bank_hdfc' }, { subType: 'BANK' }] });
 
       if (salaryExpAcc && bankAcc) {
         salaryExpAcc.currentBalance += payrollRun.totalNetSalary;

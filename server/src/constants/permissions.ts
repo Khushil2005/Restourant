@@ -308,7 +308,6 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'users.create', module: 'Users & Roles', submodule: 'Users', action: 'create', name: 'Create User Account', description: 'Provision new login credentials' },
   { id: 'users.edit', module: 'Users & Roles', submodule: 'Users', action: 'edit', name: 'Edit User Account', description: 'Update profile or status' },
   { id: 'users.delete', module: 'Users & Roles', submodule: 'Users', action: 'delete', name: 'Delete User Account', description: 'Revoke user account' },
-  { id: 'users.permissions', module: 'Users & Roles', submodule: 'Users', action: 'permissions', name: 'Manage User Permission Overrides', description: 'Set user-level ALLOW / DENY overrides' },
 
   { id: 'roles.view', module: 'Users & Roles', submodule: 'Roles', action: 'view', name: 'View Roles', description: 'View system roles' },
   { id: 'roles.create', module: 'Users & Roles', submodule: 'Roles', action: 'create', name: 'Create Role', description: 'Define custom role' },
@@ -337,7 +336,11 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'system.maintenance.schedule', module: 'System Control', submodule: 'Maintenance', action: 'schedule', name: 'Schedule Maintenance', description: 'Set upcoming maintenance window' },
   { id: 'system.lockdown.enable', module: 'System Control', submodule: 'Emergency', action: 'enable', name: 'Trigger Emergency Lockdown', description: 'Instantly lock all user sessions' },
   { id: 'system.lockdown.disable', module: 'System Control', submodule: 'Emergency', action: 'disable', name: 'Lift Emergency Lockdown', description: 'Resume normal operations' },
-  { id: 'system.recovery.execute', module: 'System Control', submodule: 'Recovery', action: 'execute', name: 'Execute Data Recovery', description: 'Trigger automatic consistency checks' }
+  { id: 'system.recovery.execute', module: 'System Control', submodule: 'Recovery', action: 'execute', name: 'Execute Data Recovery', description: 'Trigger automatic consistency checks' },
+
+  // 26. DAILY MENU
+  { id: 'daily_menu.view', module: 'Daily Menu', submodule: 'Scheduler', action: 'view', name: 'View Daily Menu', description: 'Access day-wise rotating daily menu schedule' },
+  { id: 'daily_menu.edit', module: 'Daily Menu', submodule: 'Scheduler', action: 'edit', name: 'Configure Daily Menu', description: 'Assign dishes, copy menu across days, and toggle strict mode' }
 ];
 
 // Pre-defined Role Templates with Granular Permission Sets
@@ -350,13 +353,6 @@ export const DEFAULT_ROLES = [
     permissions: ALL_PERMISSIONS.map(p => p.id)
   },
   {
-    id: 'role_admin',
-    name: 'Admin',
-    description: 'Senior restaurant administrator',
-    is_system: true,
-    permissions: ALL_PERMISSIONS.filter(p => !p.id.startsWith('system.recovery')).map(p => p.id)
-  },
-  {
     id: 'role_manager',
     name: 'Manager',
     description: 'Floor and operations manager overseeing POS, kitchen, reservations, discounts & day closing',
@@ -364,8 +360,10 @@ export const DEFAULT_ROLES = [
     permissions: [
       'dashboard.view', 'dashboard.sales.view', 'dashboard.orders.view', 'dashboard.booking.view', 'dashboard.inventory.view', 'dashboard.reports.view',
       'masters.customer.view', 'masters.customer.create', 'masters.customer.edit', 'masters.customer.history',
-      'masters.menu.view', 'masters.menu.availability',
+      'masters.supplier.view',
+      'masters.menu.view', 'masters.menu.create', 'masters.menu.edit', 'masters.menu.delete', 'masters.menu.availability',
       'masters.table.view', 'masters.table.status',
+      'daily_menu.view', 'daily_menu.edit',
       'booking.view', 'booking.create', 'booking.edit', 'booking.confirm', 'booking.cancel', 'booking.assign_table', 'booking.change_table', 'booking.checkin', 'booking.no_show', 'booking.complete', 'booking.print', 'booking.export',
       'token.view', 'token.create', 'token.call', 'token.recall', 'token.skip', 'token.seat', 'token.complete', 'token.history', 'token.display',
       'tables.view', 'tables.assign', 'tables.transfer', 'tables.merge', 'tables.split', 'tables.status', 'tables.history',
@@ -393,12 +391,14 @@ export const DEFAULT_ROLES = [
     permissions: [
       'dashboard.view', 'dashboard.sales.view', 'dashboard.orders.view',
       'masters.customer.view', 'masters.customer.create', 'masters.menu.view', 'masters.table.view',
+      'daily_menu.view',
+      'booking.view',
       'tables.view', 'tables.status',
       'orders.view', 'orders.create', 'orders.edit', 'orders.item_add', 'orders.hold', 'orders.resume', 'orders.send_kot', 'orders.print_kot', 'orders.request_bill', 'orders.complete',
       'billing.view', 'billing.create', 'billing.print', 'billing.reprint', 'billing.split', 'billing.apply_discount', 'billing.request_payment',
       'payment.view', 'payment.create', 'payment.verify', 'payment.history', 'payment.partial', 'payment.split', 'payment.cash', 'payment.upi', 'payment.card', 'payment.online', 'payment.report',
       'discount.view', 'discount.apply',
-      'accounts.cashbook.view', 'accounts.dayclosing.view', 'accounts.dayclosing.execute',
+      'accounts.dashboard.view', 'accounts.cashbook.view', 'accounts.dayclosing.view', 'accounts.dayclosing.execute',
       'notification.view'
     ]
   },
@@ -408,7 +408,9 @@ export const DEFAULT_ROLES = [
     description: 'Floor staff handling table seating, taking customer orders, and food delivery',
     is_system: true,
     permissions: [
+      'dashboard.view', 'dashboard.orders.view',
       'masters.menu.view', 'masters.table.view',
+      'daily_menu.view',
       'tables.view', 'tables.assign', 'tables.status',
       'orders.view', 'orders.create', 'orders.item_add', 'orders.send_kot', 'orders.request_bill',
       'kot.view', 'kot.served',
@@ -421,7 +423,9 @@ export const DEFAULT_ROLES = [
     description: 'Culinary team managing kitchen orders, cooking stages and food readiness on KDS',
     is_system: true,
     permissions: [
+      'dashboard.view', 'dashboard.orders.view',
       'masters.menu.view', 'masters.menu.availability',
+      'daily_menu.view',
       'kot.view', 'kot.accept', 'kot.prepare', 'kot.ready', 'kot.cancel', 'kot.reprint', 'kot.priority',
       'inventory.recipe.view',
       'notification.view'
@@ -509,6 +513,8 @@ export const DEFAULT_ROLES = [
       'dashboard.view', 'dashboard.booking.view',
       'masters.customer.view', 'masters.customer.create', 'masters.customer.edit', 'masters.customer.history',
       'masters.table.view', 'masters.table.status',
+      'masters.menu.view',
+      'daily_menu.view',
       'booking.view', 'booking.create', 'booking.edit', 'booking.confirm', 'booking.cancel', 'booking.assign_table', 'booking.change_table', 'booking.checkin', 'booking.no_show', 'booking.complete', 'booking.print', 'booking.export',
       'token.view', 'token.create', 'token.call', 'token.recall', 'token.skip', 'token.seat', 'token.complete', 'token.history', 'token.display',
       'tables.view', 'tables.assign', 'tables.status',

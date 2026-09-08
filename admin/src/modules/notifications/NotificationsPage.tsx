@@ -140,6 +140,20 @@ export const SettingsPage: React.FC = () => {
     address: 'Kothariya Ring Road, Rajkot, Gujarat - 360022'
   });
 
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res: any = await apiClient.get('/system/settings');
+        if (res.success && res.data) {
+          setSettings((prev: any) => ({ ...prev, ...res.data }));
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {

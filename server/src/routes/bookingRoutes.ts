@@ -28,8 +28,26 @@ bookingRouter.post('/', authenticate, authorize('booking.create'), async (req: A
 
 bookingRouter.patch('/:id/status', authenticate, authorize(['booking.confirm', 'booking.cancel', 'booking.checkin', 'booking.edit']), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const booking = await BookingService.updateBookingStatus(req.params.id, req.body.status, req.user!.userId, req.user!.username);
+    const booking = await BookingService.updateBookingStatus(req.params.id, req.body.status, req.user!.userId, req.user!.username, req.body.reason);
     return ApiResponse.success(res, booking, `Booking marked as ${req.body.status}`);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+bookingRouter.patch('/:id/cancel', authenticate, authorize(['booking.cancel', 'booking.edit']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const booking = await BookingService.updateBookingStatus(req.params.id, 'CANCELLED', req.user!.userId, req.user!.username, req.body.reason);
+    return ApiResponse.success(res, booking, 'Function booking cancelled successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+bookingRouter.post('/:id/cancel', authenticate, authorize(['booking.cancel', 'booking.edit']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const booking = await BookingService.updateBookingStatus(req.params.id, 'CANCELLED', req.user!.userId, req.user!.username, req.body.reason);
+    return ApiResponse.success(res, booking, 'Function booking cancelled successfully.');
   } catch (err: any) {
     return ApiResponse.error(res, err.message, 400);
   }

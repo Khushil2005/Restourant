@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Customer, Supplier, Department, Designation, Unit, TaxMaster, MenuCategory, MenuItem, DiningTable } from '../models/Master';
 import { Order } from '../models/Order';
 import { Booking } from '../models/Booking';
@@ -131,17 +132,93 @@ export class MasterService {
 
   static async createMenuCategory(data: any, userId?: string, username?: string) {
     const id = data.id || `cat_${uuidv4().slice(0, 8)}`;
-    const cat = await MenuCategory.create({ ...data, id });
+    const name = (data.name || '').trim();
+    if (!name) {
+      throw new Error('Category name is required');
+    }
+    const code = data.code && data.code.trim()
+      ? data.code.trim().toUpperCase()
+      : name.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 20);
+    const displayOrder = Number(data.displayOrder ?? data.sortOrder ?? 0);
+    const cat = await MenuCategory.create({
+      ...data,
+      id,
+      name,
+      code,
+      displayOrder,
+      isActive: data.isActive !== undefined ? Boolean(data.isActive) : true
+    });
+    await createAuditLog({
+      userId,
+      username,
+      module: 'Masters',
+      submodule: 'MenuCategory',
+      action: 'CREATE',
+      recordId: id,
+      newValue: cat
+    });
     return cat;
   }
 
-  static async updateMenuCategory(id: string, data: any) {
-    return MenuCategory.findOneAndUpdate({ id }, { $set: data }, { new: true });
+  static async updateMenuCategory(id: string, data: any, userId?: string, username?: string) {
+    const query = mongoose.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
+    const old = await MenuCategory.findOne(query);
+    if (!old) {
+      throw new Error('Menu category not found');
+    }
+
+    const updateData: any = {};
+    if (data.name !== undefined) {
+      updateData.name = data.name.trim();
+    }
+    if (data.code !== undefined && data.code.trim()) {
+      updateData.code = data.code.trim().toUpperCase();
+    }
+    if (data.description !== undefined) {
+      updateData.description = data.description.trim();
+    }
+    if (data.displayOrder !== undefined) {
+      updateData.displayOrder = Number(data.displayOrder);
+    }
+    if (data.imageUrl !== undefined) {
+      updateData.imageUrl = data.imageUrl;
+    }
+    if (data.isActive !== undefined) {
+      updateData.isActive = Boolean(data.isActive);
+    }
+
+    const updated = await MenuCategory.findOneAndUpdate(query, { $set: updateData }, { new: true });
+    await createAuditLog({
+      userId,
+      username,
+      module: 'Masters',
+      submodule: 'MenuCategory',
+      action: 'EDIT',
+      recordId: id,
+      oldValue: old,
+      newValue: updated
+    });
+    return updated;
   }
 
-  static async deleteMenuCategory(id: string) {
-    await MenuItem.deleteMany({ categoryId: id });
-    return MenuCategory.deleteOne({ id });
+  static async deleteMenuCategory(id: string, userId?: string, username?: string) {
+    const query = mongoose.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
+    const old = await MenuCategory.findOne(query);
+    if (!old) {
+      throw new Error('Menu category not found');
+    }
+    await MenuItem.deleteMany({ categoryId: old.id });
+    await MenuCategory.deleteOne(query);
+    await createAuditLog({
+      userId,
+      username,
+      module: 'Masters',
+      submodule: 'MenuCategory',
+      action: 'DELETE',
+      recordId: id,
+      oldValue: old
+    });
+    return { success: true };
   }
 
   static async getMenuItems(categoryId?: string) {
@@ -151,7 +228,14 @@ export class MasterService {
 
   static async createMenuItem(data: any, userId?: string, username?: string) {
     const id = data.id || `item_${uuidv4().slice(0, 8)}`;
-    const item = await MenuItem.create({ ...data, id });
+    const code = data.code || (data.name ? data.name.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 20) : id.toUpperCase());
+    const displayOrder = Number(data.displayOrder ?? data.sortOrder ?? 0);
+    const item = await MenuItem.create({
+      ...data,
+      id,
+      code,
+      displayOrder
+    });
     await createAuditLog({
       userId,
       username,

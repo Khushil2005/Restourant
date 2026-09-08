@@ -8,6 +8,7 @@ import { accountRouter, expenseRouter } from './accountRoutes';
 import { hrRouter } from './hrRoutes';
 import { reportRouter, userRoleRouter } from './reportRoutes';
 import { systemRouter } from './systemRoutes';
+import { dailyMenuRouter } from './dailyMenuRoutes';
 
 export const apiRouter = Router();
 
@@ -30,3 +31,4 @@ apiRouter.use('/hr', hrRouter);
 apiRouter.use('/reports', reportRouter);
 apiRouter.use('/access-control', userRoleRouter);
 apiRouter.use('/system', systemRouter);
+apiRouter.use('/daily-menu', dailyMenuRouter);

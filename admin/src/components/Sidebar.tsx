@@ -37,21 +37,20 @@ interface MenuItem {
   title: string;
   path: string;
   icon: React.ReactNode;
-  permission: string;
+  permission: string | string[];
   badge?: string;
   section?: string;
 }
 
 export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> = ({ isOpen, onCloseMobile }) => {
-  const { can } = usePermission();
+  const { can, canAny } = usePermission();
 
   const menuItems: MenuItem[] = [
     { title: 'Overview', path: '/', icon: <LayoutDashboard size={18} />, permission: 'dashboard.view' },
     { title: 'Tokens', path: '/tokens', icon: <Ticket size={18} />, permission: 'token.view', badge: '0' },
     { title: 'Menu', path: '/pos', icon: <ShoppingBag size={18} />, permission: 'orders.view' },
+    { title: 'Daily Menu (Day-Wise)', path: '/daily-menu', icon: <Calendar size={18} />, permission: ['daily_menu.view', 'masters.menu.view'], badge: 'Day-Wise' },
     { title: 'Functions', path: '/bookings', icon: <CalendarCheck size={18} />, permission: 'booking.view', badge: '1 Date / Order' },
-    { title: 'Team', path: '/employees', icon: <Users size={18} />, permission: 'employee.view' },
-    { title: 'Queue & Expenses', path: '/expenses', icon: <DollarSign size={18} />, permission: 'expense.view' },
     { title: 'KDS Screen', path: '/kitchen', icon: <ChefHat size={18} />, permission: 'kot.view' },
     { title: 'Table Floor Map', path: '/tables', icon: <Grid size={18} />, permission: 'tables.view' },
     { title: 'Billing & Invoices', path: '/billing', icon: <Receipt size={18} />, permission: 'billing.view' },
@@ -60,7 +59,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> 
     { title: 'Inventory Stock', path: '/inventory', icon: <Boxes size={18} />, permission: 'inventory.view' },
     { title: 'Recipe Formulas (BOM)', path: '/recipes', icon: <BookOpen size={18} />, permission: 'inventory.recipe.view' },
     { title: 'Procurement (PO/GRN)', path: '/purchases', icon: <Truck size={18} />, permission: 'purchase.view' },
-    { title: 'Catalog Masters', path: '/masters', icon: <Database size={18} />, permission: 'masters.customer.view' },
+    { title: 'Catalog Masters', path: '/masters', icon: <Database size={18} />, permission: ['masters.customer.view', 'masters.menu.view', 'masters.supplier.view', 'masters.table.view'] },
     { title: 'Accounts & Ledger', path: '/accounts', icon: <BookCheck size={18} />, permission: 'accounts.dashboard.view' },
     { title: 'Operating Expenses', path: '/expenses', icon: <DollarSign size={18} />, permission: 'expense.view' },
     { title: 'Staff Directory', path: '/employees', icon: <Users size={18} />, permission: 'employee.view' },
@@ -78,7 +77,9 @@ export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> 
   ];
 
   // Dynamically filter menu items based on user's granted permissions
-  const visibleItems = menuItems.filter(item => can(item.permission));
+  const visibleItems = menuItems.filter(item => 
+    Array.isArray(item.permission) ? canAny(item.permission) : can(item.permission)
+  );
 
   return (
     <aside

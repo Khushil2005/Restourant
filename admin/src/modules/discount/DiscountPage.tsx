@@ -40,7 +40,11 @@ export const DiscountPage: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/discounts', formData);
+      await apiClient.post('/discounts', {
+        ...formData,
+        type: formData.discountType,
+        value: formData.discountValue
+      });
       setIsModalOpen(false);
       loadRules();
     } catch (err: any) {
@@ -84,11 +88,15 @@ export const DiscountPage: React.FC = () => {
           { header: 'Rule Title', accessor: 'name' },
           {
             header: 'Value',
-            accessor: (row) => (
-              <span className="fw-bold text-success">
-                {row.discountType === 'PERCENTAGE' ? `${row.discountValue}% OFF` : `₹${row.discountValue} FLAT`}
-              </span>
-            )
+            accessor: (row) => {
+              const discType = row.type || row.discountType || 'PERCENTAGE';
+              const discVal = row.value ?? row.discountValue ?? 0;
+              return (
+                <span className="fw-bold text-success">
+                  {discType === 'PERCENTAGE' ? `${discVal}% OFF` : `₹${discVal} FLAT`}
+                </span>
+              );
+            }
           },
           { header: 'Min Order', accessor: (row) => `₹${row.minOrderAmount || 0}` },
           { header: 'Max Cap', accessor: (row) => row.maxDiscountAmount ? `₹${row.maxDiscountAmount}` : 'No limit' },
@@ -96,7 +104,7 @@ export const DiscountPage: React.FC = () => {
             header: 'Manager Approval Limit',
             accessor: (row) => (
               <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
-                Above {row.requiresApprovalAbove}%
+                {row.requiresApprovalAbove ? `Above ${row.requiresApprovalAbove}%` : (row.requiresApproval ? 'Requires Approval' : 'Auto Approved')}
               </span>
             )
           }

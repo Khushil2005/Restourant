@@ -1,4 +1,4 @@
-import { User, IUserPermissionOverride } from '../models/User';
+import { User } from '../models/User';
 import { Role, Permission } from '../models/Role';
 import { hashPassword } from '../utils/password';
 import { calculateEffectivePermissions } from '../middleware/permissionMiddleware';
@@ -24,7 +24,6 @@ export class UserRoleService {
         roleName: role?.name || 'Unknown',
         status: u.status,
         lastLogin: u.lastLogin,
-        permissionOverridesCount: u.permissionOverrides?.length || 0,
         createdAt: u.createdAt
       };
     });
@@ -48,8 +47,7 @@ export class UserRoleService {
         roleId: user.roleId,
         roleName: role?.name || 'Unknown',
         status: user.status,
-        avatarUrl: user.avatarUrl,
-        permissionOverrides: user.permissionOverrides || []
+        avatarUrl: user.avatarUrl
       },
       effectivePermissions: Array.from(permMap.values())
     };
@@ -68,8 +66,7 @@ export class UserRoleService {
       lastName: data.lastName,
       phone: data.phone,
       roleId: data.roleId,
-      status: data.status || 'ACTIVE',
-      permissionOverrides: []
+      status: data.status || 'ACTIVE'
     });
 
     await createAuditLog({
@@ -134,48 +131,6 @@ export class UserRoleService {
     });
 
     return { success: true };
-  }
-
-  /**
-   * Set User-Specific Permission Overrides (ALLOW, DENY, INHERIT)
-   */
-  static async setUserPermissionOverrides(
-    userId: string, 
-    overrides: Array<{ permissionId: string; overrideType: 'ALLOW' | 'DENY' | 'INHERIT' }>,
-    adminUserId?: string,
-    adminUsername?: string
-  ) {
-    const user = await User.findOne({ id: userId });
-    if (!user) throw { statusCode: 404, message: 'User not found.' };
-
-    const cleanOverrides: IUserPermissionOverride[] = overrides
-      .filter(o => o.overrideType === 'ALLOW' || o.overrideType === 'DENY')
-      .map(o => ({
-        permissionId: o.permissionId,
-        overrideType: o.overrideType,
-        updatedAt: new Date()
-      }));
-
-    user.permissionOverrides = cleanOverrides;
-    await user.save();
-
-    const permMap = await calculateEffectivePermissions(user.id, user.roleId);
-
-    await createAuditLog({
-      userId: adminUserId,
-      username: adminUsername,
-      module: 'Users & Roles',
-      submodule: 'User Permissions',
-      action: 'UPDATE_USER_OVERRIDES',
-      recordId: userId,
-      newValue: cleanOverrides
-    });
-
-    return {
-      message: 'User permission overrides updated successfully.',
-      overrides: cleanOverrides,
-      effectivePermissions: Array.from(permMap.values())
-    };
   }
 
   // --- ROLES ---

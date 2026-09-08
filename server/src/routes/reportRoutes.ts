@@ -78,7 +78,7 @@ userRoleRouter.put('/users/:id', authenticate, authorize('users.edit'), async (r
     const user = await UserRoleService.updateUser(req.params.id, req.body, req.user!.userId, req.user!.username);
     return ApiResponse.success(res, user, 'User updated.');
   } catch (err: any) {
-    return ApiResponse.error(res, err.message, 400);
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
   }
 });
 
@@ -87,16 +87,7 @@ userRoleRouter.delete('/users/:id', authenticate, authorize('users.delete'), asy
     await UserRoleService.deleteUser(req.params.id, req.user!.userId, req.user!.username);
     return ApiResponse.success(res, null, 'User deleted.');
   } catch (err: any) {
-    return ApiResponse.error(res, err.message, 400);
-  }
-});
-
-userRoleRouter.post('/users/:id/overrides', authenticate, authorize('users.permissions'), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const result = await UserRoleService.setUserPermissionOverrides(req.params.id, req.body.overrides, req.user!.userId, req.user!.username);
-    return ApiResponse.success(res, result, result.message);
-  } catch (err: any) {
-    return ApiResponse.error(res, err.message, 400);
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
   }
 });
 

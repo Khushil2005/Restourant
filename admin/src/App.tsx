@@ -9,6 +9,7 @@ import { MainLayout } from './layouts/MainLayout';
 import { LoginPage } from './modules/auth/LoginPage';
 import { DashboardPage } from './modules/dashboard/DashboardPage';
 import { MastersPage } from './modules/masters/MastersPage';
+import { DailyMenuPage } from './modules/daily-menu/DailyMenuPage';
 import { BookingPage } from './modules/booking/BookingPage';
 import { TokenPage } from './modules/token/TokenPage';
 import { PublicTokenDisplay } from './modules/token/PublicTokenDisplay';
@@ -94,6 +95,7 @@ export const App: React.FC = () => {
                 >
                   <Route index element={<DashboardPage />} />
                   <Route path="masters" element={<MastersPage />} />
+                  <Route path="daily-menu" element={<DailyMenuPage />} />
                   <Route path="bookings" element={<BookingPage />} />
                   <Route path="functions" element={<BookingPage />} />
                   <Route path="tokens" element={<TokenPage />} />

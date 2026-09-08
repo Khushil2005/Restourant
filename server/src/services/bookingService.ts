@@ -1,8 +1,16 @@
+import mongoose from 'mongoose';
 import { Booking } from '../models/Booking';
 import { DiningTable } from '../models/Master';
 import { SocketEvents } from '../sockets/socketManager';
 import { createAuditLog } from '../middleware/auditMiddleware';
 import { v4 as uuidv4 } from 'uuid';
+
+function getBookingQuery(id: string) {
+  if (mongoose.isValidObjectId(id)) {
+    return { $or: [{ id }, { _id: id }] };
+  }
+  return { id };
+}
 
 export class BookingService {
   static async getBookings(query: any = {}) {
@@ -108,14 +116,17 @@ export class BookingService {
     return booking;
   }
 
-  static async updateBookingStatus(id: string, status: string, userId?: string, username?: string) {
-    const booking = await Booking.findOne({ $or: [{ id }, { _id: id }] });
+  static async updateBookingStatus(id: string, status: string, userId?: string, username?: string, reason?: string) {
+    const booking = await Booking.findOne(getBookingQuery(id));
     if (!booking) throw { statusCode: 404, message: 'Function booking not found.' };
 
     const oldStatus = booking.status;
     booking.status = status as any;
     if (status === 'CANCELLED') {
       booking.isLocked = false;
+      if (reason) {
+        booking.notes = booking.notes ? `${booking.notes} | Cancelled: ${reason}` : `Cancelled: ${reason}`;
+      }
     }
     await booking.save();
 
@@ -140,14 +151,14 @@ export class BookingService {
       action: `STATUS_${status}`,
       recordId: id,
       oldValue: { status: oldStatus },
-      newValue: { status }
+      newValue: { status, reason }
     });
 
     return booking;
   }
 
   static async deleteBooking(id: string, userId?: string, username?: string) {
-    const booking = await Booking.findOne({ $or: [{ id }, { _id: id }] });
+    const booking = await Booking.findOne(getBookingQuery(id));
     if (!booking) throw { statusCode: 404, message: 'Function booking not found.' };
 
     if (booking.tableId) {
@@ -163,12 +174,12 @@ export class BookingService {
       username,
       module: 'Functions',
       submodule: 'Function Locker',
-      action: 'UNLOCK_DATE',
+      action: 'DELETE_BOOKING',
       recordId: id,
       oldValue: booking
     });
 
-    return { message: 'Function date unlocked successfully.' };
+    return { message: 'Function booking deleted successfully.' };
   }
 
   static async assignTable(bookingId: string, tableId: string, userId?: string, username?: string) {
@@ -178,13 +189,14 @@ export class BookingService {
     }
 
     const booking = await Booking.findOneAndUpdate(
-      { id: bookingId },
+      getBookingQuery(bookingId),
       { $set: { tableId, status: 'CONFIRMED' } },
       { new: true }
     );
+    if (!booking) throw { statusCode: 404, message: 'Function booking not found.' };
 
     await DiningTable.findOneAndUpdate({ id: tableId }, { $set: { status: 'RESERVED' } });
-    SocketEvents.emitTableUpdated({ tableId, status: 'RESERVED' });
+    SocketEvents.emitTableUpdated({ tableId: tableId, status: 'RESERVED' });
 
     return booking;
   }

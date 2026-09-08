@@ -25,3 +25,5 @@ Thumbs.db
 
 # Cache
 .npm/
+.mongo_data/
+**/.mongo_data/

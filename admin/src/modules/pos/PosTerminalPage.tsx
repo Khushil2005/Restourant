@@ -53,16 +53,29 @@ export const PosTerminalPage: React.FC = () => {
   const [noteItemIdx, setNoteItemIdx] = useState<number | null>(null);
   const [noteText, setNoteText] = useState<string>('');
 
+  // Daily Menu state
+  const [isDailyMenuStrict, setIsDailyMenuStrict] = useState<boolean>(true);
+  const [dailyMenuItemIds, setDailyMenuItemIds] = useState<string[]>([]);
+  const [activeDailyDay, setActiveDailyDay] = useState<string>('TODAY');
+  const [dailyMenuNotes, setDailyMenuNotes] = useState<string>('');
+
   const loadData = async () => {
     try {
-      const [cRes, mRes, tRes]: any = await Promise.all([
+      const [cRes, mRes, tRes, dRes]: any = await Promise.all([
         apiClient.get('/masters/menu-categories'),
         apiClient.get('/masters/menu-items'),
-        apiClient.get('/masters/tables')
+        apiClient.get('/masters/tables'),
+        apiClient.get('/daily-menu/today')
       ]);
       if (cRes.success) setCategories(cRes.data);
       if (mRes.success) setMenuItems(mRes.data);
       if (tRes.success) setTables(tRes.data);
+      if (dRes.success && dRes.data) {
+        setIsDailyMenuStrict(dRes.data.isStrictEnforced !== false);
+        setDailyMenuItemIds(dRes.data.itemIds || []);
+        setActiveDailyDay(dRes.data.effectiveDay || 'TODAY');
+        setDailyMenuNotes(dRes.data.notes || '');
+      }
 
       if (activeOrderId) {
         const oRes: any = await apiClient.get(`/orders/${activeOrderId}`);
@@ -81,6 +94,19 @@ export const PosTerminalPage: React.FC = () => {
     }
   };
 
+  const handleSwitchDailyDay = async (day: string) => {
+    try {
+      const res: any = await apiClient.get(`/daily-menu/today?day=${day}`);
+      if (res.success && res.data) {
+        setActiveDailyDay(day);
+        setDailyMenuItemIds(res.data.itemIds || []);
+        setDailyMenuNotes(res.data.notes || '');
+      }
+    } catch (err) {
+      console.error('Failed to switch daily menu day:', err);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [activeOrderId]);
@@ -88,6 +114,11 @@ export const PosTerminalPage: React.FC = () => {
   const handleAddToCart = (item: MenuItem) => {
     if (!item.isAvailable) {
       alert('This dish is currently marked as unavailable/sold out.');
+      return;
+    }
+
+    if (isDailyMenuStrict && dailyMenuItemIds.length > 0 && !dailyMenuItemIds.includes(item.id)) {
+      alert(`"${item.name}" is not scheduled in today's Daily Menu (${activeDailyDay}). Only daily fixed items are available.`);
       return;
     }
 
@@ -209,6 +240,12 @@ export const PosTerminalPage: React.FC = () => {
   };
 
   const filteredItems = menuItems.filter(item => {
+    // If strict daily menu is active, only show scheduled items ("no other item available")
+    if (isDailyMenuStrict && dailyMenuItemIds.length > 0) {
+      if (!dailyMenuItemIds.includes(item.id)) {
+        return false;
+      }
+    }
     const matchCategory = selectedCategory === 'ALL' || item.categoryId === selectedCategory;
     const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.code.toLowerCase().includes(searchQuery.toLowerCase());
     return matchCategory && matchSearch;
@@ -272,6 +309,33 @@ export const PosTerminalPage: React.FC = () => {
               ))}
             </select>
           )}
+
+          {/* Daily Menu Day Selector */}
+          <div className="d-flex align-items-center gap-1 bg-black bg-opacity-50 px-2 py-1 rounded border border-secondary">
+            <span className="text-warning small d-flex align-items-center gap-1 fw-bold" style={{ fontSize: '0.75rem' }}>
+              📅 Daily Menu:
+            </span>
+            <select
+              className="form-select form-select-sm bg-dark text-warning border-0 py-0 px-2 fw-bold"
+              style={{ width: 'auto', fontSize: '0.78rem', cursor: 'pointer' }}
+              value={activeDailyDay}
+              onChange={(e) => handleSwitchDailyDay(e.target.value)}
+              title="Select Day for Daily Menu"
+            >
+              <option value="MONDAY">Monday Menu</option>
+              <option value="TUESDAY">Tuesday Menu</option>
+              <option value="WEDNESDAY">Wednesday Menu</option>
+              <option value="THURSDAY">Thursday Menu</option>
+              <option value="FRIDAY">Friday Menu</option>
+              <option value="SATURDAY">Saturday Menu</option>
+              <option value="SUNDAY">Sunday Menu</option>
+            </select>
+            {isDailyMenuStrict && dailyMenuItemIds.length > 0 && (
+              <span className="badge bg-danger text-white ms-1" style={{ fontSize: '0.65rem' }}>
+                Strict: {dailyMenuItemIds.length} Dishes
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -310,6 +374,16 @@ export const PosTerminalPage: React.FC = () => {
               />
             </div>
           </div>
+
+          {/* Daily Menu Info Banner */}
+          {isDailyMenuStrict && dailyMenuItemIds.length > 0 && (
+            <div className="alert alert-warning py-1 px-3 mb-2 d-flex align-items-center justify-content-between rounded-2 border-0 shadow-sm" style={{ fontSize: '0.8rem' }}>
+              <div>
+                <strong>📅 રોજિંદુ મેનુ ({activeDailyDay}):</strong> ફક્ત <strong>{dailyMenuItemIds.length}</strong> ફિક્સ કરેલી વાનગીઓ જ ઉપલબ્ધ છે. અન્ય કોઈ વાનગી ઓર્ડર નહીં થાય.
+              </div>
+              {dailyMenuNotes && <span className="badge bg-dark">{dailyMenuNotes}</span>}
+            </div>
+          )}
 
           {/* Menu Items Grid */}
           <div className="flex-grow-1 overflow-auto pe-1">

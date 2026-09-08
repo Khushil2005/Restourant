@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
+import { useAuth } from '../../context/AuthContext';
 import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
 import { User, Role } from '../../types';
 import {
@@ -15,7 +16,6 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
-  Sliders,
   CheckCircle2,
   XCircle,
   RotateCcw
@@ -23,6 +23,7 @@ import {
 
 export const UsersRolesPage: React.FC = () => {
   const { can } = usePermission();
+  const { refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'users' | 'roles'>('users');
 
   const [users, setUsers] = useState<User[]>([]);
@@ -52,10 +53,6 @@ export const UsersRolesPage: React.FC = () => {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [selectedRolePerms, setSelectedRolePerms] = useState<Set<string>>(new Set());
   const [cloneSourceRoleId, setCloneSourceRoleId] = useState<string>('');
-
-  // User Overrides Modal
-  const [overrideUser, setOverrideUser] = useState<any | null>(null);
-  const [userOverridesMap, setUserOverridesMap] = useState<Map<string, 'ALLOW' | 'DENY' | 'INHERIT'>>(new Map());
 
   // Expand/collapse tree tracking
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -140,6 +137,38 @@ export const UsersRolesPage: React.FC = () => {
     }
   };
 
+  // --- ROLE MANAGEMENT ---
+  const handleSaveRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roleFormData.name.trim()) {
+      alert('Role name is required.');
+      return;
+    }
+    try {
+      await apiClient.post('/access-control/roles', {
+        name: roleFormData.name.trim(),
+        description: roleFormData.description?.trim() || ''
+      });
+      alert('Custom role created successfully! You can now configure its permissions in the Permission Tree.');
+      setIsRoleModalOpen(false);
+      setRoleFormData({ name: '', description: '' });
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to create role.');
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    if (!window.confirm('Are you sure you want to delete this custom role? Any users assigned to this role must be reassigned.')) return;
+    try {
+      await apiClient.delete(`/access-control/roles/${roleId}`);
+      alert('Role deleted successfully.');
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete role.');
+    }
+  };
+
   // --- ROLE PERMISSIONS MATRIX ---
   const handleOpenRolePerms = (role: Role) => {
     setEditingRole(role);
@@ -182,55 +211,10 @@ export const UsersRolesPage: React.FC = () => {
       });
       alert(`Permissions updated for role ${editingRole.name} (${selectedRolePerms.size} actions granted).`);
       setEditingRole(null);
+      await refreshProfile();
       loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to update permissions.');
-    }
-  };
-
-  // --- USER PERMISSION OVERRIDES ---
-  const handleOpenUserOverrides = async (user: User) => {
-    try {
-      const res: any = await apiClient.get(`/access-control/users/${user.id}`);
-      if (res.success && res.data) {
-        setOverrideUser(res.data);
-        const map = new Map<string, 'ALLOW' | 'DENY' | 'INHERIT'>();
-        (res.data.user.permissionOverrides || []).forEach((o: any) => {
-          map.set(o.permissionId, o.overrideType);
-        });
-        setUserOverridesMap(map);
-      }
-    } catch (err) {
-      alert('Failed to load user details.');
-    }
-  };
-
-  const handleSetUserOverride = (permId: string, type: 'ALLOW' | 'DENY' | 'INHERIT') => {
-    setUserOverridesMap(prev => {
-      const next = new Map(prev);
-      if (type === 'INHERIT') next.delete(permId);
-      else next.set(permId, type);
-      return next;
-    });
-  };
-
-  const handleSaveUserOverrides = async () => {
-    if (!overrideUser) return;
-    try {
-      const overridesArray = Array.from(userOverridesMap.entries()).map(([permissionId, overrideType]) => ({
-        permissionId,
-        overrideType
-      }));
-
-      await apiClient.post(`/access-control/users/${overrideUser.user.id}/overrides`, {
-        overrides: overridesArray
-      });
-
-      alert('User permission overrides applied successfully.');
-      setOverrideUser(null);
-      loadData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to save overrides.');
     }
   };
 
@@ -249,7 +233,7 @@ export const UsersRolesPage: React.FC = () => {
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
           <h4 className="fw-bold mb-1 text-dark">Access Control: Users, Roles & Granular Permissions</h4>
-          <p className="text-muted small mb-0">Role-Based Access Control (RBAC), Tree-view matrix editor, and per-user ALLOW/DENY overrides</p>
+          <p className="text-muted small mb-0">Role-Based Access Control (RBAC) and Tree-view permission matrix editor</p>
         </div>
         <div className="d-flex align-items-center gap-2">
           {activeTab === 'users' && can('users.create') && (
@@ -301,18 +285,6 @@ export const UsersRolesPage: React.FC = () => {
               )
             },
             {
-              header: 'Custom Overrides',
-              accessor: (row) => (
-                row.permissionOverrides && row.permissionOverrides.length > 0 ? (
-                  <span className="badge bg-warning text-dark">
-                    {row.permissionOverrides.length} Overrides
-                  </span>
-                ) : (
-                  <span className="text-muted small">None (Role Default)</span>
-                )
-              )
-            },
-            {
               header: 'Account Status',
               accessor: (row) => (
                 <span className={`badge ${row.status === 'ACTIVE' ? 'bg-success' : 'bg-danger'}`}>
@@ -325,15 +297,6 @@ export const UsersRolesPage: React.FC = () => {
           searchPlaceholder="Search users by name, username, role..."
           actions={(row) => (
             <>
-              {can('users.permissions') && (
-                <button
-                  className="btn btn-outline-warning btn-sm p-1 px-2 d-flex align-items-center gap-1 text-dark"
-                  onClick={() => handleOpenUserOverrides(row)}
-                  title="Configure Individual User Overrides"
-                >
-                  <Sliders size={14} /> Overrides
-                </button>
-              )}
               {can('users.edit') && (
                 <button className="btn btn-outline-primary btn-sm p-1" onClick={() => handleOpenUserModal(row)} title="Edit User">
                   <Edit2 size={14} />
@@ -367,7 +330,7 @@ export const UsersRolesPage: React.FC = () => {
               header: 'Granted Permissions',
               accessor: (row) => (
                 <span className="badge bg-info-subtle text-info border border-info-subtle fs-6">
-                  {row.permissions?.length || 0} / {permTree?.total || 264} Permissions
+                  {row.permissions?.length || 0} / {permTree?.total || permTree?.rawList?.length || 343} Permissions
                 </span>
               )
             }
@@ -375,7 +338,7 @@ export const UsersRolesPage: React.FC = () => {
           data={roles}
           searchPlaceholder="Search roles..."
           actions={(row) => (
-            <>
+            <div className="d-flex align-items-center gap-1">
               {can('roles.permissions') && (
                 <button
                   className="btn btn-primary btn-sm p-1 px-2 d-flex align-items-center gap-1"
@@ -385,10 +348,68 @@ export const UsersRolesPage: React.FC = () => {
                   <Key size={14} /> Permission Tree
                 </button>
               )}
-            </>
+              {!row.isSystem && can('roles.delete') && (
+                <button
+                  className="btn btn-outline-danger btn-sm p-1"
+                  onClick={() => handleDeleteRole(row.id)}
+                  title="Delete Custom Role"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
           )}
         />
       )}
+
+      {/* CREATE CUSTOM ROLE MODAL */}
+      <Modal
+        isOpen={isRoleModalOpen}
+        onClose={() => {
+          setIsRoleModalOpen(false);
+          setRoleFormData({ name: '', description: '' });
+        }}
+        title="Create New Custom Role"
+      >
+        <form onSubmit={handleSaveRole} className="d-flex flex-column gap-3">
+          <div>
+            <label className="form-label small fw-bold">Role Name</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="e.g. Shift Supervisor, Food Runner"
+              required
+              value={roleFormData.name}
+              onChange={e => setRoleFormData({ ...roleFormData, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="form-label small fw-bold">Description</label>
+            <textarea
+              className="form-control"
+              rows={3}
+              placeholder="Brief summary of duties and responsibilities..."
+              value={roleFormData.description}
+              onChange={e => setRoleFormData({ ...roleFormData, description: e.target.value })}
+            />
+          </div>
+          <div className="d-flex justify-content-end gap-2 pt-3 border-top">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setIsRoleModalOpen(false);
+                setRoleFormData({ name: '', description: '' });
+              }}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm fw-bold">
+              Save Custom Role
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* CREATE/EDIT USER MODAL */}
       <Modal
@@ -483,7 +504,7 @@ export const UsersRolesPage: React.FC = () => {
                   setSelectedRolePerms(new Set(all));
                 }}
               >
-                Grant All ({permTree?.total || 264})
+                Grant All ({permTree?.total || permTree?.rawList?.length || 343})
               </button>
               <button
                 type="button"
@@ -584,88 +605,6 @@ export const UsersRolesPage: React.FC = () => {
                 Save Permissions Matrix
               </button>
             </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* USER SPECIFIC PERMISSION OVERRIDES MODAL */}
-      <Modal
-        isOpen={!!overrideUser}
-        onClose={() => setOverrideUser(null)}
-        title={`Custom Permission Overrides: ${overrideUser?.user?.firstName} ${overrideUser?.user?.lastName} (@${overrideUser?.user?.username})`}
-        size="xl"
-      >
-        <div className="d-flex flex-column gap-3">
-          <div className="p-3 bg-light rounded border">
-            <p className="small text-secondary mb-0">
-              Assigned Role: <strong>{overrideUser?.user?.roleName}</strong>. You can explicitly <strong>ALLOW</strong> or <strong>DENY</strong> individual permissions for this specific user account regardless of their assigned role permissions.
-            </p>
-          </div>
-
-          <div className="border rounded p-3 overflow-auto" style={{ maxHeight: '60vh' }}>
-            {permTree && Object.entries(permTree.modules || {}).map(([moduleName, submodules]: [string, any]) => (
-              <div key={moduleName} className="mb-3 border rounded">
-                <div className="p-2 px-3 bg-light fw-bold text-dark">
-                  {moduleName} Module
-                </div>
-                <div className="p-3 bg-white d-flex flex-column gap-3">
-                  {Object.entries(submodules).map(([subName, actions]: [string, any]) => (
-                    <div key={subName} className="border-bottom pb-2">
-                      <span className="fw-semibold text-secondary small text-uppercase d-block mb-2">
-                        {subName}
-                      </span>
-                      <div className="row g-2">
-                        {actions.map((act: any) => {
-                          const currentOverride = userOverridesMap.get(act.id) || 'INHERIT';
-
-                          return (
-                            <div key={act.id} className="col-12 col-md-6 col-xl-4">
-                              <div className="p-2 rounded border bg-light d-flex flex-column gap-1">
-                                <div className="fw-bold small text-dark">{act.name}</div>
-                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>{act.id}</div>
-                                <div className="btn-group btn-group-sm w-100 mt-1">
-                                  <button
-                                    type="button"
-                                    className={`btn ${currentOverride === 'INHERIT' ? 'btn-secondary fw-bold' : 'btn-outline-secondary'}`}
-                                    style={{ fontSize: '0.7rem' }}
-                                    onClick={() => handleSetUserOverride(act.id, 'INHERIT')}
-                                  >
-                                    Inherit
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={`btn ${currentOverride === 'ALLOW' ? 'btn-success fw-bold' : 'btn-outline-success'}`}
-                                    style={{ fontSize: '0.7rem' }}
-                                    onClick={() => handleSetUserOverride(act.id, 'ALLOW')}
-                                  >
-                                    ALLOW
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={`btn ${currentOverride === 'DENY' ? 'btn-danger fw-bold' : 'btn-outline-danger'}`}
-                                    style={{ fontSize: '0.7rem' }}
-                                    onClick={() => handleSetUserOverride(act.id, 'DENY')}
-                                  >
-                                    DENY
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="d-flex justify-content-end gap-2 pt-2 border-top">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOverrideUser(null)}>Cancel</button>
-            <button type="button" className="btn btn-primary btn-sm fw-bold" onClick={handleSaveUserOverrides}>
-              Save User Overrides
-            </button>
           </div>
         </div>
       </Modal>

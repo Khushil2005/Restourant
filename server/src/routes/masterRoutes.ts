@@ -90,7 +90,7 @@ masterRouter.delete('/suppliers/:id', authenticate, authorize('masters.supplier.
 });
 
 // --- MENU CATEGORIES & ITEMS ---
-masterRouter.get('/menu-categories', authenticate, authorize('masters.menu.view'), async (req, res: Response) => {
+masterRouter.get('/menu-categories', authenticate, authorize(['masters.menu.view', 'daily_menu.view', 'orders.view']), async (req, res: Response) => {
   try {
     const categories = await MasterService.getMenuCategories();
     return ApiResponse.success(res, categories, 'Menu categories retrieved.');
@@ -108,7 +108,25 @@ masterRouter.post('/menu-categories', authenticate, authorize('masters.menu.crea
   }
 });
 
-masterRouter.get('/menu-items', authenticate, authorize('masters.menu.view'), async (req, res: Response) => {
+masterRouter.put('/menu-categories/:id', authenticate, authorize('masters.menu.edit'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const cat = await MasterService.updateMenuCategory(req.params.id, req.body, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, cat, 'Menu category updated.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+masterRouter.delete('/menu-categories/:id', authenticate, authorize('masters.menu.delete'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await MasterService.deleteMenuCategory(req.params.id, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, null, 'Menu category deleted.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+masterRouter.get('/menu-items', authenticate, authorize(['masters.menu.view', 'daily_menu.view', 'orders.view']), async (req, res: Response) => {
   try {
     const items = await MasterService.getMenuItems(req.query.categoryId as string);
     return ApiResponse.success(res, items, 'Menu items retrieved.');

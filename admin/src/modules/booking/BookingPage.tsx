@@ -10,7 +10,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Plus, 
-  Unlock, 
+  XCircle, 
   UserCheck, 
   Phone, 
   Users, 
@@ -185,41 +185,24 @@ export const BookingPage: React.FC = () => {
     }
   };
 
-  // Handle Cancel Function (Releases lock and marks booking as CANCELLED)
+  // Handle Cancel Function
   const handleCancelBooking = async (booking: Booking) => {
-    if (!window.confirm(`Cancel function reservation for ${booking.customerName} on ${booking.bookingDate}?\n\nThis will unlock the date for new reservations.`)) {
+    const bookingId = booking.id || (booking as any)._id;
+    if (!bookingId) return;
+    if (!window.confirm(`Cancel function reservation for ${booking.customerName} on ${booking.bookingDate}?`)) {
       return;
     }
     try {
-      const res: any = await apiClient.patch(`/bookings/${booking.id}/status`, { status: 'CANCELLED' });
+      const res: any = await apiClient.patch(`/bookings/${bookingId}/cancel`, { status: 'CANCELLED' });
       if (res.success) {
         setAlertMessage({ 
           type: 'info', 
-          text: `Function on ${booking.bookingDate} cancelled. Date is now unlocked and available!` 
+          text: `Function reservation for ${booking.customerName} on ${booking.bookingDate} has been cancelled successfully.` 
         });
         loadBookings();
       }
     } catch (err: any) {
       alert(err.message || 'Failed to cancel function.');
-    }
-  };
-
-  // Handle Unlock / Delete Date
-  const handleUnlockDate = async (booking: Booking) => {
-    if (!window.confirm(`Unlock date ${booking.bookingDate} and delete this reservation record?`)) {
-      return;
-    }
-    try {
-      const res: any = await apiClient.delete(`/bookings/${booking.id}`);
-      if (res.success) {
-        setAlertMessage({ 
-          type: 'info', 
-          text: `Function date ${booking.bookingDate} unlocked and record cleared.` 
-        });
-        loadBookings();
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to unlock date.');
     }
   };
 
@@ -1035,27 +1018,17 @@ export const BookingPage: React.FC = () => {
                             </button>
                           )}
 
-                          {/* Cancel Function (Releases lock and date) */}
+                          {/* Cancel Function */}
                           {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
                             <button
                               onClick={() => handleCancelBooking(b)}
-                              className="btn btn-outline-warning btn-sm p-1 px-2 d-flex align-items-center gap-1"
-                              title="Cancel function and unlock date"
+                              className="btn btn-outline-danger btn-sm p-1 px-2 d-flex align-items-center gap-1"
+                              title="Cancel function reservation"
                             >
-                              <Unlock size={13} />
+                              <XCircle size={13} />
                               <span className="small">Cancel</span>
                             </button>
                           )}
-
-                          {/* Unlock Date / Delete */}
-                          <button
-                            onClick={() => handleUnlockDate(b)}
-                            className="btn btn-outline-danger btn-sm p-1 px-2 d-flex align-items-center gap-1"
-                            title="Delete booking and unlock date"
-                          >
-                            <Unlock size={13} />
-                            <span className="small">Unlock</span>
-                          </button>
                         </div>
                       </td>
                     </tr>
