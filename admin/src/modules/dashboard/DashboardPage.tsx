@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
 import { usePermission } from '../../context/PermissionContext';
 import { StatWidget } from '../../components/PermissionGate';
 import {
@@ -19,6 +20,7 @@ import { Link } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
   const { can } = usePermission();
+  const { user } = useAuth();
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -83,6 +85,68 @@ export const DashboardPage: React.FC = () => {
                 <ChefHat size={16} /> Kitchen KDS
               </Link>
             )}
+          </div>
+        </div>
+
+        {/* Logged in User Bar */}
+        <div className="px-3 px-sm-4 py-2 bg-black bg-opacity-30 border-top border-white border-opacity-10 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <div
+              className="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0"
+              style={{ width: 34, height: 34, fontSize: '0.88rem' }}
+            >
+              {(user?.firstName?.[0] || user?.username?.[0] || 'U').toUpperCase()}
+            </div>
+            <div>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <span className="small text-white-50" style={{ fontSize: '0.78rem' }}>Welcome,</span>
+                <span className="fw-bold text-white fs-6">
+                  {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Admin'}
+                </span>
+                <span className="badge bg-gold text-dark fw-bold font-monospace shadow-sm" style={{ fontSize: '0.72rem' }}>
+                  🛡️ {user?.roleName || user?.username?.toUpperCase() || 'ADMIN'}
+                </span>
+              </div>
+              <div className="text-white-50 small" style={{ fontSize: '0.72rem' }}>
+                Logged in ID: <span className="text-warning font-monospace fw-semibold">@{user?.username || 'admin'}</span>
+              </div>
+            </div>
+          </div>
+          <div className="d-flex align-items-center gap-2 ms-auto ms-sm-0">
+            <span className="badge bg-success bg-opacity-75 text-white small px-2 py-1 d-flex align-items-center gap-1 shadow-sm">
+              <span className="p-1 rounded-circle bg-white" /> Online
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile-Only Dedicated User Info Card */}
+      <div className="d-md-none card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-primary">
+        <div className="d-flex align-items-center justify-content-between gap-2">
+          <div className="d-flex align-items-center gap-2 overflow-hidden">
+            <div
+              className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0"
+              style={{ width: 40, height: 40, fontSize: '1rem' }}
+            >
+              {(user?.firstName?.[0] || user?.username?.[0] || 'U').toUpperCase()}
+            </div>
+            <div className="overflow-hidden">
+              <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Logged-in User Account</small>
+              <div className="fw-bold text-dark fs-6 text-truncate">
+                {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Admin'}
+              </div>
+              <small className="text-muted font-monospace" style={{ fontSize: '0.72rem' }}>
+                ID: @{user?.username || 'admin'}
+              </small>
+            </div>
+          </div>
+          <div className="text-end flex-shrink-0">
+            <span className="badge bg-primary text-white fw-bold font-monospace d-inline-block px-2 py-1 shadow-sm" style={{ fontSize: '0.75rem' }}>
+              {user?.roleName || 'ADMIN'}
+            </span>
+            <div className="text-success small fw-semibold mt-1" style={{ fontSize: '0.68rem' }}>
+              ● Active Session
+            </div>
           </div>
         </div>
       </div>

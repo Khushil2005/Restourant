@@ -126,17 +126,17 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
         </div>
 
         {/* User Profile Info */}
-        <div className="d-flex align-items-center text-white gap-2">
-          <div className="text-end d-none d-sm-block">
-            <div className="fw-semibold text-truncate" style={{ maxWidth: 140 }}>
-              {user?.firstName} {user?.lastName}
+        <div className="d-flex align-items-center text-white gap-1 gap-sm-2">
+          <div className="text-end">
+            <div className="fw-semibold text-truncate small" style={{ maxWidth: 110, fontSize: '0.78rem' }}>
+              {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Admin'}
             </div>
-            <div className="badge bg-white text-primary fw-medium" style={{ fontSize: '0.65rem' }}>
-              {user?.roleName}
+            <div className="badge bg-white text-primary fw-medium text-truncate" style={{ fontSize: '0.62rem', maxWidth: 95 }}>
+              {user?.roleName || 'Admin'}
             </div>
           </div>
           <button
-            className="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-sm ms-2"
+            className="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-sm ms-1 ms-sm-2 p-1 p-sm-2"
             onClick={logout}
             title="Sign Out"
           >
