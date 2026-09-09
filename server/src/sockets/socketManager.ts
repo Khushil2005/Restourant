@@ -2,15 +2,13 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { verifyAccessToken } from '../utils/jwt';
 import { logger } from '../utils/logger';
+import { socketCorsOptions } from '../config/cors';
 
 let ioInstance: SocketIOServer | null = null;
 
 export function initSocketIO(httpServer: HTTPServer): SocketIOServer {
   ioInstance = new SocketIOServer(httpServer, {
-    cors: {
-      origin: '*',
-      methods: ['GET', 'POST']
-    }
+    cors: socketCorsOptions
   });
 
   ioInstance.use((socket: Socket, next) => {

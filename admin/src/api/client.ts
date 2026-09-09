@@ -1,6 +1,22 @@
 import axios from 'axios';
 
-export const API_BASE_URL = '/api';
+// Centralized API Base URL resolution
+const getApiBaseUrl = (): string => {
+  const envApiUrl = import.meta.env.VITE_API_URL;
+  if (envApiUrl && typeof envApiUrl === 'string' && envApiUrl.trim()) {
+    return envApiUrl.trim().replace(/\/+$/, '');
+  }
+
+  // Production fallback: ALWAYS communicate with Render backend
+  if (import.meta.env.PROD) {
+    return 'https://restourant-eoj3.onrender.com/api';
+  }
+
+  // Local development default (routes through Vite dev proxy)
+  return '/api';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -8,6 +8,17 @@ build/
 **/dist/
 **/build/
 
+# Environment files
+.env
+.env.*
+.env.local
+.env.*.local
+server/.env
+admin/.env
+!.env.example
+!server/.env.example
+!admin/.env.example
+
 # Logs
 *.log
 logs/
@@ -26,4 +37,4 @@ Thumbs.db
 # Cache
 .npm/
 .mongo_data/
-**/.mongo_data/
+**/.mongo_data/
