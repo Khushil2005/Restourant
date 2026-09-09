@@ -43,8 +43,13 @@ interface MenuItem {
   section?: string;
 }
 
-export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> = ({ isOpen, onCloseMobile }) => {
+export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseMobile?: () => void }> = ({
+  isOpen,
+  onClose,
+  onCloseMobile
+}) => {
   const { can, canAny } = usePermission();
+  const handleClose = onClose || onCloseMobile;
 
   const menuItems: MenuItem[] = [
     { title: 'Overview', path: '/', icon: <LayoutDashboard size={18} />, permission: 'dashboard.view' },
@@ -85,29 +90,36 @@ export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> 
   return (
     <aside
       className={`sidebar bg-white border-end position-fixed top-0 bottom-0 start-0 ${
-        isOpen ? 'd-block' : 'd-none d-lg-block'
+        isOpen ? 'sidebar-open' : 'sidebar-closed'
       }`}
       style={{
-        width: 270,
-        maxWidth: '85vw',
-        paddingTop: isOpen ? 0 : 62,
-        overflowY: 'auto',
-        zIndex: 1050,
-        boxShadow: isOpen ? '0 0 20px rgba(0,0,0,0.25)' : 'none',
-        transition: 'all 0.25s ease-in-out'
+        boxShadow: isOpen ? '0 0 25px rgba(0,0,0,0.2)' : 'none'
       }}
     >
-      {/* Mobile Top Header with Close Button */}
-      <div className="p-3 bg-primary text-white d-flex d-lg-none align-items-center justify-content-between border-bottom">
+      {/* Top Header with Brand Name and Close Button (Visible on both Web & Mobile) */}
+      <div className="p-3 bg-primary text-white d-flex align-items-center justify-content-between border-bottom shadow-sm">
         <div className="d-flex align-items-center gap-2">
-          <img src="/logo.jpg" alt="Logo" className="brand-logo-img" style={{ width: 32, height: 32 }} />
-          <span className="fw-bold tracking-wide" style={{ fontSize: '0.95rem', letterSpacing: '0.02em' }}>BHATIGAL BHANU</span>
+          <img
+            src="/logo.jpg"
+            alt="Bhatigal Bhanu"
+            className="brand-logo-img shadow-sm"
+            style={{ width: 34, height: 34 }}
+          />
+          <div className="d-flex flex-column">
+            <span className="fw-bold tracking-wide text-white" style={{ fontSize: '0.95rem', letterSpacing: '0.02em' }}>
+              BHATIGAL BHANU
+            </span>
+            <span className="badge bg-gold text-dark fw-bold" style={{ fontSize: '0.62rem', width: 'fit-content' }}>
+              RESTAURANT ERP
+            </span>
+          </div>
         </div>
         <button
-          className="btn btn-sm btn-link text-white p-1"
-          onClick={onCloseMobile}
+          className="btn btn-sm btn-link text-white p-1 rounded-circle hover-bg-dark"
+          onClick={handleClose}
           type="button"
-          aria-label="Close sidebar"
+          aria-label="Close navigation"
+          title="Close Navigation Bar"
         >
           <X size={20} />
         </button>
@@ -122,12 +134,16 @@ export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> 
         </span>
       </div>
 
-      <nav className="nav flex-column p-2 gap-1">
+      <nav className="nav flex-column p-2 gap-1" style={{ overflowY: 'auto' }}>
         {visibleItems.map(item => (
           <NavLink
             key={item.path}
             to={item.path}
-            onClick={onCloseMobile}
+            onClick={() => {
+              if (window.innerWidth < 992 && handleClose) {
+                handleClose();
+              }
+            }}
             className={({ isActive }) =>
               `nav-link d-flex align-items-center justify-content-between px-3 py-2 rounded text-dark text-decoration-none ${
                 isActive ? 'bg-primary text-white active fw-semibold shadow-sm' : 'hover-bg-light'

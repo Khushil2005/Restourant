@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
 
 export const MainLayout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 992);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 992) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className="d-flex flex-column min-vh-100 bg-light position-relative" style={{ overflowX: 'hidden' }}>
@@ -18,12 +28,16 @@ export const MainLayout: React.FC = () => {
         />
       )}
       <div className="d-flex flex-grow-1 position-relative">
-        <Sidebar isOpen={sidebarOpen} onCloseMobile={() => setSidebarOpen(false)} />
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onCloseMobile={() => setSidebarOpen(false)}
+        />
         <main
-          className="flex-grow-1 p-2 p-sm-3 p-md-4 main-content"
+          className={`flex-grow-1 p-2 p-sm-3 p-md-4 main-content ${
+            sidebarOpen ? 'with-sidebar' : 'without-sidebar'
+          }`}
           style={{
-            marginLeft: 'var(--sidebar-width, 260px)',
-            transition: 'margin-left 0.3s ease',
             minWidth: 0,
             maxWidth: '100%'
           }}

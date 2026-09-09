@@ -12,40 +12,42 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
-    <header className="navbar navbar-expand-lg navbar-dark bg-primary sticky-top px-2 px-sm-3 py-2 shadow-sm">
-      <div className="d-flex align-items-center">
+    <header className="navbar navbar-expand navbar-dark bg-primary sticky-top px-2 px-sm-3 py-2 shadow-sm flex-nowrap align-items-center justify-content-between">
+      <div className="d-flex align-items-center flex-shrink-0">
         <button
-          className="btn btn-link text-white me-2 me-sm-3 p-0 d-lg-none"
+          className="btn btn-link text-white me-2 p-0"
           onClick={onToggleSidebar}
           type="button"
           aria-label="Toggle navigation"
+          title="Toggle Navigation Menu"
         >
           <span className="navbar-toggler-icon" />
         </button>
-        <Link to="/" className="navbar-brand fw-bold d-flex align-items-center mb-0 text-white text-decoration-none me-1 me-sm-2">
+        <Link to="/" className="navbar-brand fw-bold d-flex align-items-center mb-0 text-white text-decoration-none me-0 me-sm-2 p-0">
           <img
             src="/logo.jpg"
             alt="Bhatigal Bhanu"
-            className="brand-logo-img me-1 me-sm-2 shadow-sm flex-shrink-0"
-            style={{ width: 32, height: 32 }}
+            className="brand-logo-img shadow-sm flex-shrink-0"
+            style={{ width: 34, height: 34 }}
           />
-          <div className="d-flex flex-column overflow-hidden">
-            <div className="d-flex align-items-center gap-1">
-              <span className="fs-6 fw-bold text-white tracking-wide text-truncate" style={{ letterSpacing: '0.02em', maxWidth: 130 }}>
+          {/* Brand Name shown on desktop (omitted on mobile to prevent duplicate with dashboard banner and avoid 2-row wrapping) */}
+          <div className="d-none d-md-flex flex-column ms-2">
+            <div className="d-flex align-items-center gap-2">
+              <span className="fs-5 fw-bold text-white tracking-wide" style={{ letterSpacing: '0.02em' }}>
                 BHATIGAL BHANU
               </span>
-              <span className="badge bg-gold text-dark fw-semibold d-none d-sm-inline" style={{ fontSize: '0.6rem' }}>
+              <span className="badge bg-gold text-dark fw-bold" style={{ fontSize: '0.62rem' }}>
                 ERP
               </span>
             </div>
-            <span className="small text-white-50 d-none d-md-block" style={{ fontSize: '0.7rem', marginTop: '-2px' }}>
+            <span className="small text-white-50" style={{ fontSize: '0.72rem', marginTop: '-2px' }}>
               Traditional Dining & Restaurant Management
             </span>
           </div>
         </Link>
       </div>
 
-      <div className="ms-auto d-flex align-items-center gap-1 gap-sm-2">
+      <div className="ms-auto d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0">
         {/* Real-time connection badge */}
         <div className="d-none d-md-flex align-items-center gap-1 small text-white-50">
           {isConnected ? (
@@ -62,13 +64,14 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
         {/* Notifications Dropdown */}
         <div className="position-relative">
           <button
-            className="btn btn-outline-light btn-sm position-relative rounded-circle p-2"
+            className="btn btn-outline-light btn-sm position-relative rounded-circle p-0 d-flex align-items-center justify-content-center"
             onClick={() => setShowNotifications(!showNotifications)}
             title="Notifications"
+            style={{ width: 30, height: 30 }}
           >
-            <Bell size={15} />
+            <Bell size={14} />
             {unreadCount > 0 && (
-              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.62rem' }}>
+              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.6rem' }}>
                 {unreadCount}
               </span>
             )}
@@ -127,42 +130,42 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
 
         {/* Proper Logged-in User Header Chip */}
         <div
-          className="d-flex align-items-center gap-1 gap-sm-2 px-2 py-1 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-20 shadow-sm"
+          className="d-flex align-items-center gap-1 gap-sm-2 px-2 py-1 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-20 shadow-sm flex-shrink-0"
           style={{ backdropFilter: 'blur(4px)' }}
         >
           {/* User Initial Avatar */}
           <div
             className="rounded-circle bg-gold text-dark d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0"
-            style={{ width: 28, height: 28, fontSize: '0.78rem' }}
+            style={{ width: 26, height: 26, fontSize: '0.75rem' }}
           >
             {(user?.firstName?.[0] || user?.username?.[0] || 'U').toUpperCase()}
           </div>
 
           {/* User Name & Role */}
-          <div className="d-flex flex-column text-start lh-1" style={{ maxWidth: 120 }}>
+          <div className="d-flex flex-column text-start lh-1" style={{ maxWidth: 130 }}>
             <span
               className="fw-bold text-white text-truncate"
-              style={{ fontSize: '0.8rem', letterSpacing: '0.01em' }}
+              style={{ fontSize: '0.78rem', letterSpacing: '0.01em' }}
               title={user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Admin'}
             >
               {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Admin'}
             </span>
             <span
               className="badge bg-gold text-dark fw-bold font-monospace text-truncate mt-1 px-1 py-0"
-              style={{ fontSize: '0.6rem', width: 'fit-content', maxWidth: 110 }}
+              style={{ fontSize: '0.58rem', width: 'fit-content', maxWidth: 120 }}
             >
-              {user?.roleName || 'ADMIN'}
+              {(user?.roleName || 'ADMIN').replace(/_/g, ' ')}
             </span>
           </div>
 
           {/* Logout Button */}
           <button
-            className="btn btn-danger btn-sm rounded-circle p-1 ms-1 d-flex align-items-center justify-content-center shadow-sm text-white"
+            className="btn btn-danger btn-sm rounded-circle p-1 ms-1 d-flex align-items-center justify-content-center shadow-sm text-white flex-shrink-0"
             onClick={logout}
             title="Sign Out"
-            style={{ width: 26, height: 26 }}
+            style={{ width: 24, height: 24 }}
           >
-            <LogOut size={13} />
+            <LogOut size={12} />
           </button>
         </div>
       </div>
