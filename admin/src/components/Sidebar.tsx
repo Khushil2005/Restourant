@@ -100,7 +100,11 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
       <div className="p-3 bg-primary text-white d-flex align-items-center justify-content-between border-bottom shadow-sm">
         <Link
           to="/"
-          onClick={() => handleClose && handleClose()}
+          onClick={() => {
+            if (window.innerWidth < 992 && handleClose) {
+              handleClose();
+            }
+          }}
           className="d-flex align-items-center gap-2 text-decoration-none text-white"
           title="Go to Dashboard"
         >
@@ -120,7 +124,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
           </div>
         </Link>
         <button
-          className="btn btn-sm btn-link text-white p-1 rounded-circle hover-bg-dark"
+          className="btn btn-sm btn-link text-white p-1 rounded-circle hover-bg-dark d-lg-none"
           onClick={handleClose}
           type="button"
           aria-label="Close navigation"
@@ -145,7 +149,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
             key={item.path}
             to={item.path}
             onClick={() => {
-              if (handleClose) {
+              // Only auto-close on mobile screens (< 992px)
+              if (window.innerWidth < 992 && handleClose) {
                 handleClose();
               }
             }}

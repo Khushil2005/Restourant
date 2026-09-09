@@ -160,11 +160,23 @@ body {
   background: var(--brand-maroon-light);
 }
 
-/* Main content layout */
-.main-content,
-.admin-main-content {
-  margin-left: 0 !important;
-  transition: padding 0.2s ease;
+/* Responsive main content offset */
+@media (min-width: 992px) {
+  .main-content.with-sidebar {
+    margin-left: 270px !important;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .main-content.without-sidebar {
+    margin-left: 0 !important;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .main-content,
+  .admin-main-content {
+    margin-left: 0 !important;
+  }
 }
 
 /* Cards & Containers */

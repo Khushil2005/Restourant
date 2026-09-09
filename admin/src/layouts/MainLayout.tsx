@@ -4,29 +4,34 @@ import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
 
 export const MainLayout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Web screen: default to open (>= 992px); Mobile screen: default to closed (< 992px)
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 992);
   const location = useLocation();
 
-  // Auto-close navigation menu whenever the route/page changes
+  // ONLY auto-close navigation menu on route change for mobile screens (< 992px)
   useEffect(() => {
-    setSidebarOpen(false);
+    if (window.innerWidth < 992) {
+      setSidebarOpen(false);
+    }
   }, [location.pathname]);
 
-  // Auto-close navigation menu on window resize
+  // Handle window resize: automatically open on desktop, close on mobile
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 992 && sidebarOpen) {
+      if (window.innerWidth >= 992) {
+        setSidebarOpen(true);
+      } else {
         setSidebarOpen(false);
       }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [sidebarOpen]);
+  }, []);
 
-  // Close navigation menu with Escape key
+  // Escape key only closes on mobile screens (< 992px)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && sidebarOpen) {
+      if (e.key === 'Escape' && window.innerWidth < 992 && sidebarOpen) {
         setSidebarOpen(false);
       }
     };
@@ -37,10 +42,10 @@ export const MainLayout: React.FC = () => {
   return (
     <div className="d-flex flex-column min-vh-100 bg-light position-relative" style={{ overflowX: 'hidden' }}>
       <Navbar onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
-      {/* Backdrop for auto-closing on outside click (Mobile & Desktop) */}
+      {/* Mobile Backdrop ONLY (d-lg-none): Clicking outside closes only on mobile */}
       {sidebarOpen && (
         <div
-          className="sidebar-backdrop"
+          className="sidebar-backdrop d-lg-none"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -52,7 +57,9 @@ export const MainLayout: React.FC = () => {
           onCloseMobile={() => setSidebarOpen(false)}
         />
         <main
-          className="flex-grow-1 p-2 p-sm-3 p-md-4 main-content"
+          className={`flex-grow-1 p-2 p-sm-3 p-md-4 main-content ${
+            sidebarOpen ? 'with-sidebar' : 'without-sidebar'
+          }`}
           style={{
             minWidth: 0,
             maxWidth: '100%'
