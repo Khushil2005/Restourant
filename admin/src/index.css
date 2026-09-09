@@ -105,25 +105,79 @@ body {
   color: #FFFFFF !important;
 }
 
-/* Sidebar styling */
-.sidebar {
-  width: 270px;
-  max-width: 85vw;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1050;
-  border-right: 1px solid var(--brand-border) !important;
-  background-color: #FFFFFF !important;
+/* ========================================================
+   Sidebar & Responsive Layout System
+   ======================================================== */
+
+/* Desktop Screens (>= 992px): In-flow side-by-side sticky layout */
+@media (min-width: 992px) {
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 56px;
+    height: calc(100vh - 56px);
+    background-color: #FFFFFF !important;
+    border-right: 1px solid var(--brand-border) !important;
+    overflow-y: auto;
+    z-index: 100;
+  }
+
+  .sidebar.sidebar-open {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar.sidebar-closed {
+    display: none !important;
+  }
+
+  .main-content {
+    flex: 1 1 0%;
+    min-width: 0;
+    width: 0;
+    margin-left: 0 !important;
+  }
 }
 
-.sidebar-open {
-  transform: translateX(0);
-  visibility: visible;
-}
+/* Mobile Screens (< 992px): Overlay drawer */
+@media (max-width: 991.98px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 280px;
+    max-width: 85vw;
+    height: 100vh;
+    background-color: #FFFFFF !important;
+    border-right: 1px solid var(--brand-border) !important;
+    z-index: 1050;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
 
-.sidebar-closed {
-  transform: translateX(-100%);
-  visibility: hidden;
-  pointer-events: none;
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+    visibility: visible;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
+  }
+
+  .sidebar.sidebar-closed {
+    transform: translateX(-100%);
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .main-content,
+  .admin-main-content {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+  }
 }
 
 .hover-bg-light:hover {
@@ -158,25 +212,6 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--brand-maroon-light);
-}
-
-/* Responsive main content offset */
-@media (min-width: 992px) {
-  .main-content.with-sidebar {
-    margin-left: 270px !important;
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .main-content.without-sidebar {
-    margin-left: 0 !important;
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-}
-
-@media (max-width: 991.98px) {
-  .main-content,
-  .admin-main-content {
-    margin-left: 0 !important;
-  }
 }
 
 /* Cards & Containers */

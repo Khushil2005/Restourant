@@ -89,15 +89,12 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
 
   return (
     <aside
-      className={`sidebar bg-white border-end position-fixed top-0 bottom-0 start-0 ${
+      className={`sidebar bg-white border-end ${
         isOpen ? 'sidebar-open' : 'sidebar-closed'
       }`}
-      style={{
-        boxShadow: isOpen ? '0 0 25px rgba(0,0,0,0.2)' : 'none'
-      }}
     >
-      {/* Top Header with Brand Name and Close Button (Visible on both Web & Mobile) */}
-      <div className="p-3 bg-primary text-white d-flex align-items-center justify-content-between border-bottom shadow-sm">
+      {/* Top Header with Brand Name and Close Button (Visible on Mobile Drawer) */}
+      <div className="p-3 bg-primary text-white d-flex d-lg-none align-items-center justify-content-between border-bottom shadow-sm">
         <Link
           to="/"
           onClick={() => {

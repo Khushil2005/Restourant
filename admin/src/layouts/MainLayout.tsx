@@ -57,13 +57,8 @@ export const MainLayout: React.FC = () => {
           onCloseMobile={() => setSidebarOpen(false)}
         />
         <main
-          className={`flex-grow-1 p-2 p-sm-3 p-md-4 main-content ${
-            sidebarOpen ? 'with-sidebar' : 'without-sidebar'
-          }`}
-          style={{
-            minWidth: 0,
-            maxWidth: '100%'
-          }}
+          className="flex-grow-1 p-2 p-sm-3 p-md-4 main-content"
+          style={{ minWidth: 0 }}
         >
           <div className="container-fluid px-0" style={{ minWidth: 0 }}>
             <Outlet />
