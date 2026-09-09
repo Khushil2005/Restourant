@@ -1,28 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
 
 export const MainLayout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 992);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
 
+  // Auto-close navigation menu whenever the route/page changes
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  // Auto-close navigation menu on window resize
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 992) {
+      if (window.innerWidth < 992 && sidebarOpen) {
         setSidebarOpen(false);
       }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [sidebarOpen]);
+
+  // Close navigation menu with Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarOpen]);
 
   return (
     <div className="d-flex flex-column min-vh-100 bg-light position-relative" style={{ overflowX: 'hidden' }}>
-      <Navbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      {/* Mobile Backdrop */}
+      <Navbar onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
+      {/* Backdrop for auto-closing on outside click (Mobile & Desktop) */}
       {sidebarOpen && (
         <div
-          className="sidebar-backdrop d-lg-none"
+          className="sidebar-backdrop"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -34,9 +52,7 @@ export const MainLayout: React.FC = () => {
           onCloseMobile={() => setSidebarOpen(false)}
         />
         <main
-          className={`flex-grow-1 p-2 p-sm-3 p-md-4 main-content ${
-            sidebarOpen ? 'with-sidebar' : 'without-sidebar'
-          }`}
+          className="flex-grow-1 p-2 p-sm-3 p-md-4 main-content"
           style={{
             minWidth: 0,
             maxWidth: '100%'

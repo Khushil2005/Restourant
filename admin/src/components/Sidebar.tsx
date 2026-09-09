@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { usePermission } from '../context/PermissionContext';
 import {
   LayoutDashboard,
@@ -98,7 +98,12 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
     >
       {/* Top Header with Brand Name and Close Button (Visible on both Web & Mobile) */}
       <div className="p-3 bg-primary text-white d-flex align-items-center justify-content-between border-bottom shadow-sm">
-        <div className="d-flex align-items-center gap-2">
+        <Link
+          to="/"
+          onClick={() => handleClose && handleClose()}
+          className="d-flex align-items-center gap-2 text-decoration-none text-white"
+          title="Go to Dashboard"
+        >
           <img
             src="/logo.jpg"
             alt="Bhatigal Bhanu"
@@ -113,7 +118,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
               RESTAURANT ERP
             </span>
           </div>
-        </div>
+        </Link>
         <button
           className="btn btn-sm btn-link text-white p-1 rounded-circle hover-bg-dark"
           onClick={handleClose}
@@ -140,7 +145,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
             key={item.path}
             to={item.path}
             onClick={() => {
-              if (window.innerWidth < 992 && handleClose) {
+              if (handleClose) {
                 handleClose();
               }
             }}

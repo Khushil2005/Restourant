@@ -78,10 +78,17 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
           </button>
 
           {showNotifications && (
-            <div
-              className="position-absolute end-0 mt-2 bg-white rounded shadow-lg border p-0"
-              style={{ width: 'min(320px, calc(100vw - 20px))', zIndex: 1060 }}
-            >
+            <>
+              <div
+                className="position-fixed top-0 start-0 w-100 h-100"
+                style={{ zIndex: 1055, cursor: 'default' }}
+                onClick={() => setShowNotifications(false)}
+                aria-hidden="true"
+              />
+              <div
+                className="position-absolute end-0 mt-2 bg-white rounded shadow-lg border p-0"
+                style={{ width: 'min(320px, calc(100vw - 20px))', zIndex: 1060 }}
+              >
               <div className="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
                 <h6 className="mb-0 fw-bold text-dark">Notifications</h6>
                 {unreadCount > 0 && (
@@ -125,8 +132,9 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
                 </Link>
               </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
+      </div>
 
         {/* Proper Logged-in User Header Chip */}
         <div
