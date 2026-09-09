@@ -22,30 +22,30 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
         >
           <span className="navbar-toggler-icon" />
         </button>
-        <Link to="/" className="navbar-brand fw-bold d-flex align-items-center mb-0 text-white text-decoration-none">
+        <Link to="/" className="navbar-brand fw-bold d-flex align-items-center mb-0 text-white text-decoration-none me-1 me-sm-2">
           <img
             src="/logo.jpg"
             alt="Bhatigal Bhanu"
-            className="brand-logo-img me-2 shadow-sm"
-            style={{ width: 36, height: 36 }}
+            className="brand-logo-img me-1 me-sm-2 shadow-sm flex-shrink-0"
+            style={{ width: 32, height: 32 }}
           />
-          <div className="d-flex flex-column">
-            <div className="d-flex align-items-center">
-              <span className="fs-6 fs-md-5 fw-bold text-white tracking-wide" style={{ letterSpacing: '0.02em' }}>
+          <div className="d-flex flex-column overflow-hidden">
+            <div className="d-flex align-items-center gap-1">
+              <span className="fs-6 fw-bold text-white tracking-wide text-truncate" style={{ letterSpacing: '0.02em', maxWidth: 130 }}>
                 BHATIGAL BHANU
               </span>
-              <span className="badge bg-gold text-dark ms-1 ms-sm-2 fw-semibold" style={{ fontSize: '0.62rem' }}>
+              <span className="badge bg-gold text-dark fw-semibold d-none d-sm-inline" style={{ fontSize: '0.6rem' }}>
                 ERP
               </span>
             </div>
-            <span className="small text-white-50 d-none d-md-block" style={{ fontSize: '0.72rem', marginTop: '-2px' }}>
+            <span className="small text-white-50 d-none d-md-block" style={{ fontSize: '0.7rem', marginTop: '-2px' }}>
               Traditional Dining & Restaurant Management
             </span>
           </div>
         </Link>
       </div>
 
-      <div className="ms-auto d-flex align-items-center gap-2 gap-sm-3">
+      <div className="ms-auto d-flex align-items-center gap-1 gap-sm-2">
         {/* Real-time connection badge */}
         <div className="d-none d-md-flex align-items-center gap-1 small text-white-50">
           {isConnected ? (
@@ -66,9 +66,9 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
             onClick={() => setShowNotifications(!showNotifications)}
             title="Notifications"
           >
-            <Bell size={16} />
+            <Bell size={15} />
             {unreadCount > 0 && (
-              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.65rem' }}>
+              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.62rem' }}>
                 {unreadCount}
               </span>
             )}
@@ -125,23 +125,44 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
           )}
         </div>
 
-        {/* User Profile Info */}
-        <div className="d-flex align-items-center text-white gap-1 gap-sm-2">
-          <div className="text-end">
-            <div className="fw-semibold text-truncate small" style={{ maxWidth: 110, fontSize: '0.78rem' }}>
-              {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Admin'}
-            </div>
-            <div className="badge bg-white text-primary fw-medium text-truncate" style={{ fontSize: '0.62rem', maxWidth: 95 }}>
-              {user?.roleName || 'Admin'}
-            </div>
+        {/* Proper Logged-in User Header Chip */}
+        <div
+          className="d-flex align-items-center gap-1 gap-sm-2 px-2 py-1 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-20 shadow-sm"
+          style={{ backdropFilter: 'blur(4px)' }}
+        >
+          {/* User Initial Avatar */}
+          <div
+            className="rounded-circle bg-gold text-dark d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0"
+            style={{ width: 28, height: 28, fontSize: '0.78rem' }}
+          >
+            {(user?.firstName?.[0] || user?.username?.[0] || 'U').toUpperCase()}
           </div>
+
+          {/* User Name & Role */}
+          <div className="d-flex flex-column text-start lh-1" style={{ maxWidth: 120 }}>
+            <span
+              className="fw-bold text-white text-truncate"
+              style={{ fontSize: '0.8rem', letterSpacing: '0.01em' }}
+              title={user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Admin'}
+            >
+              {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.username || 'Admin'}
+            </span>
+            <span
+              className="badge bg-gold text-dark fw-bold font-monospace text-truncate mt-1 px-1 py-0"
+              style={{ fontSize: '0.6rem', width: 'fit-content', maxWidth: 110 }}
+            >
+              {user?.roleName || 'ADMIN'}
+            </span>
+          </div>
+
+          {/* Logout Button */}
           <button
-            className="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-sm ms-1 ms-sm-2 p-1 p-sm-2"
+            className="btn btn-danger btn-sm rounded-circle p-1 ms-1 d-flex align-items-center justify-content-center shadow-sm text-white"
             onClick={logout}
             title="Sign Out"
+            style={{ width: 26, height: 26 }}
           >
-            <LogOut size={14} />
-            <span className="d-none d-md-inline">Logout</span>
+            <LogOut size={13} />
           </button>
         </div>
       </div>

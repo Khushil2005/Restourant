@@ -1,6 +1,5 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { usePermission } from '../context/PermissionContext';
 import {
   LayoutDashboard,
@@ -46,7 +45,6 @@ interface MenuItem {
 
 export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> = ({ isOpen, onCloseMobile }) => {
   const { can, canAny } = usePermission();
-  const { user } = useAuth();
 
   const menuItems: MenuItem[] = [
     { title: 'Overview', path: '/', icon: <LayoutDashboard size={18} />, permission: 'dashboard.view' },
@@ -114,31 +112,6 @@ export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> 
           <X size={20} />
         </button>
       </div>
-
-      {/* Mobile Logged-in User Profile Bar */}
-      {user && (
-        <div className="p-3 bg-light border-bottom d-flex d-lg-none align-items-center gap-2">
-          <div
-            className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0"
-            style={{ width: 36, height: 36, fontSize: '0.9rem' }}
-          >
-            {(user.firstName?.[0] || user.username?.[0] || 'U').toUpperCase()}
-          </div>
-          <div className="overflow-hidden">
-            <div className="fw-bold text-dark small text-truncate">
-              {user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username}
-            </div>
-            <div className="d-flex align-items-center gap-1">
-              <span className="badge bg-gold text-dark fw-bold font-monospace" style={{ fontSize: '0.65rem' }}>
-                {user.roleName || 'USER'}
-              </span>
-              <span className="text-muted font-monospace small" style={{ fontSize: '0.68rem' }}>
-                @{user.username}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="p-3 border-bottom bg-light d-flex align-items-center justify-content-between">
         <span className="small fw-bold text-uppercase text-muted" style={{ letterSpacing: '0.05em' }}>
