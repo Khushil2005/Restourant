@@ -40,10 +40,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickFill = () => {
-    setUserId('superadmin');
-    setPassword('Admin@12345');
-  };
 
   return (
     <div 
@@ -242,17 +238,6 @@ export const LoginPage: React.FC = () => {
           </div>
         </form>
 
-        {/* Quick Demo Credentials Helper */}
-        <div className="mt-4 pt-2 text-center border-top">
-          <span 
-            className="small text-muted" 
-            style={{ fontSize: '0.76rem', cursor: 'pointer' }}
-            onClick={handleQuickFill}
-            title="Click to auto-fill Super Admin login"
-          >
-            Demo Admin: <code className="text-secondary">superadmin</code> / <code className="text-secondary">Admin@12345</code>
-          </span>
-        </div>
       </div>
     </div>
   );
