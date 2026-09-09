@@ -187,27 +187,27 @@ export const TokenPage: React.FC = () => {
   return (
     <div className="d-flex flex-column gap-3 pb-5">
       {/* 1. TOP HEADER BAR */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center py-2 px-3 border-bottom bg-white rounded-3 shadow-sm">
+      <div className="d-flex flex-wrap justify-content-between align-items-center py-2 px-3 border-bottom bg-white rounded-3 shadow-sm gap-2">
         {/* Breadcrumb */}
         <div className="d-flex align-items-center gap-2">
-          <span className="text-secondary fw-semibold" style={{ fontSize: '0.95rem' }}>
+          <span className="text-secondary fw-semibold" style={{ fontSize: '0.9rem' }}>
             Bhatigal Bhanu
           </span>
           <span className="text-muted">/</span>
-          <span className="fw-bold" style={{ color: 'var(--brand-maroon, #7A1B28)', fontSize: '1rem' }}>
+          <span className="fw-bold" style={{ color: 'var(--brand-maroon, #7A1B28)', fontSize: '0.95rem' }}>
             Token Counter
           </span>
         </div>
 
         {/* Right Actions: Live Clock, Call Next, + Token */}
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
           {/* Live Clock Pill */}
           <div 
-            className="d-flex align-items-center gap-2 px-3 py-1 rounded-pill"
+            className="d-flex align-items-center gap-2 px-2 px-sm-3 py-1 rounded-pill"
             style={{ 
               backgroundColor: '#FFF5F5', 
               border: '1px solid #FFD6D6',
-              fontSize: '0.85rem',
+              fontSize: '0.8rem',
               fontWeight: 600,
               color: '#4A151D'
             }}
@@ -228,7 +228,7 @@ export const TokenPage: React.FC = () => {
               color: '#0D6EFD',
               border: '1px solid #C6DCFA',
               borderRadius: '8px',
-              padding: '6px 14px'
+              padding: '6px 12px'
             }}
           >
             <Volume2 size={15} />
@@ -246,7 +246,7 @@ export const TokenPage: React.FC = () => {
               backgroundColor: 'var(--brand-maroon, #7A1B28)',
               borderColor: 'var(--brand-maroon-dark, #56101B)',
               borderRadius: '8px',
-              padding: '6px 14px'
+              padding: '6px 12px'
             }}
           >
             <Plus size={16} />
@@ -380,10 +380,10 @@ export const TokenPage: React.FC = () => {
               {/* Header Tabs & Search */}
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
                 {/* Filter Tabs */}
-                <div className="d-flex align-items-center gap-2">
+                <div className="scrollable-pills-container gap-2 pb-1 flex-grow-1" style={{ maxWidth: '100%' }}>
                   <button
                     onClick={() => setActiveTab('ALL')}
-                    className="btn btn-sm px-3 py-1 fw-semibold rounded-pill"
+                    className="btn btn-sm px-3 py-1 fw-semibold rounded-pill text-nowrap"
                     style={{
                       backgroundColor: activeTab === 'ALL' ? 'var(--brand-maroon, #7A1B28)' : '#F5F5F5',
                       color: activeTab === 'ALL' ? '#FFFFFF' : '#666666',
@@ -395,7 +395,7 @@ export const TokenPage: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setActiveTab('WAITING')}
-                    className="btn btn-sm px-3 py-1 fw-semibold rounded-pill"
+                    className="btn btn-sm px-3 py-1 fw-semibold rounded-pill text-nowrap"
                     style={{
                       backgroundColor: activeTab === 'WAITING' ? 'var(--brand-maroon, #7A1B28)' : '#F5F5F5',
                       color: activeTab === 'WAITING' ? '#FFFFFF' : '#666666',
@@ -407,7 +407,7 @@ export const TokenPage: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setActiveTab('CALLING')}
-                    className="btn btn-sm px-3 py-1 fw-semibold rounded-pill"
+                    className="btn btn-sm px-3 py-1 fw-semibold rounded-pill text-nowrap"
                     style={{
                       backgroundColor: activeTab === 'CALLING' ? 'var(--brand-maroon, #7A1B28)' : '#F5F5F5',
                       color: activeTab === 'CALLING' ? '#FFFFFF' : '#666666',
@@ -419,7 +419,7 @@ export const TokenPage: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setActiveTab('SERVED')}
-                    className="btn btn-sm px-3 py-1 fw-semibold rounded-pill"
+                    className="btn btn-sm px-3 py-1 fw-semibold rounded-pill text-nowrap"
                     style={{
                       backgroundColor: activeTab === 'SERVED' ? 'var(--brand-maroon, #7A1B28)' : '#F5F5F5',
                       color: activeTab === 'SERVED' ? '#FFFFFF' : '#666666',
@@ -432,7 +432,7 @@ export const TokenPage: React.FC = () => {
                 </div>
 
                 {/* Search */}
-                <div className="input-group input-group-sm" style={{ width: 200 }}>
+                <div className="input-group input-group-sm ms-auto" style={{ width: 180, minWidth: 140 }}>
                   <span className="input-group-text bg-light border-end-0">
                     <Search size={14} className="text-muted" />
                   </span>
@@ -447,8 +447,8 @@ export const TokenPage: React.FC = () => {
               </div>
 
               {/* Table */}
-              <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.88rem' }}>
+              <div className="table-responsive" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <table className="table table-hover align-middle mb-0" style={{ minWidth: '620px', fontSize: '0.88rem' }}>
                   <thead style={{ backgroundColor: '#FAF5EE', color: 'var(--brand-maroon, #7A1B28)' }}>
                     <tr>
                       <th className="py-3 px-3 fw-bold border-bottom-0" style={{ letterSpacing: '0.04em' }}>TOKEN</th>

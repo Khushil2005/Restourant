@@ -54,25 +54,25 @@ export const DashboardPage: React.FC = () => {
     <div className="d-flex flex-column gap-4">
       {/* Top Heritage Welcome Banner */}
       <div className="card border-0 shadow-sm overflow-hidden" style={{ background: 'linear-gradient(135deg, #7A1B28 0%, #56101B 100%)' }}>
-        <div className="card-body p-4 text-white d-flex flex-wrap align-items-center justify-content-between gap-3">
-          <div className="d-flex align-items-center gap-3">
+        <div className="card-body p-3 p-sm-4 text-white d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+          <div className="d-flex align-items-center gap-2 gap-sm-3">
             <img
               src="/logo.jpg"
               alt="ભાતીગળ ભાણું"
               className="brand-logo-lg border border-2 border-warning"
-              style={{ width: 72, height: 72 }}
+              style={{ width: 56, height: 56 }}
             />
             <div>
               <div className="d-flex align-items-center gap-2">
-                <h3 className="fw-bold mb-0 text-white">Bhatigal Bhanu</h3>
+                <h3 className="fw-bold mb-0 text-white fs-4 fs-sm-3">Bhatigal Bhanu</h3>
                 <span className="badge bg-gold text-dark fw-bold">Live ERP</span>
               </div>
-              <p className="mb-0 text-white-50 small" style={{ fontSize: '0.88rem' }}>
+              <p className="mb-0 text-white-50 small" style={{ fontSize: '0.82rem' }}>
                 Traditional Kathiyawadi & Gujarati Dining • Real-Time Operations Console
               </p>
             </div>
           </div>
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-2 w-100 w-md-auto justify-content-start justify-content-md-end">
             {can('orders.create') && (
               <Link to="/pos" className="btn btn-gold btn-sm d-flex align-items-center gap-1 shadow fw-bold px-3">
                 <ShoppingBag size={16} /> Open POS
@@ -275,19 +275,19 @@ export const DashboardPage: React.FC = () => {
 
       {/* Low Stock Notification Section */}
       {can('dashboard.inventory.view') && metrics?.inventory?.lowStockItems?.length > 0 && (
-        <div className="alert alert-warning border-0 shadow-sm d-flex align-items-center justify-content-between p-3 rounded">
+        <div className="alert alert-warning border-0 shadow-sm d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 rounded">
           <div className="d-flex align-items-center gap-3">
-            <div className="p-2 bg-warning rounded-circle text-dark">
+            <div className="p-2 bg-warning rounded-circle text-dark flex-shrink-0">
               <AlertTriangle size={20} />
             </div>
             <div>
               <div className="fw-bold text-dark">Low Stock Warning Alert!</div>
-              <div className="small text-secondary">
+              <div className="small text-secondary" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                 {metrics.inventory.lowStockItems.map((i: any) => `${i.name} (${i.currentStock} ${i.unit})`).join(', ')}
               </div>
             </div>
           </div>
-          <Link to="/inventory" className="btn btn-warning btn-sm fw-semibold">
+          <Link to="/inventory" className="btn btn-warning btn-sm fw-semibold text-nowrap ms-auto ms-sm-0">
             Manage Stock
           </Link>
         </div>

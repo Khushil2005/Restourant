@@ -214,38 +214,38 @@ export const MastersPage: React.FC = () => {
       </div>
 
       {/* Tabs Navigation */}
-      <ul className="nav nav-pills bg-white p-2 rounded shadow-sm border gap-1">
+      <ul className="nav nav-pills bg-white p-2 rounded shadow-sm border gap-1 scrollable-pills-container">
         {can('masters.menu.view') && (
           <li className="nav-item">
-            <button className={`nav-link btn-sm ${activeTab === 'menu' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('menu')}>
+            <button className={`nav-link btn-sm text-nowrap ${activeTab === 'menu' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('menu')}>
               Menu Dishes ({menuItems.length})
             </button>
           </li>
         )}
         {can('masters.menu.view') && (
           <li className="nav-item">
-            <button className={`nav-link btn-sm ${activeTab === 'categories' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('categories')}>
+            <button className={`nav-link btn-sm text-nowrap ${activeTab === 'categories' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('categories')}>
               Menu Categories ({categories.length})
             </button>
           </li>
         )}
         {can('masters.table.view') && (
           <li className="nav-item">
-            <button className={`nav-link btn-sm ${activeTab === 'tables' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('tables')}>
+            <button className={`nav-link btn-sm text-nowrap ${activeTab === 'tables' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('tables')}>
               Dining Tables ({tables.length})
             </button>
           </li>
         )}
         {can('masters.customer.view') && (
           <li className="nav-item">
-            <button className={`nav-link btn-sm ${activeTab === 'customers' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('customers')}>
+            <button className={`nav-link btn-sm text-nowrap ${activeTab === 'customers' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('customers')}>
               Customers CRM ({customers.length})
             </button>
           </li>
         )}
         {can('masters.supplier.view') && (
           <li className="nav-item">
-            <button className={`nav-link btn-sm ${activeTab === 'suppliers' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('suppliers')}>
+            <button className={`nav-link btn-sm text-nowrap ${activeTab === 'suppliers' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('suppliers')}>
               Suppliers / Vendors ({suppliers.length})
             </button>
           </li>

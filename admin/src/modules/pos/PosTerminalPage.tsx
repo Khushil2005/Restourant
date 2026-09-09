@@ -58,6 +58,7 @@ export const PosTerminalPage: React.FC = () => {
   const [dailyMenuItemIds, setDailyMenuItemIds] = useState<string[]>([]);
   const [activeDailyDay, setActiveDailyDay] = useState<string>('TODAY');
   const [dailyMenuNotes, setDailyMenuNotes] = useState<string>('');
+  const [mobileTab, setMobileTab] = useState<'MENU' | 'CART'>('MENU');
 
   const loadData = async () => {
     try {
@@ -254,37 +255,47 @@ export const PosTerminalPage: React.FC = () => {
   return (
     <div className="vh-100 vw-100 d-flex flex-column bg-light overflow-hidden">
       {/* POS Top Header */}
-      <header className="navbar navbar-expand navbar-dark bg-dark px-3 py-2 border-bottom border-secondary d-flex justify-content-between">
-        <div className="d-flex align-items-center gap-2">
-          <button className="btn btn-outline-light btn-sm d-flex align-items-center gap-1 me-2" onClick={() => navigate('/tables')}>
-            <ArrowLeft size={16} /> Exit POS
+      <header className="navbar navbar-expand navbar-dark bg-dark px-2 px-sm-3 py-2 border-bottom border-secondary d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn btn-outline-light btn-sm d-flex align-items-center gap-1" onClick={() => navigate('/tables')}>
+            <ArrowLeft size={16} /> <span className="d-none d-sm-inline">Exit POS</span>
           </button>
           <img
             src="/logo.jpg"
             alt="Bhatigal Bhanu"
             className="brand-logo-img shadow-sm"
-            style={{ width: 34, height: 34 }}
+            style={{ width: 32, height: 32 }}
           />
-          <span className="fw-bold text-white fs-5">Bhatigal Bhanu</span>
-          <span className="badge bg-gold text-dark fw-bold font-monospace">TOUCH POS</span>
+          <span className="fw-bold text-white fs-6 fs-sm-5 text-truncate" style={{ maxWidth: 160 }}>Bhatigal Bhanu</span>
+          <span className="badge bg-gold text-dark fw-bold font-monospace d-none d-sm-inline">TOUCH POS</span>
           {activeOrder && (
-            <span className="badge bg-warning text-dark font-monospace fs-6 ms-2">
-              Editing: {activeOrder.orderNumber}
+            <span className="badge bg-warning text-dark font-monospace small">
+              Edit: {activeOrder.orderNumber}
             </span>
           )}
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
+          {/* Mobile Cart View Button */}
+          <button
+            type="button"
+            className={`btn btn-sm d-lg-none d-flex align-items-center gap-1 ${mobileTab === 'CART' ? 'btn-primary text-white fw-bold' : 'btn-outline-warning'}`}
+            onClick={() => setMobileTab(mobileTab === 'CART' ? 'MENU' : 'CART')}
+          >
+            <ShoppingBag size={15} />
+            <span>{mobileTab === 'CART' ? 'Menu' : `Cart (${cart.length})`}</span>
+          </button>
+
           {/* Order Type Selector */}
           <div className="btn-group btn-group-sm">
             {(['DINE_IN', 'TAKEAWAY', 'DELIVERY', 'ONLINE'] as const).map(type => (
               <button
                 key={type}
                 type="button"
-                className={`btn ${orderType === type ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
+                className={`btn px-2 ${orderType === type ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
                 onClick={() => setOrderType(type)}
               >
-                {type.replace('_', ' ')}
+                {type === 'DINE_IN' ? 'DINE' : type === 'TAKEAWAY' ? 'TAKE' : type === 'DELIVERY' ? 'DELIV' : 'ONL'}
               </button>
             ))}
           </div>
@@ -293,7 +304,7 @@ export const PosTerminalPage: React.FC = () => {
           {orderType === 'DINE_IN' && (
             <select
               className="form-select form-select-sm bg-dark text-white border-secondary"
-              style={{ width: 140 }}
+              style={{ width: 120 }}
               value={selectedTableId}
               onChange={e => {
                 setSelectedTableId(e.target.value);
@@ -301,7 +312,7 @@ export const PosTerminalPage: React.FC = () => {
                 setSelectedTableNumber(t?.tableNumber || '');
               }}
             >
-              <option value="">Select Table</option>
+              <option value="">Table</option>
               {tables.map(t => (
                 <option key={t.id} value={t.id}>
                   {t.tableNumber} ({t.status})
@@ -311,28 +322,28 @@ export const PosTerminalPage: React.FC = () => {
           )}
 
           {/* Daily Menu Day Selector */}
-          <div className="d-flex align-items-center gap-1 bg-black bg-opacity-50 px-2 py-1 rounded border border-secondary">
+          <div className="d-none d-md-flex align-items-center gap-1 bg-black bg-opacity-50 px-2 py-1 rounded border border-secondary">
             <span className="text-warning small d-flex align-items-center gap-1 fw-bold" style={{ fontSize: '0.75rem' }}>
-              📅 Daily Menu:
+              📅 Daily:
             </span>
             <select
-              className="form-select form-select-sm bg-dark text-warning border-0 py-0 px-2 fw-bold"
+              className="form-select form-select-sm bg-dark text-warning border-0 py-0 px-1 fw-bold"
               style={{ width: 'auto', fontSize: '0.78rem', cursor: 'pointer' }}
               value={activeDailyDay}
               onChange={(e) => handleSwitchDailyDay(e.target.value)}
               title="Select Day for Daily Menu"
             >
-              <option value="MONDAY">Monday Menu</option>
-              <option value="TUESDAY">Tuesday Menu</option>
-              <option value="WEDNESDAY">Wednesday Menu</option>
-              <option value="THURSDAY">Thursday Menu</option>
-              <option value="FRIDAY">Friday Menu</option>
-              <option value="SATURDAY">Saturday Menu</option>
-              <option value="SUNDAY">Sunday Menu</option>
+              <option value="MONDAY">Mon</option>
+              <option value="TUESDAY">Tue</option>
+              <option value="WEDNESDAY">Wed</option>
+              <option value="THURSDAY">Thu</option>
+              <option value="FRIDAY">Fri</option>
+              <option value="SATURDAY">Sat</option>
+              <option value="SUNDAY">Sun</option>
             </select>
             {isDailyMenuStrict && dailyMenuItemIds.length > 0 && (
               <span className="badge bg-danger text-white ms-1" style={{ fontSize: '0.65rem' }}>
-                Strict: {dailyMenuItemIds.length} Dishes
+                Strict: {dailyMenuItemIds.length}
               </span>
             )}
           </div>
@@ -340,14 +351,14 @@ export const PosTerminalPage: React.FC = () => {
       </header>
 
       {/* Main Terminal Grid */}
-      <div className="d-flex flex-grow-1 overflow-hidden">
+      <div className="d-flex flex-grow-1 overflow-hidden position-relative">
         {/* Left Side: Category Pills + Dishes Grid */}
-        <div className="flex-grow-1 d-flex flex-column p-3 overflow-hidden">
+        <div className={`flex-grow-1 flex-column p-2 p-sm-3 overflow-hidden ${mobileTab === 'CART' ? 'd-none d-lg-flex' : 'd-flex'}`}>
           {/* Category filter pills & Search bar */}
-          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <div className="d-flex flex-wrap gap-1">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 mb-sm-3">
+            <div className="scrollable-pills-container gap-1 py-1 flex-grow-1" style={{ maxWidth: 'calc(100% - 170px)' }}>
               <button
-                className={`btn btn-sm ${selectedCategory === 'ALL' ? 'btn-primary fw-bold' : 'btn-white border'}`}
+                className={`btn btn-sm text-nowrap ${selectedCategory === 'ALL' ? 'btn-primary fw-bold' : 'btn-white border'}`}
                 onClick={() => setSelectedCategory('ALL')}
               >
                 All Menu
@@ -355,7 +366,7 @@ export const PosTerminalPage: React.FC = () => {
               {categories.map(c => (
                 <button
                   key={c.id}
-                  className={`btn btn-sm ${selectedCategory === c.id ? 'btn-primary fw-bold' : 'btn-white border'}`}
+                  className={`btn btn-sm text-nowrap ${selectedCategory === c.id ? 'btn-primary fw-bold' : 'btn-white border'}`}
                   onClick={() => setSelectedCategory(c.id)}
                 >
                   {c.name}
@@ -363,12 +374,12 @@ export const PosTerminalPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="input-group input-group-sm" style={{ maxWidth: 220 }}>
-              <span className="input-group-text bg-white border-end-0"><Search size={14} /></span>
+            <div className="input-group input-group-sm ms-auto" style={{ maxWidth: 160, minWidth: 120 }}>
+              <span className="input-group-text bg-white border-end-0 px-2"><Search size={14} /></span>
               <input
                 type="text"
-                className="form-control border-start-0"
-                placeholder="Search dish name / code..."
+                className="form-control border-start-0 ps-1"
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
@@ -416,21 +427,51 @@ export const PosTerminalPage: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Mobile Bottom Cart Floating Bar */}
+          <div className="d-lg-none mt-2 pt-2 border-top bg-white px-3 py-2 d-flex justify-content-between align-items-center shadow-sm rounded-2">
+            <div>
+              <div className="fw-bold text-dark small">
+                {(activeOrder?.items.length || 0) + cart.length} items • <span className="text-primary fw-bold">₹{grandTotal}</span>
+              </div>
+              <small className="text-muted" style={{ fontSize: '0.7rem' }}>
+                {orderType} {selectedTableNumber ? `• T-${selectedTableNumber}` : ''}
+              </small>
+            </div>
+            <button
+              className="btn btn-primary btn-sm px-3 py-1 fw-bold d-flex align-items-center gap-1 shadow-sm"
+              onClick={() => setMobileTab('CART')}
+            >
+              <ShoppingBag size={15} /> View Cart ({cart.length})
+            </button>
+          </div>
         </div>
 
         {/* Right Side: Cart / Order Ticket Sidebar */}
-        <div className="bg-white border-start d-flex flex-column shadow-sm" style={{ width: 380 }}>
-          <div className="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
-            <div>
-              <h6 className="fw-bold mb-0 text-dark">
-                {activeOrder ? `Order: ${activeOrder.orderNumber}` : 'Order Ticket'}
-              </h6>
-              <small className="text-muted">
-                {orderType} {selectedTableNumber ? `• Table ${selectedTableNumber}` : ''}
-              </small>
+        <div
+          className={`bg-white border-start flex-column shadow-sm ${mobileTab === 'MENU' ? 'd-none d-lg-flex' : 'd-flex'}`}
+          style={{ width: 380, maxWidth: '100%', flexShrink: 0 }}
+        >
+          <div className="p-2 p-sm-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+            <div className="d-flex align-items-center gap-2">
+              <button
+                className="btn btn-outline-secondary btn-sm d-lg-none p-1"
+                onClick={() => setMobileTab('MENU')}
+                title="Back to Dishes Menu"
+              >
+                <ArrowLeft size={16} />
+              </button>
+              <div>
+                <h6 className="fw-bold mb-0 text-dark">
+                  {activeOrder ? `Order: ${activeOrder.orderNumber}` : 'Order Ticket'}
+                </h6>
+                <small className="text-muted">
+                  {orderType} {selectedTableNumber ? `• Table ${selectedTableNumber}` : ''}
+                </small>
+              </div>
             </div>
             <span className="badge bg-primary rounded-pill">
-              {(activeOrder?.items.length || 0) + cart.length} Total Items
+              {(activeOrder?.items.length || 0) + cart.length} Items
             </span>
           </div>
 

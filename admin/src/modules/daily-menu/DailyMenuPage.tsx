@@ -230,7 +230,7 @@ export const DailyMenuPage: React.FC = () => {
             </div>
 
             {/* Strict Enforcement Mode Switch */}
-            <div className="d-flex align-items-center gap-3 bg-light p-2 px-3 rounded-3 border">
+            <div className="d-flex align-items-center justify-content-between gap-3 bg-light p-2 px-3 rounded-3 border w-100 w-md-auto">
               <div>
                 <div className="d-flex align-items-center gap-1">
                   {isStrictEnforced ? (
@@ -244,7 +244,7 @@ export const DailyMenuPage: React.FC = () => {
                   {isStrictEnforced ? 'Only day-wise dishes available in POS' : 'All master dishes browsable in POS'}
                 </div>
               </div>
-              <div className="form-check form-switch m-0">
+              <div className="form-check form-switch m-0 flex-shrink-0">
                 <input
                   className="form-check-input"
                   type="checkbox"
@@ -259,9 +259,9 @@ export const DailyMenuPage: React.FC = () => {
           </div>
 
           {/* 7-Days Navigation Tabs */}
-          <div className="mt-4 pt-3 border-top">
-            <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-              <div className="d-flex flex-wrap gap-1">
+          <div className="mt-3 pt-3 border-top">
+            <div className="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
+              <div className="scrollable-pills-container gap-1 py-1">
                 {DAYS_LIST.map(day => {
                   const menuObj = dailyMenus.find(m => m.dayOfWeek === day.key);
                   const count = menuObj?.itemIds?.length || 0;
@@ -271,14 +271,15 @@ export const DailyMenuPage: React.FC = () => {
                   return (
                     <button
                       key={day.key}
-                      className={`btn btn-sm px-3 py-2 rounded-3 d-flex align-items-center gap-2 transition-all ${
+                      className={`btn btn-sm px-2 px-sm-3 py-2 rounded-3 d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0 transition-all ${
                         isSelected
                           ? 'btn-primary shadow-sm fw-bold'
                           : 'btn-white border text-dark hover-bg-light'
                       }`}
                       onClick={() => setSelectedDay(day.key)}
                     >
-                      <span>{day.label}</span>
+                      <span className="d-none d-sm-inline">{day.label}</span>
+                      <span className="d-sm-none">{day.short}</span>
                       <span
                         className={`badge rounded-pill ${
                           isSelected
@@ -287,12 +288,12 @@ export const DailyMenuPage: React.FC = () => {
                             ? 'bg-primary-subtle text-primary border'
                             : 'bg-secondary-subtle text-muted'
                         }`}
-                        style={{ fontSize: '0.75rem' }}
+                        style={{ fontSize: '0.72rem' }}
                       >
-                        {count} Items
+                        {count}
                       </span>
                       {isToday && (
-                        <span className={`badge ${isSelected ? 'bg-warning text-dark' : 'bg-warning text-dark'} small`}>
+                        <span className="badge bg-warning text-dark small" style={{ fontSize: '0.65rem' }}>
                           ★ TODAY
                         </span>
                       )}
@@ -301,14 +302,16 @@ export const DailyMenuPage: React.FC = () => {
                 })}
               </div>
 
-              <button
-                className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
-                onClick={loadAllData}
-                disabled={loading}
-                title="Refresh Menu Data"
-              >
-                <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
-              </button>
+              <div className="align-self-end align-self-md-auto mt-1 mt-md-0">
+                <button
+                  className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+                  onClick={loadAllData}
+                  disabled={loading}
+                  title="Refresh Menu Data"
+                >
+                  <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -316,10 +319,10 @@ export const DailyMenuPage: React.FC = () => {
 
       {/* Save Alert Message */}
       {saveSuccessMsg && (
-        <div className="alert alert-success d-flex align-items-center justify-content-between py-2 px-3 shadow-sm border-0 mb-0">
+        <div className="alert alert-success d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 px-3 shadow-sm border-0 mb-0">
           <div className="d-flex align-items-center gap-2">
             <CheckCircle2 size={18} className="text-success" />
-            <span className="fw-bold small">{saveSuccessMsg}</span>
+            <span className="fw-bold small text-break">{saveSuccessMsg}</span>
           </div>
           <span className="badge bg-success">Live in POS</span>
         </div>
@@ -350,7 +353,7 @@ export const DailyMenuPage: React.FC = () => {
               </div>
 
               {/* Category Filter Pills */}
-              <div className="d-flex flex-wrap gap-1 mt-3">
+              <div className="scrollable-pills-container gap-1 mt-3">
                 <button
                   className={`btn btn-xs btn-sm py-1 px-2 rounded-2 ${
                     selectedCategoryId === 'ALL' ? 'btn-dark' : 'btn-outline-secondary'

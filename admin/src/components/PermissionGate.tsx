@@ -69,12 +69,12 @@ export function DataTable<T extends { id?: string | number }>({
   const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="card shadow-sm border-0">
-      <div className="card-header bg-white p-3 border-bottom d-flex flex-wrap gap-2 justify-content-between align-items-center">
-        <div className="input-group" style={{ maxWidth: 320 }}>
+    <div className="card shadow-sm border-0 w-100" style={{ minWidth: 0 }}>
+      <div className="card-header bg-white p-2 p-sm-3 border-bottom d-flex flex-column flex-sm-row gap-2 justify-content-between align-items-sm-center">
+        <div className="input-group input-group-sm w-100" style={{ maxWidth: 340 }}>
           <input
             type="text"
-            className="form-control form-control-sm"
+            className="form-control"
             placeholder={searchPlaceholder}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
@@ -85,27 +85,27 @@ export function DataTable<T extends { id?: string | number }>({
             </button>
           )}
         </div>
-        <div className="text-muted small">
+        <div className="text-muted small align-self-start align-self-sm-auto">
           Showing {filteredData.length} records
         </div>
       </div>
 
-      <div className="table-responsive">
-        <table className="table table-hover align-middle mb-0">
+      <div className="table-responsive" style={{ WebkitOverflowScrolling: 'touch', minHeight: paginatedData.length === 0 ? 'auto' : '160px' }}>
+        <table className="table table-hover align-middle mb-0" style={{ minWidth: '550px' }}>
           <thead className="table-light">
             <tr>
               {columns.map((col, idx) => (
-                <th key={idx} style={{ width: col.width, fontSize: '0.85rem' }}>
+                <th key={idx} style={{ width: col.width, minWidth: col.width ? undefined : '120px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
                   {col.header}
                 </th>
               ))}
-              {actions && <th style={{ width: 120, textAlign: 'end', fontSize: '0.85rem' }}>Actions</th>}
+              {actions && <th style={{ width: 110, minWidth: '100px', textAlign: 'end', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="text-center p-5 text-muted">
+                <td colSpan={columns.length + (actions ? 1 : 0)} className="text-center p-4 text-muted">
                   No records found.
                 </td>
               </tr>
@@ -113,14 +113,14 @@ export function DataTable<T extends { id?: string | number }>({
               paginatedData.map((row, rIdx) => (
                 <tr key={row.id || rIdx}>
                   {columns.map((col, cIdx) => (
-                    <td key={cIdx} style={{ fontSize: '0.88rem' }}>
+                    <td key={cIdx} style={{ fontSize: '0.85rem', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {typeof col.accessor === 'function'
                         ? col.accessor(row)
                         : (row[col.accessor as keyof T] as any)}
                     </td>
                   ))}
                   {actions && (
-                    <td className="text-end">
+                    <td className="text-end" style={{ whiteSpace: 'nowrap' }}>
                       <div className="d-flex justify-content-end gap-1">
                         {actions(row)}
                       </div>
@@ -134,7 +134,7 @@ export function DataTable<T extends { id?: string | number }>({
       </div>
 
       {totalPages > 1 && (
-        <div className="card-footer bg-white border-top p-2 d-flex justify-content-between align-items-center">
+        <div className="card-footer bg-white border-top p-2 px-3 d-flex flex-column flex-sm-row gap-2 justify-content-between align-items-center">
           <span className="small text-muted">
             Page {currentPage} of {totalPages}
           </span>
@@ -172,17 +172,30 @@ export const Modal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
-      <div className={`modal-dialog modal-dialog-centered ${size ? `modal-${size}` : ''}`}>
-        <div className="modal-content shadow-lg border-0">
-          <div className="modal-header bg-light border-bottom">
-            <h5 className="modal-title fw-bold text-dark">{title}</h5>
-            <button type="button" className="btn-close" onClick={onClose} />
+    <div
+      className="modal show d-block"
+      tabIndex={-1}
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060, overflowY: 'auto' }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className={`modal-dialog modal-dialog-centered modal-dialog-scrollable ${size ? `modal-${size}` : ''} mx-auto my-2 my-sm-4`}
+        style={{
+          maxWidth: size === 'xl' ? 1140 : size === 'lg' ? 800 : size === 'sm' ? 400 : 520,
+          width: 'calc(100% - 1rem)'
+        }}
+      >
+        <div className="modal-content shadow-lg border-0" style={{ borderRadius: '14px', overflow: 'hidden' }}>
+          <div className="modal-header bg-light border-bottom p-3">
+            <h5 className="modal-title fw-bold text-dark fs-6 fs-sm-5 text-truncate" title={title}>{title}</h5>
+            <button type="button" className="btn-close ms-2" onClick={onClose} aria-label="Close" />
           </div>
-          <div className="modal-body p-4" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+          <div className="modal-body p-3 p-sm-4" style={{ maxHeight: 'calc(85vh - 120px)', overflowY: 'auto', overflowX: 'hidden' }}>
             {children}
           </div>
-          {footer && <div className="modal-footer bg-light border-top">{footer}</div>}
+          {footer && <div className="modal-footer bg-light border-top p-2 p-sm-3 d-flex flex-wrap gap-2 justify-content-end">{footer}</div>}
         </div>
       </div>
     </div>

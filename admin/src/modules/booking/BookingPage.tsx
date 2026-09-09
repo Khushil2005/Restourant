@@ -329,27 +329,27 @@ export const BookingPage: React.FC = () => {
   return (
     <div className="d-flex flex-column gap-3 pb-5">
       {/* 1. TOP HEADER BAR */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center py-2 px-3 border-bottom bg-white rounded-3 shadow-sm">
+      <div className="d-flex flex-wrap justify-content-between align-items-center py-2 px-3 border-bottom bg-white rounded-3 shadow-sm gap-2">
         {/* Breadcrumb */}
         <div className="d-flex align-items-center gap-2">
-          <span className="text-secondary fw-semibold" style={{ fontSize: '0.95rem' }}>
+          <span className="text-secondary fw-semibold" style={{ fontSize: '0.9rem' }}>
             Bhatigal Bhanu
           </span>
           <span className="text-muted">/</span>
-          <span className="fw-bold" style={{ color: 'var(--brand-maroon, #7A1B28)', fontSize: '1rem' }}>
+          <span className="fw-bold" style={{ color: 'var(--brand-maroon, #7A1B28)', fontSize: '0.95rem' }}>
             Function Locker
           </span>
         </div>
 
         {/* Right Actions: Live Clock, Call Next, + Token */}
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex flex-wrap align-items-center gap-2">
           {/* Live Clock Pill */}
           <div 
-            className="d-flex align-items-center gap-2 px-3 py-1 rounded-pill"
+            className="d-flex align-items-center gap-2 px-2 px-sm-3 py-1 rounded-pill"
             style={{ 
               backgroundColor: '#FFF5F5', 
               border: '1px solid #FFD6D6',
-              fontSize: '0.85rem',
+              fontSize: '0.8rem',
               fontWeight: 600,
               color: '#4A151D'
             }}
@@ -370,10 +370,11 @@ export const BookingPage: React.FC = () => {
               color: '#0D6EFD',
               border: '1px solid #C6DCFA',
               borderRadius: '8px',
-              padding: '6px 14px'
+              padding: '5px 10px',
+              fontSize: '0.82rem'
             }}
           >
-            <Volume2 size={15} />
+            <Volume2 size={14} />
             <span>Call Next</span>
           </button>
 
@@ -385,10 +386,11 @@ export const BookingPage: React.FC = () => {
               backgroundColor: 'var(--brand-maroon, #7A1B28)',
               borderColor: 'var(--brand-maroon-dark, #56101B)',
               borderRadius: '8px',
-              padding: '6px 14px'
+              padding: '5px 12px',
+              fontSize: '0.82rem'
             }}
           >
-            <Plus size={16} />
+            <Plus size={15} />
             <span>+ Token</span>
           </button>
         </div>
@@ -723,11 +725,11 @@ export const BookingPage: React.FC = () => {
                           setSelectedBookingForSlip(item.booking);
                         }
                       }}
-                      className="p-2 rounded-3 d-flex flex-column justify-content-between position-relative"
+                      className="p-1 p-sm-2 rounded-3 d-flex flex-column justify-content-between position-relative"
                       style={{
                         cursor: item.isPast && !isLocked ? 'not-allowed' : 'pointer',
                         transition: 'all 0.15s ease-in-out',
-                        minHeight: '64px',
+                        minHeight: '50px',
                         backgroundColor: isLocked 
                           ? '#FFF5F5' 
                           : item.isPast 
@@ -756,7 +758,7 @@ export const BookingPage: React.FC = () => {
                         <span 
                           className="fw-bold" 
                           style={{ 
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                             color: item.isToday 
                               ? 'var(--brand-maroon, #7A1B28)' 
                               : item.isPast 
@@ -771,7 +773,7 @@ export const BookingPage: React.FC = () => {
                             className="badge text-white px-1 py-0 rounded"
                             style={{ 
                               backgroundColor: 'var(--brand-maroon, #7A1B28)', 
-                              fontSize: '0.6rem', 
+                              fontSize: '0.55rem', 
                               letterSpacing: '0.04em' 
                             }}
                           >
@@ -783,15 +785,20 @@ export const BookingPage: React.FC = () => {
                       {/* Status indicator / Text */}
                       <div className="mt-1">
                         {isLocked ? (
-                          <div className="d-flex flex-column">
+                          <div className="d-flex flex-column align-items-start">
                             <span 
-                              className="fw-bold text-danger" 
+                              className="fw-bold text-danger d-none d-sm-inline" 
                               style={{ fontSize: '0.72rem' }}
                             >
                               Locked
                             </span>
                             <span 
-                              className="text-truncate small text-secondary" 
+                              className="d-sm-none p-1 rounded-circle bg-danger d-inline-block" 
+                              style={{ width: 7, height: 7 }} 
+                              title="Locked"
+                            />
+                            <span 
+                              className="text-truncate small text-secondary d-none d-md-block" 
                               style={{ fontSize: '0.65rem', maxWidth: '65px' }}
                             >
                               {item.booking?.customerName}
@@ -805,12 +812,19 @@ export const BookingPage: React.FC = () => {
                             —
                           </span>
                         ) : (
-                          <span 
-                            className="fw-semibold text-success" 
-                            style={{ fontSize: '0.72rem' }}
-                          >
-                            Open
-                          </span>
+                          <div className="d-flex align-items-center">
+                            <span 
+                              className="fw-semibold text-success d-none d-sm-inline" 
+                              style={{ fontSize: '0.72rem' }}
+                            >
+                              Open
+                            </span>
+                            <span 
+                              className="d-sm-none p-1 rounded-circle bg-success d-inline-block" 
+                              style={{ width: 6, height: 6 }} 
+                              title="Open"
+                            />
+                          </div>
                         )}
                       </div>
                     </div>
@@ -875,8 +889,8 @@ export const BookingPage: React.FC = () => {
           </div>
 
           {/* Table */}
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.88rem' }}>
+          <div className="table-responsive" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="table table-hover align-middle mb-0" style={{ minWidth: '780px', fontSize: '0.88rem' }}>
               <thead style={{ backgroundColor: '#FAF5EE', color: 'var(--brand-maroon, #7A1B28)' }}>
                 <tr>
                   <th className="py-3 px-3 fw-bold border-bottom-0" style={{ letterSpacing: '0.04em' }}>DATE</th>
@@ -1104,7 +1118,7 @@ export const BookingPage: React.FC = () => {
             {selectedBookingForSlip.notes && (
               <div className="mb-3">
                 <span className="small fw-semibold text-secondary d-block">Menu & Timing Instructions:</span>
-                <p className="small text-dark p-2 bg-light rounded border mb-0">
+                <p className="small text-dark p-2 bg-light rounded border mb-0 text-break" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                   {selectedBookingForSlip.notes}
                 </p>
               </div>

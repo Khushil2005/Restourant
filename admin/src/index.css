@@ -217,4 +217,137 @@ body {
   }
 }
 
+/* ========================================================
+   Mobile Responsiveness & Container Overflow Prevention
+   ======================================================== */
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Prevent flex and grid items from expanding beyond parent width */
+.d-flex > *,
+.row > *,
+.col,
+[class*="col-"] {
+  min-width: 0;
+}
+
+/* Universal text break & description containment */
+.text-break-word,
+.word-break-anywhere,
+.table td,
+.table th,
+.card-body p,
+.card-body div,
+.modal-body,
+.description-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Enhanced Mobile Table Container */
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  width: 100%;
+  overflow-x: auto;
+  position: relative;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 5px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: var(--brand-gold, #D48B28);
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: #FDF5E6;
+}
+
+/* Horizontal swipeable pill container for mobile tabs */
+.scrollable-pills-container {
+  display: flex;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+
+.scrollable-pills-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile Sidebar Backdrop */
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(43, 24, 28, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 1045;
+  transition: opacity 0.25s ease-in-out;
+}
+
+/* Mobile Responsive Overrides */
+@media (max-width: 767.98px) {
+  .card-body {
+    padding: 1rem !important;
+  }
+  .card-header, .card-footer {
+    padding: 0.75rem 1rem !important;
+  }
+  .p-4 {
+    padding: 1rem !important;
+  }
+  .p-3 {
+    padding: 0.75rem !important;
+  }
+  .fs-4 {
+    font-size: 1.25rem !important;
+  }
+  .fs-5 {
+    font-size: 1.05rem !important;
+  }
+  h4 {
+    font-size: 1.2rem !important;
+  }
+  h5 {
+    font-size: 1.05rem !important;
+  }
+  
+  /* Form controls touch friendliness */
+  .form-control, .form-select {
+    font-size: 0.95rem;
+  }
+}
+
+/* Mobile Modals */
+@media (max-width: 575.98px) {
+  .modal-dialog {
+    margin: 0.5rem !important;
+    max-width: calc(100vw - 1rem) !important;
+  }
+  .modal-content {
+    border-radius: 12px !important;
+  }
+  .modal-body {
+    padding: 1rem !important;
+    max-height: 80vh !important;
+  }
+  .modal-header, .modal-footer {
+    padding: 0.75rem 1rem !important;
+  }
+}

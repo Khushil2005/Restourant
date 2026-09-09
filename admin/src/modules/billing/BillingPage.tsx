@@ -199,30 +199,32 @@ export const BillingPage: React.FC = () => {
             </div>
 
             {/* Items Table */}
-            <table className="table table-sm table-bordered align-middle mb-3">
-              <thead className="table-light">
-                <tr>
-                  <th>Item Description</th>
-                  <th className="text-center">Qty</th>
-                  <th className="text-end">Unit Price</th>
-                  <th className="text-end">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedBill.items.map((it, idx) => (
-                  <tr key={idx}>
-                    <td>{it.itemName}</td>
-                    <td className="text-center">{it.quantity}</td>
-                    <td className="text-end">₹{it.unitPrice}</td>
-                    <td className="text-end">₹{it.totalPrice}</td>
+            <div className="table-responsive">
+              <table className="table table-sm table-bordered align-middle mb-3" style={{ minWidth: 320 }}>
+                <thead className="table-light">
+                  <tr>
+                    <th>Item Description</th>
+                    <th className="text-center">Qty</th>
+                    <th className="text-end">Unit Price</th>
+                    <th className="text-end">Amount</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {selectedBill.items.map((it, idx) => (
+                    <tr key={idx}>
+                      <td>{it.itemName}</td>
+                      <td className="text-center">{it.quantity}</td>
+                      <td className="text-end">₹{it.unitPrice}</td>
+                      <td className="text-end">₹{it.totalPrice}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {/* Summary */}
             <div className="row justify-content-end">
-              <div className="col-6">
+              <div className="col-12 col-sm-8 col-md-6">
                 <div className="d-flex justify-content-between small mb-1">
                   <span>Subtotal:</span>
                   <span>₹{selectedBill.subtotal}</span>

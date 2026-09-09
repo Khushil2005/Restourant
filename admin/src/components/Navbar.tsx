@@ -12,12 +12,13 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
-    <header className="navbar navbar-expand-lg navbar-dark bg-primary sticky-top px-3 py-2 shadow-sm">
+    <header className="navbar navbar-expand-lg navbar-dark bg-primary sticky-top px-2 px-sm-3 py-2 shadow-sm">
       <div className="d-flex align-items-center">
         <button
-          className="btn btn-link text-white me-3 p-0 d-lg-none"
+          className="btn btn-link text-white me-2 me-sm-3 p-0 d-lg-none"
           onClick={onToggleSidebar}
           type="button"
+          aria-label="Toggle navigation"
         >
           <span className="navbar-toggler-icon" />
         </button>
@@ -26,13 +27,14 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
             src="/logo.jpg"
             alt="Bhatigal Bhanu"
             className="brand-logo-img me-2 shadow-sm"
+            style={{ width: 36, height: 36 }}
           />
           <div className="d-flex flex-column">
             <div className="d-flex align-items-center">
-              <span className="fs-5 fw-bold text-white tracking-wide" style={{ letterSpacing: '0.02em' }}>
+              <span className="fs-6 fs-md-5 fw-bold text-white tracking-wide" style={{ letterSpacing: '0.02em' }}>
                 BHATIGAL BHANU
               </span>
-              <span className="badge bg-gold text-dark ms-2 fw-semibold" style={{ fontSize: '0.65rem' }}>
+              <span className="badge bg-gold text-dark ms-1 ms-sm-2 fw-semibold" style={{ fontSize: '0.62rem' }}>
                 ERP
               </span>
             </div>
@@ -43,7 +45,7 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
         </Link>
       </div>
 
-      <div className="ms-auto d-flex align-items-center gap-3">
+      <div className="ms-auto d-flex align-items-center gap-2 gap-sm-3">
         {/* Real-time connection badge */}
         <div className="d-none d-md-flex align-items-center gap-1 small text-white-50">
           {isConnected ? (
@@ -75,7 +77,7 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
           {showNotifications && (
             <div
               className="position-absolute end-0 mt-2 bg-white rounded shadow-lg border p-0"
-              style={{ width: 320, zIndex: 1050 }}
+              style={{ width: 'min(320px, calc(100vw - 20px))', zIndex: 1060 }}
             >
               <div className="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
                 <h6 className="mb-0 fw-bold text-dark">Notifications</h6>

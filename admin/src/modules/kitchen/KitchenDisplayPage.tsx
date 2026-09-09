@@ -74,47 +74,47 @@ export const KitchenDisplayPage: React.FC = () => {
   return (
     <div className="vh-100 vw-100 bg-dark text-white d-flex flex-column overflow-hidden">
       {/* KDS Header */}
-      <header className="navbar navbar-expand navbar-dark bg-black px-4 py-2 border-bottom border-secondary d-flex justify-content-between">
-        <div className="d-flex align-items-center gap-3">
+      <header className="navbar navbar-expand navbar-dark bg-black px-2 px-sm-4 py-2 border-bottom border-secondary d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 gap-sm-3">
           <button className="btn btn-outline-light btn-sm d-flex align-items-center gap-1" onClick={() => navigate('/')}>
-            <ArrowLeft size={16} /> Exit KDS
+            <ArrowLeft size={16} /> <span className="d-none d-sm-inline">Exit KDS</span>
           </button>
           <div className="d-flex align-items-center gap-2">
             <img
               src="/logo.jpg"
               alt="Bhatigal Bhanu"
               className="brand-logo-img shadow-sm"
-              style={{ width: 34, height: 34 }}
+              style={{ width: 30, height: 30 }}
             />
-            <h5 className="fw-bold mb-0 text-white">Bhatigal Bhanu • Kitchen KDS</h5>
+            <h6 className="fw-bold mb-0 text-white fs-6">Kitchen KDS</h6>
           </div>
         </div>
 
-        <div className="d-flex align-items-center gap-3">
+        <div className="d-flex align-items-center gap-2 ms-auto flex-wrap">
           {/* Status Tabs */}
           <div className="btn-group btn-group-sm">
             <button
-              className={`btn ${filterStatus === 'ACTIVE' ? 'btn-warning fw-bold text-dark' : 'btn-outline-secondary'}`}
+              className={`btn px-2 ${filterStatus === 'ACTIVE' ? 'btn-warning fw-bold text-dark' : 'btn-outline-secondary'}`}
               onClick={() => setFilterStatus('ACTIVE')}
             >
-              In Kitchen ({tickets.filter(t => t.status === 'NEW' || t.status === 'ACCEPTED' || t.status === 'PREPARING').length})
+              Kitchen ({tickets.filter(t => t.status === 'NEW' || t.status === 'ACCEPTED' || t.status === 'PREPARING').length})
             </button>
             <button
-              className={`btn ${filterStatus === 'READY' ? 'btn-success fw-bold text-white' : 'btn-outline-secondary'}`}
+              className={`btn px-2 ${filterStatus === 'READY' ? 'btn-success fw-bold text-white' : 'btn-outline-secondary'}`}
               onClick={() => setFilterStatus('READY')}
             >
-              Ready to Serve ({tickets.filter(t => t.status === 'READY').length})
+              Ready ({tickets.filter(t => t.status === 'READY').length})
             </button>
             <button
-              className={`btn ${filterStatus === 'ALL' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
+              className={`btn px-2 ${filterStatus === 'ALL' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
               onClick={() => setFilterStatus('ALL')}
             >
-              All Tickets ({tickets.length})
+              All ({tickets.length})
             </button>
           </div>
 
-          <button className="btn btn-outline-secondary btn-sm" onClick={loadKOTs} title="Refresh">
-            <RefreshCw size={16} />
+          <button className="btn btn-outline-secondary btn-sm p-1 px-2" onClick={loadKOTs} title="Refresh">
+            <RefreshCw size={14} />
           </button>
         </div>
       </header>

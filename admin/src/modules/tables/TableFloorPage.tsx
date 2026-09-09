@@ -108,11 +108,11 @@ export const TableFloorPage: React.FC = () => {
       {/* Zone Filters & Legend */}
       <div className="card shadow-sm border-0 p-3">
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
-          <div className="nav nav-pills gap-1">
+          <div className="nav nav-pills gap-1 scrollable-pills-container">
             {zones.map(z => (
               <button
                 key={z}
-                className={`btn btn-sm ${selectedZone === z ? 'btn-primary fw-bold' : 'btn-light'}`}
+                className={`btn btn-sm text-nowrap ${selectedZone === z ? 'btn-primary fw-bold' : 'btn-light'}`}
                 onClick={() => setSelectedZone(z)}
               >
                 {z.replace('_', ' ')}
@@ -120,7 +120,7 @@ export const TableFloorPage: React.FC = () => {
             ))}
           </div>
 
-          <div className="d-flex flex-wrap gap-3 small">
+          <div className="d-flex flex-wrap gap-2 gap-sm-3 small">
             <span className="d-flex align-items-center gap-1"><span className="p-1 rounded-circle bg-success" /> Available</span>
             <span className="d-flex align-items-center gap-1"><span className="p-1 rounded-circle bg-danger" /> Occupied</span>
             <span className="d-flex align-items-center gap-1"><span className="p-1 rounded-circle bg-warning" /> Reserved</span>

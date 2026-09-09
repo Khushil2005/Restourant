@@ -30,7 +30,8 @@ import {
   Activity,
   Shield,
   Terminal,
-  Tv
+  Tv,
+  X
 } from 'lucide-react';
 
 interface MenuItem {
@@ -83,16 +84,35 @@ export const Sidebar: React.FC<{ isOpen: boolean; onCloseMobile?: () => void }> 
 
   return (
     <aside
-      className={`sidebar bg-white border-end position-fixed top-0 bottom-0 start-0 z-3 ${
+      className={`sidebar bg-white border-end position-fixed top-0 bottom-0 start-0 ${
         isOpen ? 'd-block' : 'd-none d-lg-block'
       }`}
       style={{
-        width: 260,
-        paddingTop: 62,
+        width: 270,
+        maxWidth: '85vw',
+        paddingTop: isOpen ? 0 : 62,
         overflowY: 'auto',
-        transition: 'transform 0.3s ease-in-out'
+        zIndex: 1050,
+        boxShadow: isOpen ? '0 0 20px rgba(0,0,0,0.25)' : 'none',
+        transition: 'all 0.25s ease-in-out'
       }}
     >
+      {/* Mobile Top Header with Close Button */}
+      <div className="p-3 bg-primary text-white d-flex d-lg-none align-items-center justify-content-between border-bottom">
+        <div className="d-flex align-items-center gap-2">
+          <img src="/logo.jpg" alt="Logo" className="brand-logo-img" style={{ width: 32, height: 32 }} />
+          <span className="fw-bold tracking-wide" style={{ fontSize: '0.95rem', letterSpacing: '0.02em' }}>BHATIGAL BHANU</span>
+        </div>
+        <button
+          className="btn btn-sm btn-link text-white p-1"
+          onClick={onCloseMobile}
+          type="button"
+          aria-label="Close sidebar"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
       <div className="p-3 border-bottom bg-light d-flex align-items-center justify-content-between">
         <span className="small fw-bold text-uppercase text-muted" style={{ letterSpacing: '0.05em' }}>
           Navigation Menu
