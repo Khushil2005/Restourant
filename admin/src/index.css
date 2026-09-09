@@ -114,38 +114,51 @@ body {
   flex-direction: column !important;
   background-color: #FFFFFF !important;
   border-right: 1px solid var(--brand-border) !important;
-  overflow: hidden !important;
-}
-
-/* Dedicated Scrollable Navigation Menu */
-.sidebar-nav {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
-  padding-bottom: 5rem !important;
 }
 
-/* Custom Scrollbar for sidebar-nav */
+/* Dedicated Scrollable Navigation Menu - Strict single column top-to-bottom */
+.sidebar-nav,
+.sidebar nav {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  padding-bottom: 6rem !important;
+}
+
+.sidebar-nav .nav-link,
+.sidebar nav .nav-link {
+  width: 100% !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* High-visibility Custom Scrollbar for sidebar */
+.sidebar::-webkit-scrollbar,
 .sidebar-nav::-webkit-scrollbar {
-  width: 6px;
+  width: 7px !important;
 }
 
+.sidebar::-webkit-scrollbar-track,
 .sidebar-nav::-webkit-scrollbar-track {
-  background: #F4ECE1;
-  border-radius: 3px;
+  background: #F4ECE1 !important;
 }
 
+.sidebar::-webkit-scrollbar-thumb,
 .sidebar-nav::-webkit-scrollbar-thumb {
-  background: #B39B88;
-  border-radius: 3px;
+  background: #B39B88 !important;
+  border-radius: 4px !important;
 }
 
+.sidebar::-webkit-scrollbar-thumb:hover,
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-maroon);
+  background: var(--brand-maroon) !important;
 }
 
 /* Desktop Screens (>= 992px): In-flow side-by-side layout with separate scrolling */
@@ -158,7 +171,8 @@ body {
     max-height: 100% !important;
     background-color: #FFFFFF !important;
     border-right: 1px solid var(--brand-border) !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     z-index: 100;
   }
 

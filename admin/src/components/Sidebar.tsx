@@ -131,16 +131,16 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
         </button>
       </div>
 
-      <div className="p-3 border-bottom bg-light d-flex align-items-center justify-content-between flex-shrink-0">
+      <div className="p-3 border-bottom bg-light d-flex align-items-center justify-content-between flex-shrink-0 sticky-top" style={{ zIndex: 10 }}>
         <span className="small fw-bold text-uppercase text-muted" style={{ letterSpacing: '0.05em' }}>
           Navigation Menu
         </span>
-        <span className="badge bg-primary-subtle text-primary border border-primary-subtle">
+        <span className="badge bg-primary text-white fw-bold">
           {visibleItems.length} Modules
         </span>
       </div>
 
-      <nav className="nav flex-column p-2 gap-1 sidebar-nav">
+      <nav className="nav flex-column p-2 gap-1 sidebar-nav" style={{ flexWrap: 'nowrap' }}>
         {visibleItems.map(item => (
           <NavLink
             key={item.path}
