@@ -109,24 +109,62 @@ body {
    Sidebar & Responsive Layout System
    ======================================================== */
 
-/* Desktop Screens (>= 992px): In-flow side-by-side sticky layout */
+.sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  background-color: #FFFFFF !important;
+  border-right: 1px solid var(--brand-border) !important;
+  overflow: hidden !important;
+}
+
+/* Dedicated Scrollable Navigation Menu */
+.sidebar-nav {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  padding-bottom: 5rem !important;
+}
+
+/* Custom Scrollbar for sidebar-nav */
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: #F4ECE1;
+  border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: #B39B88;
+  border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-maroon);
+}
+
+/* Desktop Screens (>= 992px): In-flow side-by-side layout with separate scrolling */
 @media (min-width: 992px) {
   .sidebar {
     width: 260px;
     min-width: 260px;
     flex-shrink: 0;
-    position: sticky;
-    top: 56px;
-    height: calc(100vh - 56px);
+    height: 100% !important;
+    max-height: 100% !important;
     background-color: #FFFFFF !important;
     border-right: 1px solid var(--brand-border) !important;
-    overflow-y: auto;
+    overflow: hidden !important;
     z-index: 100;
   }
 
   .sidebar.sidebar-open {
-    display: flex;
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .sidebar.sidebar-closed {
@@ -137,11 +175,18 @@ body {
     flex: 1 1 0%;
     min-width: 0;
     width: 0;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
     margin-left: 0 !important;
   }
 }
 
-/* Mobile Screens (< 992px): Overlay drawer */
+/* Mobile Screens (< 992px): Overlay drawer & full-height separate scrolling */
 @media (max-width: 991.98px) {
   .sidebar {
     position: fixed;
@@ -151,13 +196,9 @@ body {
     width: 280px;
     max-width: 85vw;
     height: 100vh;
-    background-color: #FFFFFF !important;
-    border-right: 1px solid var(--brand-border) !important;
+    height: 100dvh;
     z-index: 1050;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
   }
 
   .sidebar.sidebar-open {
@@ -176,8 +217,32 @@ body {
   .admin-main-content {
     width: 100%;
     min-width: 0;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
     margin-left: 0 !important;
   }
+}
+
+.main-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: #F4ECE1;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: #CBB9A7;
+  border-radius: 3px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-maroon-light);
 }
 
 .hover-bg-light:hover {
@@ -255,6 +320,11 @@ body {
 
 /* Printable Invoices & Payslips */
 @media print {
+  html, body, #root, .main-content {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
   body * {
     visibility: hidden;
   }
@@ -278,10 +348,16 @@ body {
    Mobile Responsiveness & Container Overflow Prevention
    ======================================================== */
 
-html, body {
-  overflow-x: hidden;
-  max-width: 100vw;
+/* App Shell: Viewport locked to prevent full-screen scrolling */
+html, body, #root {
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
   width: 100%;
+  max-width: 100vw;
 }
 
 *, *::before, *::after {

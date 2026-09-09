@@ -12,7 +12,10 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
-    <header className="navbar navbar-expand navbar-dark bg-primary sticky-top px-2 px-sm-3 py-2 shadow-sm flex-nowrap align-items-center justify-content-between">
+    <header
+      className="navbar navbar-expand navbar-dark bg-primary sticky-top px-2 px-sm-3 py-2 shadow-sm flex-nowrap align-items-center justify-content-between"
+      style={{ height: 56, minHeight: 56, flexShrink: 0, zIndex: 1020 }}
+    >
       <div className="d-flex align-items-center flex-shrink-0">
         <button
           className="btn btn-link text-white me-2 p-0"

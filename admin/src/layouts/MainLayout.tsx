@@ -40,8 +40,13 @@ export const MainLayout: React.FC = () => {
   }, [sidebarOpen]);
 
   return (
-    <div className="d-flex flex-column min-vh-100 bg-light position-relative" style={{ overflowX: 'hidden' }}>
+    <div
+      className="d-flex flex-column vh-100 vw-100 bg-light position-relative overflow-hidden"
+      style={{ height: '100dvh', maxHeight: '100dvh' }}
+    >
+      {/* Fixed Header */}
       <Navbar onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
+
       {/* Mobile Backdrop ONLY (d-lg-none): Clicking outside closes only on mobile */}
       {sidebarOpen && (
         <div
@@ -50,7 +55,12 @@ export const MainLayout: React.FC = () => {
           aria-hidden="true"
         />
       )}
-      <div className="d-flex flex-grow-1 position-relative">
+
+      {/* Two Independent Scroll Areas (Sidebar & Screen) below Fixed Header */}
+      <div
+        className="d-flex flex-grow-1 position-relative overflow-hidden"
+        style={{ minHeight: 0, height: 'calc(100dvh - 56px)' }}
+      >
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -60,7 +70,7 @@ export const MainLayout: React.FC = () => {
           className="flex-grow-1 p-2 p-sm-3 p-md-4 main-content"
           style={{ minWidth: 0 }}
         >
-          <div className="container-fluid px-0" style={{ minWidth: 0 }}>
+          <div className="container-fluid px-0" style={{ minWidth: 0, paddingBottom: '3.5rem' }}>
             <Outlet />
           </div>
         </main>

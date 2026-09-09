@@ -94,7 +94,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
       }`}
     >
       {/* Top Header with Brand Name and Close Button (Visible on Mobile Drawer) */}
-      <div className="p-3 bg-primary text-white d-flex d-lg-none align-items-center justify-content-between border-bottom shadow-sm">
+      <div className="p-3 bg-primary text-white d-flex d-lg-none align-items-center justify-content-between border-bottom shadow-sm flex-shrink-0">
         <Link
           to="/"
           onClick={() => {
@@ -131,7 +131,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
         </button>
       </div>
 
-      <div className="p-3 border-bottom bg-light d-flex align-items-center justify-content-between">
+      <div className="p-3 border-bottom bg-light d-flex align-items-center justify-content-between flex-shrink-0">
         <span className="small fw-bold text-uppercase text-muted" style={{ letterSpacing: '0.05em' }}>
           Navigation Menu
         </span>
@@ -140,7 +140,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
         </span>
       </div>
 
-      <nav className="nav flex-column p-2 gap-1" style={{ overflowY: 'auto' }}>
+      <nav className="nav flex-column p-2 gap-1 sidebar-nav">
         {visibleItems.map(item => (
           <NavLink
             key={item.path}
