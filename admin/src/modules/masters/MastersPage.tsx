@@ -326,12 +326,17 @@ export const MastersPage: React.FC = () => {
             },
             {
               header: 'Category Name',
+              accessor: (row) => <span className="fw-bold text-dark">{row.name}</span>,
+              width: 170
+            },
+            {
+              header: 'Description',
               accessor: (row) => (
-                <div>
-                  <span className="fw-bold text-dark">{row.name}</span>
-                  {row.description && <div className="text-muted small">{row.description}</div>}
-                </div>
-              )
+                <span className="text-secondary small text-truncate d-inline-block" style={{ maxWidth: 320 }} title={row.description || '-'}>
+                  {row.description || '-'}
+                </span>
+              ),
+              width: 250
             },
             {
               header: 'Display Order',

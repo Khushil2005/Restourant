@@ -91,14 +91,28 @@ export function DataTable<T extends { id?: string | number }>({
       </div>
 
       <div className="table-responsive" style={{ WebkitOverflowScrolling: 'touch', minHeight: paginatedData.length === 0 ? 'auto' : '160px' }}>
-        <table className="table table-hover align-middle mb-0" style={{ minWidth: '550px' }}>
+        <table className="table table-hover align-middle mb-0" style={{ minWidth: `${Math.max(650, columns.length * 130)}px` }}>
           <thead className="table-light">
             <tr>
-              {columns.map((col, idx) => (
-                <th key={idx} style={{ width: col.width, minWidth: col.width ? undefined : '120px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                  {col.header}
-                </th>
-              ))}
+              {columns.map((col, idx) => {
+                const h = col.header.toLowerCase();
+                const acc = typeof col.accessor === 'string' ? (col.accessor as string).toLowerCase() : '';
+                const isDesc = h.includes('desc') || h.includes('narration') || h.includes('remark') || h.includes('note') || h.includes('detail') || h.includes('reason') ||
+                               acc.includes('desc') || acc.includes('narration') || acc.includes('remark') || acc.includes('note');
+                return (
+                  <th
+                    key={idx}
+                    style={{
+                      width: col.width,
+                      minWidth: col.width ? undefined : isDesc ? '240px' : '120px',
+                      fontSize: '0.82rem',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {col.header}
+                  </th>
+                );
+              })}
               {actions && <th style={{ width: 110, minWidth: '100px', textAlign: 'end', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>Actions</th>}
             </tr>
           </thead>
@@ -112,13 +126,35 @@ export function DataTable<T extends { id?: string | number }>({
             ) : (
               paginatedData.map((row, rIdx) => (
                 <tr key={row.id || rIdx}>
-                  {columns.map((col, cIdx) => (
-                    <td key={cIdx} style={{ fontSize: '0.85rem', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                      {typeof col.accessor === 'function'
-                        ? col.accessor(row)
-                        : (row[col.accessor as keyof T] as any)}
-                    </td>
-                  ))}
+                  {columns.map((col, cIdx) => {
+                    const h = col.header.toLowerCase();
+                    const acc = typeof col.accessor === 'string' ? (col.accessor as string).toLowerCase() : '';
+                    const isDesc = h.includes('desc') || h.includes('narration') || h.includes('remark') || h.includes('note') || h.includes('detail') || h.includes('reason') ||
+                                   acc.includes('desc') || acc.includes('narration') || acc.includes('remark') || acc.includes('note');
+                    const val = typeof col.accessor === 'function' ? col.accessor(row) : (row[col.accessor as keyof T] as any);
+                    return (
+                      <td
+                        key={cIdx}
+                        style={{
+                          fontSize: '0.85rem',
+                          whiteSpace: isDesc ? 'nowrap' : undefined,
+                          minWidth: isDesc ? '240px' : undefined
+                        }}
+                      >
+                        {isDesc && typeof val === 'string' ? (
+                          <span
+                            className="text-truncate d-inline-block text-secondary"
+                            style={{ maxWidth: 380, verticalAlign: 'middle' }}
+                            title={val}
+                          >
+                            {val || '-'}
+                          </span>
+                        ) : (
+                          val
+                        )}
+                      </td>
+                    );
+                  })}
                   {actions && (
                     <td className="text-end" style={{ whiteSpace: 'nowrap' }}>
                       <div className="d-flex justify-content-end gap-1">

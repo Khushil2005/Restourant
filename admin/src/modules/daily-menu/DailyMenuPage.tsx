@@ -261,7 +261,7 @@ export const DailyMenuPage: React.FC = () => {
           {/* 7-Days Navigation Tabs */}
           <div className="mt-3 pt-3 border-top">
             <div className="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
-              <div className="scrollable-pills-container gap-1 py-1">
+              <div className="scrollable-pills-container gap-1 py-1 flex-grow-1" style={{ minWidth: 0 }}>
                 {DAYS_LIST.map(day => {
                   const menuObj = dailyMenus.find(m => m.dayOfWeek === day.key);
                   const count = menuObj?.itemIds?.length || 0;
@@ -302,14 +302,18 @@ export const DailyMenuPage: React.FC = () => {
                 })}
               </div>
 
-              <div className="align-self-end align-self-md-auto mt-1 mt-md-0">
+              <div className="align-self-end align-self-md-center flex-shrink-0 ms-md-2 mt-1 mt-md-0">
                 <button
-                  className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+                  className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 px-3 py-2 rounded-3 text-nowrap flex-shrink-0 shadow-xs"
                   onClick={loadAllData}
                   disabled={loading}
                   title="Refresh Menu Data"
+                  style={{ whiteSpace: 'nowrap', minHeight: '38px', lineHeight: 1 }}
                 >
-                  <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
+                  <RefreshCw size={14} className={`flex-shrink-0 ${loading ? 'spin' : ''}`} />
+                  <span className="text-nowrap fw-medium" style={{ whiteSpace: 'nowrap' }}>
+                    {loading ? 'Refreshing...' : 'Refresh'}
+                  </span>
                 </button>
               </div>
             </div>

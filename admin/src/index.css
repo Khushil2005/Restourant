@@ -389,14 +389,30 @@ html, body, #root {
 /* Universal text break & description containment */
 .text-break-word,
 .word-break-anywhere,
-.table td,
-.table th,
 .card-body p,
 .card-body div,
 .modal-body,
 .description-text {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* Data Table Clean Formatting */
+.table th {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+/* Ensure description columns in tables remain on a clean single line */
+.table .col-description,
+.table td.description-cell,
+.table .text-description {
+  white-space: nowrap;
+  min-width: 220px;
 }
 
 /* Enhanced Mobile Table Container */

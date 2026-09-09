@@ -200,22 +200,22 @@ export const BillingPage: React.FC = () => {
 
             {/* Items Table */}
             <div className="table-responsive">
-              <table className="table table-sm table-bordered align-middle mb-3" style={{ minWidth: 320 }}>
+              <table className="table table-sm table-bordered align-middle mb-3" style={{ minWidth: 420 }}>
                 <thead className="table-light">
                   <tr>
-                    <th>Item Description</th>
-                    <th className="text-center">Qty</th>
-                    <th className="text-end">Unit Price</th>
-                    <th className="text-end">Amount</th>
+                    <th style={{ minWidth: 200, whiteSpace: 'nowrap' }}>Item Description</th>
+                    <th className="text-center" style={{ width: 80, whiteSpace: 'nowrap' }}>Qty</th>
+                    <th className="text-end" style={{ width: 110, whiteSpace: 'nowrap' }}>Unit Price</th>
+                    <th className="text-end" style={{ width: 110, whiteSpace: 'nowrap' }}>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedBill.items.map((it, idx) => (
                     <tr key={idx}>
-                      <td>{it.itemName}</td>
-                      <td className="text-center">{it.quantity}</td>
-                      <td className="text-end">₹{it.unitPrice}</td>
-                      <td className="text-end">₹{it.totalPrice}</td>
+                      <td style={{ whiteSpace: 'nowrap' }} className="fw-medium text-dark">{it.itemName}</td>
+                      <td className="text-center" style={{ whiteSpace: 'nowrap' }}>{it.quantity}</td>
+                      <td className="text-end" style={{ whiteSpace: 'nowrap' }}>₹{it.unitPrice}</td>
+                      <td className="text-end fw-bold" style={{ whiteSpace: 'nowrap' }}>₹{it.totalPrice}</td>
                     </tr>
                   ))}
                 </tbody>
