@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Production-Ready Enterprise Restaurant Management ERP System",
   "scripts": {
-    "start": "node server.js",
+    "start": "npm run dev:server",
     "dev:server": "npm run dev --prefix server",
     "dev:admin": "npm run dev --prefix admin",
     "dev": "npm run dev:admin",
