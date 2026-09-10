@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, PermissionDetail } from '../types';
 import { apiClient } from '../api/client';
+import { appCache } from '../api/cache';
+import { preloadAllModulesData } from '../api/preloader';
 
 interface AuthContextType {
   user: User | null;
@@ -27,6 +29,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.success && res.data) {
         setUser(res.data.user);
         setEffectivePermissions(res.data.effectivePermissions || []);
+        // Trigger background preloading of all modules immediately
+        preloadAllModulesData();
       }
     } catch (err) {
       console.error('Failed to load profile:', err);
@@ -34,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setEffectivePermissions([]);
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
+      appCache.invalidateAll();
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +62,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(res.data.accessToken);
         setUser(res.data.user);
         setEffectivePermissions(res.data.effectivePermissions || []);
+        // Trigger immediate background preloader
+        preloadAllModulesData(true);
       }
     } finally {
       setIsLoading(false);
@@ -66,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    appCache.invalidateAll();
     setToken(null);
     setUser(null);
     setEffectivePermissions([]);

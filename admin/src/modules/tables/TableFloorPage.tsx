@@ -32,15 +32,24 @@ const saveStoredZones = (zones: FloorZone[]) => {
   } catch {}
 };
 
+import { appCache } from '../../api/cache';
+
 export const TableFloorPage: React.FC = () => {
   const { can } = usePermission();
   const { socket } = useSocket();
   const navigate = useNavigate();
 
-  const [tables, setTables] = useState<DiningTable[]>([]);
-  const [floorZones, setFloorZones] = useState<FloorZone[]>([]);
+  const cachedTables = appCache.get('/tables/floor-layout')?.data || appCache.get('/tables/floor-layout');
+  const cachedZones = appCache.get('/masters/floor-zones')?.data || appCache.get('/masters/floor-zones');
+
+  const [tables, setTables] = useState<DiningTable[]>(() => Array.isArray(cachedTables) ? cachedTables : []);
+  const [floorZones, setFloorZones] = useState<FloorZone[]>(() => {
+    if (Array.isArray(cachedZones) && cachedZones.length > 0) return cachedZones;
+    const stored = getStoredZones();
+    return stored.length > 0 ? stored : DEFAULT_FLOOR_ZONES;
+  });
   const [selectedZone, setSelectedZone] = useState<string>('ALL');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !Array.isArray(cachedTables) || cachedTables.length === 0);
 
   // Manage / Delete Zones Modal
   const [isManageZonesModalOpen, setIsManageZonesModalOpen] = useState(false);
@@ -62,8 +71,10 @@ export const TableFloorPage: React.FC = () => {
   const [transferSource, setTransferSource] = useState<DiningTable | null>(null);
   const [transferTargetId, setTransferTargetId] = useState('');
 
-  const loadFloor = async () => {
-    setLoading(true);
+  const loadFloor = async (showSpinner = false) => {
+    if (showSpinner || tables.length === 0) {
+      setLoading(true);
+    }
     try {
       const [layoutRes, zonesRes]: any = await Promise.all([
         apiClient.get('/tables/floor-layout'),
@@ -302,7 +313,7 @@ export const TableFloorPage: React.FC = () => {
           )}
           <button
             className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-xs"
-            onClick={loadFloor}
+            onClick={() => loadFloor(true)}
             disabled={loading}
             title="Refresh Floor Layout"
           >

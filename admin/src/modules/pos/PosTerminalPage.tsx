@@ -28,14 +28,21 @@ interface CartItem {
   notes: string;
 }
 
+import { appCache } from '../../api/cache';
+
 export const PosTerminalPage: React.FC = () => {
   const { can } = usePermission();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [tables, setTables] = useState<DiningTable[]>([]);
+  const cachedCategories = appCache.get('/masters/menu-categories')?.data || appCache.get('/masters/menu-categories');
+  const cachedItems = appCache.get('/masters/menu-items')?.data || appCache.get('/masters/menu-items');
+  const cachedTables = appCache.get('/masters/tables')?.data || appCache.get('/masters/tables');
+  const cachedDaily = appCache.get('/daily-menu/today')?.data || appCache.get('/daily-menu/today');
+
+  const [categories, setCategories] = useState<MenuCategory[]>(() => Array.isArray(cachedCategories) ? cachedCategories : []);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => Array.isArray(cachedItems) ? cachedItems : []);
+  const [tables, setTables] = useState<DiningTable[]>(() => Array.isArray(cachedTables) ? cachedTables : []);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -54,10 +61,10 @@ export const PosTerminalPage: React.FC = () => {
   const [noteText, setNoteText] = useState<string>('');
 
   // Daily Menu state
-  const [isDailyMenuStrict, setIsDailyMenuStrict] = useState<boolean>(true);
-  const [dailyMenuItemIds, setDailyMenuItemIds] = useState<string[]>([]);
-  const [activeDailyDay, setActiveDailyDay] = useState<string>('TODAY');
-  const [dailyMenuNotes, setDailyMenuNotes] = useState<string>('');
+  const [isDailyMenuStrict, setIsDailyMenuStrict] = useState<boolean>(() => cachedDaily ? cachedDaily.isStrictEnforced !== false : true);
+  const [dailyMenuItemIds, setDailyMenuItemIds] = useState<string[]>(() => cachedDaily?.itemIds || []);
+  const [activeDailyDay, setActiveDailyDay] = useState<string>(() => cachedDaily?.effectiveDay || 'TODAY');
+  const [dailyMenuNotes, setDailyMenuNotes] = useState<string>(() => cachedDaily?.notes || '');
   const [mobileTab, setMobileTab] = useState<'MENU' | 'CART'>('MENU');
 
   const loadData = async () => {

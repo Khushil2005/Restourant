@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import path from 'path';
 import { apiRouter } from './routes';
 import { systemStatusGuard } from './middleware/systemStatusMiddleware';
@@ -7,6 +8,12 @@ import { errorHandler } from './middleware/errorHandler';
 import { expressCorsOptions } from './config/cors';
 
 export const app = express();
+
+// Enable high-speed GZIP/deflate response compression
+app.use(compression({
+  threshold: 1024, // Only compress responses > 1KB
+  level: 6
+}));
 
 // Middlewares
 app.use(cors(expressCorsOptions));

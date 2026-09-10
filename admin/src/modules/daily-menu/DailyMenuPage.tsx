@@ -29,16 +29,22 @@ const DAYS_LIST: Array<{ key: DayOfWeek; label: string; short: string }> = [
   { key: 'SUNDAY', label: 'Sunday (રવિવાર)', short: 'Sun' }
 ];
 
+import { appCache } from '../../api/cache';
+
 export const DailyMenuPage: React.FC = () => {
   const { can } = usePermission();
 
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([]);
-  const [dailyMenus, setDailyMenus] = useState<DailyMenu[]>([]);
-  const [selectedDay, setSelectedDay] = useState<DayOfWeek>('MONDAY');
-  const [systemToday, setSystemToday] = useState<DayOfWeek>('MONDAY');
-  const [isStrictEnforced, setIsStrictEnforced] = useState(true);
-  const [activeOverrideDay, setActiveOverrideDay] = useState<DayOfWeek | null>(null);
+  const cachedCats = appCache.get('/masters/menu-categories')?.data || appCache.get('/masters/menu-categories');
+  const cachedItems = appCache.get('/masters/menu-items')?.data || appCache.get('/masters/menu-items');
+  const cachedDaily = appCache.get('/daily-menu')?.data || appCache.get('/daily-menu');
+
+  const [categories, setCategories] = useState<MenuCategory[]>(() => Array.isArray(cachedCats) ? cachedCats : []);
+  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>(() => Array.isArray(cachedItems) ? cachedItems : []);
+  const [dailyMenus, setDailyMenus] = useState<DailyMenu[]>(() => cachedDaily?.menus || []);
+  const [selectedDay, setSelectedDay] = useState<DayOfWeek>(() => cachedDaily?.currentDay || 'MONDAY');
+  const [systemToday, setSystemToday] = useState<DayOfWeek>(() => cachedDaily?.currentDay || 'MONDAY');
+  const [isStrictEnforced, setIsStrictEnforced] = useState(() => cachedDaily ? cachedDaily.isStrictEnforced !== false : true);
+  const [activeOverrideDay, setActiveOverrideDay] = useState<DayOfWeek | null>(() => cachedDaily?.activeOverrideDay || null);
 
   // Selected Day's active item IDs (editable state)
   const [activeItemIds, setActiveItemIds] = useState<string[]>([]);
@@ -53,12 +59,14 @@ export const DailyMenuPage: React.FC = () => {
   const [copyTargetDays, setCopyTargetDays] = useState<DayOfWeek[]>([]);
 
   // UI status
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !Array.isArray(cachedItems) || cachedItems.length === 0);
   const [saving, setSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
-  const loadAllData = async () => {
-    setLoading(true);
+  const loadAllData = async (showSpinner = false) => {
+    if (showSpinner || allMenuItems.length === 0) {
+      setLoading(true);
+    }
     try {
       const [catRes, itemRes, dailyRes]: any = await Promise.all([
         apiClient.get('/masters/menu-categories'),
@@ -305,7 +313,7 @@ export const DailyMenuPage: React.FC = () => {
               <div className="align-self-end align-self-md-center flex-shrink-0 ms-md-2 mt-1 mt-md-0">
                 <button
                   className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 px-3 py-2 rounded-3 text-nowrap flex-shrink-0 shadow-xs"
-                  onClick={loadAllData}
+                  onClick={() => loadAllData(true)}
                   disabled={loading}
                   title="Refresh Menu Data"
                   style={{ whiteSpace: 'nowrap', minHeight: '38px', lineHeight: 1 }}

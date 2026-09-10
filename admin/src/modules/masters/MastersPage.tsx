@@ -30,17 +30,26 @@ const saveStoredZones = (zones: FloorZone[]) => {
   } catch {}
 };
 
+import { appCache } from '../../api/cache';
+
 export const MastersPage: React.FC = () => {
   const { can } = usePermission();
   const [activeTab, setActiveTab] = useState<'menu' | 'tables' | 'zones' | 'customers' | 'suppliers' | 'categories'>('menu');
 
+  const cachedItems = appCache.get('/masters/menu-items')?.data || appCache.get('/masters/menu-items');
+  const cachedCats = appCache.get('/masters/menu-categories')?.data || appCache.get('/masters/menu-categories');
+  const cachedTables = appCache.get('/masters/tables')?.data || appCache.get('/masters/tables');
+  const cachedZones = appCache.get('/masters/floor-zones')?.data || appCache.get('/masters/floor-zones');
+  const cachedCustomers = appCache.get('/masters/customers')?.data || appCache.get('/masters/customers');
+  const cachedSuppliers = appCache.get('/masters/suppliers')?.data || appCache.get('/masters/suppliers');
+
   // State data
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [tables, setTables] = useState<DiningTable[]>([]);
-  const [floorZones, setFloorZones] = useState<FloorZone[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => Array.isArray(cachedItems) ? cachedItems : []);
+  const [categories, setCategories] = useState<MenuCategory[]>(() => Array.isArray(cachedCats) ? cachedCats : []);
+  const [tables, setTables] = useState<DiningTable[]>(() => Array.isArray(cachedTables) ? cachedTables : []);
+  const [floorZones, setFloorZones] = useState<FloorZone[]>(() => Array.isArray(cachedZones) && cachedZones.length > 0 ? cachedZones : getStoredZones());
+  const [customers, setCustomers] = useState<Customer[]>(() => Array.isArray(cachedCustomers) ? cachedCustomers : []);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => Array.isArray(cachedSuppliers) ? cachedSuppliers : []);
   const [loading, setLoading] = useState(false);
 
   // Modals state
@@ -72,8 +81,19 @@ export const MastersPage: React.FC = () => {
     return merged;
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const hasDataForTab = () => {
+    if (activeTab === 'menu' || activeTab === 'categories') return menuItems.length > 0;
+    if (activeTab === 'tables') return tables.length > 0;
+    if (activeTab === 'zones') return floorZones.length > 0;
+    if (activeTab === 'customers') return customers.length > 0;
+    if (activeTab === 'suppliers') return suppliers.length > 0;
+    return false;
+  };
+
+  const loadData = async (showSpinner = false) => {
+    if (showSpinner || !hasDataForTab()) {
+      setLoading(true);
+    }
     try {
       if (activeTab === 'menu' && can('masters.menu.view')) {
         const [mRes, cRes]: any = await Promise.all([

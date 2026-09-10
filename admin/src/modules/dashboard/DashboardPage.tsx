@@ -17,10 +17,13 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { appCache } from '../../api/cache';
+
 export const DashboardPage: React.FC = () => {
   const { can } = usePermission();
-  const [metrics, setMetrics] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const cachedMetrics = appCache.get('/dashboard/metrics')?.data || appCache.get('/dashboard/metrics');
+  const [metrics, setMetrics] = useState<any>(() => cachedMetrics || null);
+  const [loading, setLoading] = useState(!cachedMetrics);
 
   const fetchMetrics = async () => {
     try {
