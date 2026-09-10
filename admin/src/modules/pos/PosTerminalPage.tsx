@@ -253,7 +253,10 @@ export const PosTerminalPage: React.FC = () => {
   });
 
   return (
-    <div className="vh-100 vw-100 d-flex flex-column bg-light overflow-hidden">
+    <div
+      className="vw-100 d-flex flex-column bg-light"
+      style={{ minHeight: '100dvh', height: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}
+    >
       {/* POS Top Header */}
       <header className="navbar navbar-expand navbar-dark bg-dark px-2 px-sm-3 py-2 border-bottom border-secondary d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -351,9 +354,9 @@ export const PosTerminalPage: React.FC = () => {
       </header>
 
       {/* Main Terminal Grid */}
-      <div className="d-flex flex-grow-1 overflow-hidden position-relative">
+      <div className="d-flex flex-grow-1 overflow-hidden position-relative" style={{ minHeight: 0 }}>
         {/* Left Side: Category Pills + Dishes Grid */}
-        <div className={`flex-grow-1 flex-column p-2 p-sm-3 overflow-hidden ${mobileTab === 'CART' ? 'd-none d-lg-flex' : 'd-flex'}`}>
+        <div className={`flex-grow-1 flex-column p-2 p-sm-3 overflow-hidden ${mobileTab === 'CART' ? 'd-none d-lg-flex' : 'd-flex'}`} style={{ minHeight: 0 }}>
           {/* Category filter pills & Search bar */}
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 mb-sm-3">
             <div className="scrollable-pills-container gap-1 py-1 flex-grow-1" style={{ maxWidth: 'calc(100% - 170px)' }}>
@@ -429,7 +432,7 @@ export const PosTerminalPage: React.FC = () => {
           </div>
 
           {/* Mobile Bottom Cart Floating Bar */}
-          <div className="d-lg-none mt-2 pt-2 border-top bg-white px-3 py-2 d-flex justify-content-between align-items-center shadow-sm rounded-2">
+          <div className="d-lg-none mt-auto pt-2 border-top bg-white px-3 py-2 d-flex justify-content-between align-items-center shadow-sm rounded-2 flex-shrink-0">
             <div>
               <div className="fw-bold text-dark small">
                 {(activeOrder?.items.length || 0) + cart.length} items • <span className="text-primary fw-bold">₹{grandTotal}</span>
@@ -449,8 +452,15 @@ export const PosTerminalPage: React.FC = () => {
 
         {/* Right Side: Cart / Order Ticket Sidebar */}
         <div
-          className={`bg-white border-start flex-column shadow-sm ${mobileTab === 'MENU' ? 'd-none d-lg-flex' : 'd-flex'}`}
-          style={{ width: 380, maxWidth: '100%', flexShrink: 0 }}
+          className={`bg-white border-start flex-column shadow-sm h-100 ${mobileTab === 'MENU' ? 'd-none d-lg-flex' : 'd-flex'}`}
+          style={{
+            width: 380,
+            maxWidth: '100%',
+            flexShrink: 0,
+            minHeight: 0,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch'
+          }}
         >
           <div className="p-2 p-sm-3 border-bottom bg-light d-flex justify-content-between align-items-center">
             <div className="d-flex align-items-center gap-2">
@@ -572,7 +582,10 @@ export const PosTerminalPage: React.FC = () => {
           </div>
 
           {/* Cart Summary & Action Buttons */}
-          <div className="p-3 border-top bg-light">
+          <div
+            className="p-3 border-top bg-light flex-shrink-0 mt-auto"
+            style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+          >
             <div className="d-flex justify-content-between small text-muted mb-1">
               <span>Dishes Subtotal:</span>
               <span>₹{existingSubtotal + cartSubtotal}</span>

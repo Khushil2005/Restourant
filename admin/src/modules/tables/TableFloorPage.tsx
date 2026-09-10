@@ -363,12 +363,17 @@ export const TableFloorPage: React.FC = () => {
               <div className={`card h-100 shadow-sm border-2 border-${color} position-relative`}>
                 <div className={`card-header bg-${color}-subtle border-0 d-flex justify-content-between align-items-center p-2 px-sm-3`}>
                   <span className="fw-bold text-dark font-monospace fs-6 fs-sm-5">{table.tableNumber}</span>
-                  <span className={`badge bg-${color} text-${color === 'warning' ? 'dark' : 'white'} text-uppercase`} style={{ fontSize: '0.62rem' }}>
+                  <span
+                    className={`badge bg-${color} text-${color === 'warning' ? 'dark' : 'white'} text-uppercase ${
+                      table.status === 'AVAILABLE' ? 'd-none d-md-inline-block' : ''
+                    }`}
+                    style={{ fontSize: '0.62rem' }}
+                  >
                     {table.status}
                   </span>
                 </div>
 
-                <div className="card-body p-2 p-sm-3 d-flex flex-column justify-content-between">
+                <div className="card-body p-2 p-sm-3 d-flex flex-column justify-content-between" style={{ minHeight: '130px' }}>
                   <div>
                     {/* Capacity & Floor Zone Tag - NO "Capacity:" and NO "Persons" words */}
                     <div className="d-flex flex-wrap align-items-center gap-1 mb-2">

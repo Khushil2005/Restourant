@@ -81,7 +81,10 @@ export const MainLayout: React.FC = () => {
 
 export const PosLayout: React.FC = () => {
   return (
-    <div className="vh-100 vw-100 d-flex flex-column bg-light overflow-hidden">
+    <div
+      className="vw-100 d-flex flex-column bg-light"
+      style={{ minHeight: '100dvh', height: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}
+    >
       <Outlet />
     </div>
   );
