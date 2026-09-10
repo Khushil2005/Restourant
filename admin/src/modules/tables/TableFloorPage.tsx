@@ -316,11 +316,11 @@ export const TableFloorPage: React.FC = () => {
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
           <div className="nav nav-pills gap-1 scrollable-pills-container flex-grow-1" style={{ minWidth: 0 }}>
             <button
-              className={`btn btn-sm text-nowrap d-flex align-items-center gap-1.5 ${selectedZone === 'ALL' ? 'btn-primary fw-bold shadow-sm' : 'btn-light'}`}
+              className={`btn btn-sm text-nowrap d-flex align-items-center ${selectedZone === 'ALL' ? 'btn-primary fw-bold shadow-sm' : 'btn-light'}`}
               onClick={() => setSelectedZone('ALL')}
             >
               <span>All Zones</span>
-              <span className="badge rounded-pill bg-warning text-dark fw-bold px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
+              <span className="ms-2 badge rounded-pill bg-warning text-dark fw-bold px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
                 {tables.length}
               </span>
             </button>
@@ -329,20 +329,19 @@ export const TableFloorPage: React.FC = () => {
               return (
                 <button
                   key={z.code}
-                  className={`btn btn-sm text-nowrap d-flex align-items-center gap-1.5 ${
+                  className={`btn btn-sm text-nowrap d-flex align-items-center ${
                     selectedZone === z.code ? 'btn-primary fw-bold shadow-sm' : 'btn-light'
                   }`}
                   onClick={() => setSelectedZone(z.code)}
                 >
-                  <span className="p-1 rounded-circle flex-shrink-0" style={{ backgroundColor: z.color, width: 8, height: 8 }} />
                   <span>{z.name}</span>
-                  <span className="badge rounded-pill bg-warning text-dark fw-bold px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
+                  <span className="ms-2 badge rounded-pill bg-warning text-dark fw-bold px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
                     {count}
                   </span>
                   {selectedZone === z.code && can('masters.table.delete') && floorZones.some(fz => fz.code === z.code) && (
                     <span
                       role="button"
-                      className="badge bg-danger text-white rounded-circle p-1 ms-1"
+                      className="badge bg-danger text-white rounded-circle p-1 ms-1.5"
                       title={`Delete Zone "${z.name}"`}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -391,8 +390,7 @@ export const TableFloorPage: React.FC = () => {
                         <Users size={11} className="text-secondary flex-shrink-0" />
                         <span className="fw-bold">{table.capacity}</span>
                       </span>
-                      <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-1.5 text-truncate" style={{ fontSize: '0.72rem', maxWidth: 'calc(100% - 42px)' }} title={zoneCodeMap.get(table.floorZone)?.name || table.floorZone}>
-                        <span className="p-1 rounded-circle flex-shrink-0" style={{ backgroundColor: zoneCodeMap.get(table.floorZone)?.color || '#0d6efd', width: 6, height: 6 }} />
+                      <span className="badge bg-light text-dark border d-inline-flex align-items-center py-1 px-1.5 text-truncate" style={{ fontSize: '0.72rem', maxWidth: 'calc(100% - 42px)' }} title={zoneCodeMap.get(table.floorZone)?.name || table.floorZone}>
                         <span className="text-truncate">{zoneCodeMap.get(table.floorZone)?.name || table.floorZone.replace('_', ' ')}</span>
                       </span>
                     </div>
@@ -591,17 +589,14 @@ export const TableFloorPage: React.FC = () => {
               const count = tables.filter(t => t.floorZone === zone.code).length;
               return (
                 <div key={zone.id} className="list-group-item d-flex justify-content-between align-items-center p-2.5 rounded border mb-2">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="p-1.5 rounded-circle flex-shrink-0" style={{ backgroundColor: zone.color || '#0d6efd', width: 12, height: 12 }} />
-                    <div>
-                      <div className="fw-bold text-dark d-flex align-items-center gap-2">
-                        <span>{zone.name}</span>
-                        <span className="badge bg-warning text-dark fw-bold" style={{ fontSize: '0.68rem' }}>
-                          {count} Tables
-                        </span>
-                      </div>
-                      <div className="small text-muted font-monospace">{zone.code}</div>
+                  <div>
+                    <div className="fw-bold text-dark d-flex align-items-center">
+                      <span>{zone.name}</span>
+                      <span className="ms-2 badge bg-warning text-dark fw-bold" style={{ fontSize: '0.68rem' }}>
+                        {count} Tables
+                      </span>
                     </div>
+                    <div className="small text-muted font-monospace">{zone.code}</div>
                   </div>
                   {can('masters.table.delete') && (
                     <button

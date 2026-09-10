@@ -514,7 +514,6 @@ export const MastersPage: React.FC = () => {
                 const zone = floorZones.find(z => z.code === row.floorZone);
                 return (
                   <div className="d-flex align-items-center gap-1.5">
-                    <span className="p-1 rounded-circle flex-shrink-0" style={{ backgroundColor: zone?.color || '#0d6efd', width: 8, height: 8 }} />
                     <span className="fw-medium">{zone?.name || row.floorZone.replace('_', ' ')}</span>
                     <span className="badge bg-light text-secondary border small ms-1 font-monospace">{row.floorZone}</span>
                   </div>
@@ -566,10 +565,7 @@ export const MastersPage: React.FC = () => {
             {
               header: 'Zone Name',
               accessor: (row) => (
-                <div className="d-flex align-items-center gap-2">
-                  <span className="p-1.5 rounded-circle flex-shrink-0" style={{ backgroundColor: row.color || '#0d6efd', width: 10, height: 10 }} />
-                  <span className="fw-bold text-dark">{row.name}</span>
-                </div>
+                <span className="fw-bold text-dark">{row.name}</span>
               )
             },
             {
