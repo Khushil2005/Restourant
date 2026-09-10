@@ -338,20 +338,6 @@ export const TableFloorPage: React.FC = () => {
                   <span className="ms-2 badge rounded-pill bg-warning text-dark fw-bold px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
                     {count}
                   </span>
-                  {selectedZone === z.code && can('masters.table.delete') && floorZones.some(fz => fz.code === z.code) && (
-                    <span
-                      role="button"
-                      className="badge bg-danger text-white rounded-circle p-1 ms-1.5"
-                      title={`Delete Zone "${z.name}"`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const targetZone = floorZones.find(fz => fz.code === z.code);
-                        if (targetZone) handleDeleteZone(targetZone);
-                      }}
-                    >
-                      <Trash2 size={11} />
-                    </span>
-                  )}
                 </button>
               );
             })}
