@@ -27,12 +27,31 @@ export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
           <span className="navbar-toggler-icon" />
         </button>
         <Link to="/" className="navbar-brand fw-bold d-flex align-items-center mb-0 text-white text-decoration-none me-0 me-sm-2 p-0">
-          <img
-            src="/logo.jpg"
-            alt="Bhatigal Bhanu"
-            className="brand-logo-img shadow-sm flex-shrink-0"
-            style={{ width: 34, height: 34 }}
-          />
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center bg-white shadow-sm flex-shrink-0"
+            style={{
+              width: '36px',
+              height: '36px',
+              minWidth: '36px',
+              minHeight: '36px',
+              border: '2px solid var(--brand-gold, #D48B28)',
+              padding: '1.5px',
+              aspectRatio: '1 / 1',
+              overflow: 'hidden'
+            }}
+          >
+            <img
+              src="/logo.jpg"
+              alt="Bhatigal Bhanu"
+              className="w-100 h-100 rounded-circle flex-shrink-0"
+              style={{
+                objectFit: 'cover',
+                aspectRatio: '1 / 1',
+                borderRadius: '50%',
+                display: 'block'
+              }}
+            />
+          </div>
           {/* Brand Name shown on desktop (omitted on mobile to prevent duplicate with dashboard banner and avoid 2-row wrapping) */}
           <div className="d-none d-md-flex flex-column ms-2">
             <div className="d-flex align-items-center gap-2">

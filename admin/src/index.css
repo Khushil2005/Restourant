@@ -316,20 +316,62 @@ body {
 .brand-logo-img {
   width: 42px;
   height: 42px;
-  border-radius: 50%;
-  object-fit: cover;
+  min-width: 42px;
+  min-height: 42px;
+  max-width: 42px;
+  max-height: 42px;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1 !important;
+  object-fit: cover !important;
   border: 2px solid var(--brand-gold);
   background-color: #FFFFFF;
+  flex-shrink: 0 !important;
+  display: inline-block;
+  overflow: hidden;
 }
 
 .brand-logo-lg {
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid var(--brand-gold);
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+  min-height: 58px;
+  max-width: 58px;
+  max-height: 58px;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1 !important;
+  object-fit: cover !important;
+  border: 2.5px solid var(--brand-gold);
   background-color: #FFFFFF;
   box-shadow: 0 4px 14px rgba(122, 27, 40, 0.2);
+  flex-shrink: 0 !important;
+  display: inline-block;
+  overflow: hidden;
+}
+
+/* Ensure round shape is strictly preserved on mobile screens */
+@media (max-width: 768px) {
+  .brand-logo-img {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    max-width: 36px !important;
+    max-height: 36px !important;
+    border-radius: 50% !important;
+    aspect-ratio: 1 / 1 !important;
+    flex-shrink: 0 !important;
+  }
+  .brand-logo-lg {
+    width: 54px !important;
+    height: 54px !important;
+    min-width: 54px !important;
+    min-height: 54px !important;
+    max-width: 54px !important;
+    max-height: 54px !important;
+    border-radius: 50% !important;
+    aspect-ratio: 1 / 1 !important;
+    flex-shrink: 0 !important;
+  }
 }
 
 /* Printable Invoices & Payslips */

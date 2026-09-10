@@ -30,6 +30,7 @@ const DAYS_LIST: Array<{ key: DayOfWeek; label: string; short: string }> = [
 ];
 
 import { appCache } from '../../api/cache';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const DailyMenuPage: React.FC = () => {
   const { can } = usePermission();
@@ -63,15 +64,16 @@ export const DailyMenuPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
-  const loadAllData = async (showSpinner = false) => {
+  const loadAllData = async (showSpinner = false, forceFresh = false) => {
     if (showSpinner || allMenuItems.length === 0) {
       setLoading(true);
     }
     try {
+      const config = forceFresh ? { forceFresh: true } : undefined;
       const [catRes, itemRes, dailyRes]: any = await Promise.all([
-        apiClient.get('/masters/menu-categories'),
-        apiClient.get('/masters/menu-items'),
-        apiClient.get('/daily-menu')
+        apiClient.get('/masters/menu-categories', config),
+        apiClient.get('/masters/menu-items', config),
+        apiClient.get('/daily-menu', config)
       ]);
 
       if (catRes.success) setCategories(catRes.data);
@@ -95,8 +97,14 @@ export const DailyMenuPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadAllData();
+    loadAllData(false, true);
   }, []);
+
+  useAutoRefresh(() => loadAllData(false, true), {
+    entities: ['daily-menu', 'masters', 'menu', 'categories'],
+    intervalMs: 4000,
+    refreshOnFocus: true
+  });
 
   // When selectedDay changes or dailyMenus is reloaded, sync activeItemIds and notes
   useEffect(() => {

@@ -105,12 +105,31 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
           className="d-flex align-items-center gap-2 text-decoration-none text-white"
           title="Go to Dashboard"
         >
-          <img
-            src="/logo.jpg"
-            alt="Bhatigal Bhanu"
-            className="brand-logo-img shadow-sm"
-            style={{ width: 34, height: 34 }}
-          />
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center bg-white shadow-sm flex-shrink-0"
+            style={{
+              width: '36px',
+              height: '36px',
+              minWidth: '36px',
+              minHeight: '36px',
+              border: '2px solid var(--brand-gold, #D48B28)',
+              padding: '1.5px',
+              aspectRatio: '1 / 1',
+              overflow: 'hidden'
+            }}
+          >
+            <img
+              src="/logo.jpg"
+              alt="Bhatigal Bhanu"
+              className="w-100 h-100 rounded-circle flex-shrink-0"
+              style={{
+                objectFit: 'cover',
+                aspectRatio: '1 / 1',
+                borderRadius: '50%',
+                display: 'block'
+              }}
+            />
+          </div>
           <div className="d-flex flex-column">
             <span className="fw-bold tracking-wide text-white" style={{ fontSize: '0.95rem', letterSpacing: '0.02em' }}>
               BHATIGAL BHANU

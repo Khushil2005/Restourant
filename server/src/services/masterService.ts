@@ -3,6 +3,7 @@ import { Customer, Supplier, Department, Designation, Unit, TaxMaster, MenuCateg
 import { Order } from '../models/Order';
 import { Booking } from '../models/Booking';
 import { createAuditLog } from '../middleware/auditMiddleware';
+import { SocketEvents } from '../sockets/socketManager';
 import { v4 as uuidv4 } from 'uuid';
 
 export class MasterService {
@@ -300,6 +301,8 @@ export class MasterService {
       recordId: id,
       newValue: table
     });
+    SocketEvents.emitTableUpdated(table);
+    SocketEvents.emitMasterUpdated('tables', 'CREATE', table);
     return table;
   }
 
@@ -316,15 +319,27 @@ export class MasterService {
       oldValue: old,
       newValue: updated
     });
+    if (updated) {
+      SocketEvents.emitTableUpdated(updated);
+      SocketEvents.emitMasterUpdated('tables', 'UPDATE', updated);
+    }
     return updated;
   }
 
   static async updateTableStatus(id: string, status: string) {
-    return DiningTable.findOneAndUpdate({ id }, { $set: { status } }, { new: true });
+    const updated = await DiningTable.findOneAndUpdate({ id }, { $set: { status } }, { new: true });
+    if (updated) {
+      SocketEvents.emitTableUpdated(updated);
+      SocketEvents.emitMasterUpdated('tables', 'UPDATE', updated);
+    }
+    return updated;
   }
 
   static async deleteTable(id: string) {
-    return DiningTable.deleteOne({ id });
+    const res = await DiningTable.deleteOne({ id });
+    SocketEvents.emitTableUpdated({ id, deleted: true });
+    SocketEvents.emitMasterUpdated('tables', 'DELETE', { id });
+    return res;
   }
 
   // --- FLOOR ZONES ---
@@ -371,6 +386,10 @@ export class MasterService {
       recordId: id,
       newValue: zone
     });
+
+    SocketEvents.emitMasterUpdated('floor-zones', 'CREATE', zone);
+    SocketEvents.emitTableUpdated({ floorZoneChanged: true });
+
     return zone;
   }
 
@@ -411,6 +430,10 @@ export class MasterService {
       oldValue: old,
       newValue: updated
     });
+
+    SocketEvents.emitMasterUpdated('floor-zones', 'UPDATE', updated);
+    SocketEvents.emitTableUpdated({ floorZoneChanged: true });
+
     return updated;
   }
 
@@ -440,6 +463,10 @@ export class MasterService {
       recordId: id,
       oldValue: old
     });
+
+    SocketEvents.emitMasterUpdated('floor-zones', 'DELETE', { id });
+    SocketEvents.emitTableUpdated({ floorZoneChanged: true });
+
     return { success: true };
   }
 

@@ -17,6 +17,7 @@ import {
   Users,
   X
 } from 'lucide-react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const TokenPage: React.FC = () => {
   const { can } = usePermission();
@@ -58,10 +59,13 @@ export const TokenPage: React.FC = () => {
   }, []);
 
   // Load Queue Tokens
-  const loadQueue = async () => {
-    setLoading(true);
+  const loadQueue = async (showSpinner = false, forceFresh = false) => {
+    if (showSpinner || tokens.length === 0) {
+      setLoading(true);
+    }
     try {
-      const res: any = await apiClient.get('/tokens/queue');
+      const config = forceFresh ? { forceFresh: true } : undefined;
+      const res: any = await apiClient.get('/tokens/queue', config);
       if (res.success) {
         setTokens(res.data || []);
       }
@@ -73,15 +77,26 @@ export const TokenPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadQueue();
+    loadQueue(false, true);
   }, []);
+
+  useAutoRefresh(() => loadQueue(false, true), {
+    entities: ['tokens'],
+    intervalMs: 3000,
+    refreshOnFocus: true
+  });
 
   // Real-time socket sync
   useEffect(() => {
     if (!socket) return;
-    socket.on('token.updated', () => loadQueue());
+    const refreshLive = () => loadQueue(false, true);
+    socket.on('token.updated', refreshLive);
+    socket.on('token.called', refreshLive);
+    socket.on('data.changed', refreshLive);
     return () => {
-      socket.off('token.updated');
+      socket.off('token.updated', refreshLive);
+      socket.off('token.called', refreshLive);
+      socket.off('data.changed', refreshLive);
     };
   }, [socket]);
 

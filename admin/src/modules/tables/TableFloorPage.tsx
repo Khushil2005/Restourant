@@ -7,32 +7,8 @@ import { DiningTable, FloorZone } from '../../types';
 import { Grid, Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const LOCAL_STORAGE_ZONES_KEY = 'bb_custom_floor_zones';
-
-const DEFAULT_FLOOR_ZONES: FloorZone[] = [
-  { id: 'zone_main', name: 'Main Dining Hall', code: 'MAIN_HALL', color: '#0d6efd', displayOrder: 1, isActive: true },
-  { id: 'zone_ac', name: 'AC Family Hall', code: 'AC_HALL', color: '#198754', displayOrder: 2, isActive: true },
-  { id: 'zone_rooftop', name: 'Rooftop Terrace', code: 'ROOFTOP', color: '#6f42c1', displayOrder: 3, isActive: true },
-  { id: 'zone_garden', name: 'Garden Lawn', code: 'GARDEN', color: '#20c997', displayOrder: 4, isActive: true },
-  { id: 'zone_vip', name: 'VIP Executive Lounge', code: 'VIP', color: '#ffc107', displayOrder: 5, isActive: true }
-];
-
-const getStoredZones = (): FloorZone[] => {
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_ZONES_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveStoredZones = (zones: FloorZone[]) => {
-  try {
-    localStorage.setItem(LOCAL_STORAGE_ZONES_KEY, JSON.stringify(zones));
-  } catch {}
-};
-
 import { appCache } from '../../api/cache';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const TableFloorPage: React.FC = () => {
   const { can } = usePermission();
@@ -43,11 +19,7 @@ export const TableFloorPage: React.FC = () => {
   const cachedZones = appCache.get('/masters/floor-zones')?.data || appCache.get('/masters/floor-zones');
 
   const [tables, setTables] = useState<DiningTable[]>(() => Array.isArray(cachedTables) ? cachedTables : []);
-  const [floorZones, setFloorZones] = useState<FloorZone[]>(() => {
-    if (Array.isArray(cachedZones) && cachedZones.length > 0) return cachedZones;
-    const stored = getStoredZones();
-    return stored.length > 0 ? stored : DEFAULT_FLOOR_ZONES;
-  });
+  const [floorZones, setFloorZones] = useState<FloorZone[]>(() => Array.isArray(cachedZones) ? cachedZones : []);
   const [selectedZone, setSelectedZone] = useState<string>('ALL');
   const [loading, setLoading] = useState(() => !Array.isArray(cachedTables) || cachedTables.length === 0);
 
@@ -71,37 +43,22 @@ export const TableFloorPage: React.FC = () => {
   const [transferSource, setTransferSource] = useState<DiningTable | null>(null);
   const [transferTargetId, setTransferTargetId] = useState('');
 
-  const loadFloor = async (showSpinner = false) => {
+  const loadFloor = async (showSpinner = false, forceFresh = false) => {
     if (showSpinner || tables.length === 0) {
       setLoading(true);
     }
     try {
+      const config = forceFresh ? { forceFresh: true } : undefined;
       const [layoutRes, zonesRes]: any = await Promise.all([
-        apiClient.get('/tables/floor-layout'),
-        apiClient.get('/masters/floor-zones').catch(() => null)
+        apiClient.get('/tables/floor-layout', config),
+        apiClient.get('/masters/floor-zones', config).catch(() => null)
       ]);
       if (layoutRes?.success) {
         setTables(layoutRes.data);
       }
 
-      const stored = getStoredZones();
-      if (zonesRes?.success && Array.isArray(zonesRes.data) && zonesRes.data.length > 0) {
-        const backendZones: FloorZone[] = zonesRes.data;
-        const merged = [...backendZones];
-        stored.forEach(sz => {
-          if (!merged.some(bz => bz.code === sz.code || bz.id === sz.id)) {
-            merged.push(sz);
-          }
-        });
-        setFloorZones(merged);
-      } else {
-        const merged = [...DEFAULT_FLOOR_ZONES];
-        stored.forEach(sz => {
-          if (!merged.some(dz => dz.code === sz.code || dz.id === sz.id)) {
-            merged.push(sz);
-          }
-        });
-        setFloorZones(merged);
+      if (zonesRes?.success && Array.isArray(zonesRes.data)) {
+        setFloorZones(zonesRes.data);
       }
     } catch (err) {
       console.error('Failed to load table floor:', err);
@@ -111,25 +68,37 @@ export const TableFloorPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadFloor();
+    loadFloor(false, true);
   }, []);
+
+  // Universal Auto-Refresh: Tab focus, global mutation events, and 3s periodic background sync
+  useAutoRefresh(() => loadFloor(false, true), {
+    entities: ['tables', 'floor-zones', 'orders', 'billing', 'masters', 'bookings'],
+    intervalMs: 3000,
+    refreshOnFocus: true
+  });
 
   useEffect(() => {
     if (!socket) return;
-    socket.on('table.updated', () => loadFloor());
-    socket.on('order.created', () => loadFloor());
-    socket.on('order.updated', () => loadFloor());
+    const refreshLive = () => loadFloor(false, true);
+    socket.on('table.updated', refreshLive);
+    socket.on('order.created', refreshLive);
+    socket.on('order.updated', refreshLive);
+    socket.on('data.changed', refreshLive);
+    socket.on('master.updated', refreshLive);
     return () => {
-      socket.off('table.updated');
-      socket.off('order.created');
-      socket.off('order.updated');
+      socket.off('table.updated', refreshLive);
+      socket.off('order.created', refreshLive);
+      socket.off('order.updated', refreshLive);
+      socket.off('data.changed', refreshLive);
+      socket.off('master.updated', refreshLive);
     };
   }, [socket]);
 
   const handleStatusChange = async (tableId: string, status: string) => {
     try {
       await apiClient.patch(`/tables/${tableId}/status`, { status });
-      loadFloor();
+      loadFloor(false, true);
     } catch (err: any) {
       alert(err.message);
     }
@@ -144,7 +113,7 @@ export const TableFloorPage: React.FC = () => {
       });
       setTransferSource(null);
       setTransferTargetId('');
-      loadFloor();
+      loadFloor(false, true);
     } catch (err: any) {
       alert(err.message || 'Transfer failed.');
     }
@@ -165,35 +134,10 @@ export const TableFloorPage: React.FC = () => {
         isActive: true
       };
 
-      let createdZone: FloorZone | null = null;
-      try {
-        const res: any = await apiClient.post('/masters/floor-zones', payload);
-        if (res?.success && res.data) {
-          createdZone = res.data;
-        }
-      } catch (apiErr: any) {
-        // If API route is 404 or backend unavailable, use local persistent storage
-        console.warn('Backend /masters/floor-zones returned error, saving locally:', apiErr.message);
+      const res: any = await apiClient.post('/masters/floor-zones', payload);
+      if (!res?.success) {
+        throw new Error(res?.message || 'Failed to create floor zone.');
       }
-
-      if (!createdZone) {
-        createdZone = {
-          id: `zone_local_${Date.now()}`,
-          ...payload
-        };
-      }
-
-      // Persist in localStorage so it stays across page refreshes
-      const currentStored = getStoredZones();
-      const updatedStored = [...currentStored.filter(z => z.code !== createdZone!.code), createdZone];
-      saveStoredZones(updatedStored);
-
-      // Instantly update state
-      setFloorZones(prev => {
-        const exists = prev.some(z => z.code === createdZone!.code);
-        if (exists) return prev.map(z => z.code === createdZone!.code ? createdZone! : z);
-        return [...prev, createdZone!];
-      });
 
       setIsAddZoneModalOpen(false);
       setNewZoneData({
@@ -205,7 +149,7 @@ export const TableFloorPage: React.FC = () => {
         isActive: true
       });
       setSelectedZone(code);
-      await loadFloor();
+      await loadFloor(false, true);
     } catch (err: any) {
       alert(err.message || 'Failed to create floor zone.');
     } finally {
@@ -223,23 +167,14 @@ export const TableFloorPage: React.FC = () => {
 
     setDeletingZoneId(targetId || zone.code);
     try {
-      if (targetId && !targetId.startsWith('zone_local_')) {
-        await apiClient.delete(`/masters/floor-zones/${targetId}`).catch((err) => {
-          console.warn('Backend delete floor zone error:', err.message);
-        });
+      if (targetId) {
+        await apiClient.delete(`/masters/floor-zones/${targetId}`);
       }
-
-      // Remove from localStorage
-      const currentStored = getStoredZones();
-      saveStoredZones(currentStored.filter(z => z.code !== zone.code && z.id !== targetId));
-
-      // Remove from state
-      setFloorZones(prev => prev.filter(z => z.code !== zone.code && z.id !== targetId));
 
       if (selectedZone === zone.code) {
         setSelectedZone('ALL');
       }
-      await loadFloor();
+      await loadFloor(false, true);
     } catch (err: any) {
       alert(err.message || 'Failed to delete floor zone.');
     } finally {

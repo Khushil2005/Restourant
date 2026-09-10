@@ -1,31 +1,16 @@
 import axios from 'axios';
 import { appCache } from './cache';
 
-// Centralized API Base URL resolution
-const getApiBaseUrl = (): string => {
-  const envApiUrl = import.meta.env.VITE_API_URL;
-  if (envApiUrl && typeof envApiUrl === 'string' && envApiUrl.trim()) {
-    return envApiUrl.trim().replace(/\/+$/, '');
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    forceFresh?: boolean;
+    noCache?: boolean;
   }
+}
 
-  // If accessed from a local development host (localhost, 127.0.0.1, LAN IP), use local proxy
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host.endsWith('.local')) {
-      return '/api';
-    }
-  }
-
-  // Production fallback: ALWAYS communicate with Render backend
-  if (import.meta.env.PROD) {
-    return 'https://restourant-eoj3.onrender.com/api';
-  }
-
-  // Local development default (routes through Vite dev proxy)
-  return '/api';
-};
-
-export const API_BASE_URL = getApiBaseUrl();
+// Live Production Backend URL - Single source of truth across all networks & devices
+export const LIVE_BACKEND_URL = 'https://restourant-eoj3.onrender.com';
+export const API_BASE_URL = `${LIVE_BACKEND_URL}/api`;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -45,37 +30,84 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Handle expired tokens and global API errors + Cache Auto-Management
+// Active socket reference for broadcasting client mutations
+let activeSocketInstance: any = null;
+export const setApiSocket = (s: any) => {
+  activeSocketInstance = s;
+};
+
+// Handle expired tokens and global API errors + Cache Auto-Management & Real-Time Sync
 apiClient.interceptors.response.use(
   (response) => {
     const data = response.data;
     const method = response.config?.method?.toLowerCase();
-    const url = response.config?.url;
+    const url = response.config?.url || '';
 
     // Cache successful GET responses
     if (method === 'get' && url && data && data.success !== false) {
       appCache.set(url, data);
     }
 
-    // Auto-invalidate caches on write mutations (POST, PUT, PATCH, DELETE)
+    // Auto-invalidate caches and broadcast on write mutations (POST, PUT, PATCH, DELETE)
     if (method && ['post', 'put', 'patch', 'delete'].includes(method) && url) {
-      if (url.includes('/orders') || url.includes('/tables') || url.includes('/billing')) {
+      let entity = 'general';
+
+      if (url.includes('/orders') || url.includes('/tables') || url.includes('/billing') || url.includes('/kot')) {
+        entity = url.includes('/tables') ? 'tables' : 'orders';
         appCache.invalidateMatching('/tables/floor-layout');
+        appCache.invalidateMatching('/masters/tables');
         appCache.invalidateMatching('/orders');
         appCache.invalidateMatching('/dashboard');
         appCache.invalidateMatching('/kitchen');
+        appCache.invalidateMatching('/billing');
       } else if (url.includes('/daily-menu')) {
+        entity = 'daily-menu';
         appCache.invalidateMatching('/daily-menu');
         appCache.invalidateMatching('/pos');
+      } else if (url.includes('/masters/floor-zones')) {
+        entity = 'floor-zones';
+        appCache.invalidateMatching('/masters/floor-zones');
+        appCache.invalidateMatching('/tables/floor-layout');
+      } else if (url.includes('/masters/tables')) {
+        entity = 'tables';
+        appCache.invalidateMatching('/masters/tables');
+        appCache.invalidateMatching('/tables/floor-layout');
       } else if (url.includes('/masters')) {
+        entity = 'masters';
         appCache.invalidateMatching('/masters');
         appCache.invalidateMatching('/tables/floor-layout');
         appCache.invalidateMatching('/daily-menu');
       } else if (url.includes('/tokens')) {
+        entity = 'tokens';
         appCache.invalidateMatching('/tokens');
         appCache.invalidateMatching('/dashboard');
+      } else if (url.includes('/bookings')) {
+        entity = 'bookings';
+        appCache.invalidateMatching('/bookings');
+        appCache.invalidateMatching('/tables/floor-layout');
       } else {
         appCache.invalidateMatching(url);
+      }
+
+      // 1. Dispatch locally to update all open components in the current tab/window immediately
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('erp:data-changed', {
+          detail: { entity, url, method, data }
+        }));
+      }
+
+      // 2. Broadcast via WebSocket to all other connected tabs and devices
+      try {
+        if (activeSocketInstance && activeSocketInstance.connected) {
+          activeSocketInstance.emit('broadcast_change', {
+            entity,
+            action: method,
+            url,
+            timestamp: Date.now()
+          });
+        }
+      } catch (err) {
+        console.warn('[Socket Broadcast] Failed to broadcast mutation:', err);
       }
     }
 
@@ -122,9 +154,13 @@ apiClient.interceptors.response.use(
 const rawGet = apiClient.get.bind(apiClient);
 
 (apiClient as any).get = async function (url: string, config?: any) {
-  // If explicitly requested fresh or noCache, bypass cache
+  // If explicitly requested fresh or noCache, bypass cache and update store
   if (config?.noCache || config?.forceFresh) {
-    return rawGet(url, config);
+    const fresh: any = await rawGet(url, config);
+    if (fresh && fresh.success !== false) {
+      appCache.set(url, fresh);
+    }
+    return fresh;
   }
 
   const cached = appCache.get(url);

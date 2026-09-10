@@ -3,11 +3,8 @@ import { logger } from '../utils/logger';
 
 export function getAllowedOrigins(): string[] {
   const origins = [
+    'https://restourant-ten.vercel.app',
     process.env.FRONTEND_URL,
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
   ].filter(Boolean) as string[];
 
   if (process.env.ALLOWED_ORIGINS) {
@@ -29,10 +26,10 @@ export function isOriginAllowed(origin: string | undefined): boolean {
     return true;
   }
 
-  // Allow all Vercel deployments (production, branch previews, pr previews)
+  // Allow live Vercel production deployment
   try {
     const parsed = new URL(origin);
-    if (parsed.hostname.endsWith('.vercel.app')) {
+    if (parsed.hostname === 'restourant-ten.vercel.app' || parsed.hostname.endsWith('.vercel.app')) {
       return true;
     }
   } catch {

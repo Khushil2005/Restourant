@@ -21,6 +21,7 @@ import {
   AlertCircle,
   CheckCircle2
 } from 'lucide-react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const BookingPage: React.FC = () => {
   const { can } = usePermission();
@@ -98,14 +99,17 @@ export const BookingPage: React.FC = () => {
   }, [selectedDate]);
 
   // Load Bookings for active month / all
-  const loadBookings = async () => {
-    setLoading(true);
+  const loadBookings = async (showSpinner = false, forceFresh = false) => {
+    if (showSpinner || bookings.length === 0) {
+      setLoading(true);
+    }
     try {
       const year = currentDate.getFullYear();
       const month = String(currentDate.getMonth() + 1).padStart(2, '0');
       const monthStr = `${year}-${month}`;
+      const config = forceFresh ? { forceFresh: true } : undefined;
       
-      const res: any = await apiClient.get(`/bookings?month=${monthStr}`);
+      const res: any = await apiClient.get(`/bookings?month=${monthStr}`, config);
       if (res.success) {
         setBookings(res.data || []);
       }
@@ -117,15 +121,24 @@ export const BookingPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadBookings();
+    loadBookings(false, true);
   }, [currentDate]);
+
+  useAutoRefresh(() => loadBookings(false, true), {
+    entities: ['bookings'],
+    intervalMs: 4000,
+    refreshOnFocus: true
+  });
 
   // Socket listener for real-time updates
   useEffect(() => {
     if (!socket) return;
-    socket.on('booking.updated', () => loadBookings());
+    const refreshLive = () => loadBookings(false, true);
+    socket.on('booking.updated', refreshLive);
+    socket.on('data.changed', refreshLive);
     return () => {
-      socket.off('booking.updated');
+      socket.off('booking.updated', refreshLive);
+      socket.off('data.changed', refreshLive);
     };
   }, [socket]);
 

@@ -18,6 +18,7 @@ import {
 import { Link } from 'react-router-dom';
 
 import { appCache } from '../../api/cache';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const DashboardPage: React.FC = () => {
   const { can } = usePermission();
@@ -25,9 +26,10 @@ export const DashboardPage: React.FC = () => {
   const [metrics, setMetrics] = useState<any>(() => cachedMetrics || null);
   const [loading, setLoading] = useState(!cachedMetrics);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (forceFresh = false) => {
     try {
-      const res: any = await apiClient.get('/dashboard/metrics');
+      const config = forceFresh ? { forceFresh: true } : undefined;
+      const res: any = await apiClient.get('/dashboard/metrics', config);
       if (res.success && res.data) {
         setMetrics(res.data);
       }
@@ -39,10 +41,13 @@ export const DashboardPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000); // 30s auto-refresh
-    return () => clearInterval(interval);
+    fetchMetrics(true);
   }, []);
+
+  useAutoRefresh(() => fetchMetrics(true), {
+    intervalMs: 5000,
+    refreshOnFocus: true
+  });
 
   if (loading) {
     return (
@@ -59,12 +64,32 @@ export const DashboardPage: React.FC = () => {
       <div className="card border-0 shadow-sm overflow-hidden" style={{ background: 'linear-gradient(135deg, #7A1B28 0%, #56101B 100%)' }}>
         <div className="card-body p-3 p-sm-4 text-white d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
           <div className="d-flex align-items-center gap-2 gap-sm-3">
-            <img
-              src="/logo.jpg"
-              alt="ભાતીગળ ભાણું"
-              className="brand-logo-lg border border-2 border-warning"
-              style={{ width: 56, height: 56 }}
-            />
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center bg-white shadow-sm flex-shrink-0"
+              style={{
+                width: '56px',
+                height: '56px',
+                minWidth: '56px',
+                minHeight: '56px',
+                border: '2.5px solid var(--brand-gold, #D48B28)',
+                padding: '2px',
+                boxShadow: '0 3px 10px rgba(0, 0, 0, 0.25)',
+                aspectRatio: '1 / 1',
+                overflow: 'hidden'
+              }}
+            >
+              <img
+                src="/logo.jpg"
+                alt="ભાતીગળ ભાણું"
+                className="w-100 h-100 rounded-circle flex-shrink-0"
+                style={{
+                  objectFit: 'cover',
+                  aspectRatio: '1 / 1',
+                  borderRadius: '50%',
+                  display: 'block'
+                }}
+              />
+            </div>
             <div>
               <div className="d-flex align-items-center gap-2">
                 <h3 className="fw-bold mb-0 text-white fs-4 fs-sm-3">Bhatigal Bhanu</h3>

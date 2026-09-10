@@ -5,6 +5,7 @@ import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate
 import { Bill } from '../../types';
 import { Receipt, CreditCard, Percent, Scissors, Printer, Eye } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const BillingPage: React.FC = () => {
   const { can } = usePermission();
@@ -25,10 +26,13 @@ export const BillingPage: React.FC = () => {
   const [splitBillItem, setSplitBillItem] = useState<Bill | null>(null);
   const [splitCount, setSplitCount] = useState<number>(2);
 
-  const loadBills = async () => {
-    setLoading(true);
+  const loadBills = async (showSpinner = false, forceFresh = false) => {
+    if (showSpinner || bills.length === 0) {
+      setLoading(true);
+    }
     try {
-      const res: any = await apiClient.get('/billing');
+      const config = forceFresh ? { forceFresh: true } : undefined;
+      const res: any = await apiClient.get('/billing', config);
       if (res.success) {
         setBills(res.data);
         const qBillId = searchParams.get('billId');
@@ -45,8 +49,14 @@ export const BillingPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadBills();
+    loadBills(false, true);
   }, []);
+
+  useAutoRefresh(() => loadBills(false, true), {
+    entities: ['billing', 'orders', 'payment', 'tables'],
+    intervalMs: 4000,
+    refreshOnFocus: true
+  });
 
   const handleApplyDiscount = async () => {
     if (!discountBill || !discountCode) return;

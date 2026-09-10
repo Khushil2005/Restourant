@@ -48,6 +48,14 @@ export function initSocketIO(httpServer: HTTPServer): SocketIOServer {
       socket.leave(room);
     });
 
+    // Universal change broadcaster: Relays mutation to all other connected clients
+    socket.on('broadcast_change', (changeData: any) => {
+      socket.broadcast.emit('data.changed', changeData);
+      if (changeData?.entity === 'tables' || changeData?.entity === 'floor-zones') {
+        socket.broadcast.emit('table.updated', changeData);
+      }
+    });
+
     socket.on('disconnect', () => {
       logger.info(`Socket disconnected: ${socket.id}`);
     });
@@ -90,6 +98,10 @@ export const SocketEvents = {
   },
   emitTableUpdated: (table: any) => {
     ioInstance?.emit('table.updated', table);
+  },
+  emitMasterUpdated: (entity: string, action: string, data: any) => {
+    ioInstance?.emit('master.updated', { entity, action, data });
+    ioInstance?.emit('data.changed', { entity, action, data });
   },
   emitPaymentCompleted: (payment: any) => {
     ioInstance?.emit('payment.completed', payment);

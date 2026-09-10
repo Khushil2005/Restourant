@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { useSocket } from '../../context/SocketContext';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { QueueToken } from '../../types';
 import { Bell, Utensils, Users } from 'lucide-react';
 
@@ -9,9 +10,10 @@ export const PublicTokenDisplay: React.FC = () => {
   const [tokens, setTokens] = useState<QueueToken[]>([]);
   const [calledToken, setCalledToken] = useState<QueueToken | null>(null);
 
-  const loadQueue = async () => {
+  const loadQueue = async (forceFresh = false) => {
     try {
-      const res: any = await apiClient.get('/tokens/queue');
+      const config = forceFresh ? { forceFresh: true } : undefined;
+      const res: any = await apiClient.get('/tokens/queue', config);
       if (res.success) {
         setTokens(res.data);
       }
@@ -21,25 +23,31 @@ export const PublicTokenDisplay: React.FC = () => {
   };
 
   useEffect(() => {
-    loadQueue();
+    loadQueue(true);
   }, []);
+
+  useAutoRefresh(() => loadQueue(true), {
+    entities: ['tokens'],
+    intervalMs: 3000,
+    refreshOnFocus: true
+  });
 
   useEffect(() => {
     if (!socket) return;
+    const refreshLive = () => loadQueue(true);
 
     socket.on('token.called', (token: QueueToken) => {
       setCalledToken(token);
-      loadQueue();
-      // Optional sound beep could be triggered here
+      loadQueue(true);
     });
 
-    socket.on('token.updated', () => {
-      loadQueue();
-    });
+    socket.on('token.updated', refreshLive);
+    socket.on('data.changed', refreshLive);
 
     return () => {
       socket.off('token.called');
-      socket.off('token.updated');
+      socket.off('token.updated', refreshLive);
+      socket.off('data.changed', refreshLive);
     };
   }, [socket]);
 

@@ -5,32 +5,8 @@ import { DataTable, Modal, ConfirmDialog, PermissionGate } from '../../component
 import { Customer, Supplier, MenuCategory, MenuItem, DiningTable, FloorZone } from '../../types';
 import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Eye } from 'lucide-react';
 
-const LOCAL_STORAGE_ZONES_KEY = 'bb_custom_floor_zones';
-
-const DEFAULT_FLOOR_ZONES: FloorZone[] = [
-  { id: 'zone_main', name: 'Main Dining Hall', code: 'MAIN_HALL', color: '#0d6efd', displayOrder: 1, isActive: true },
-  { id: 'zone_ac', name: 'AC Family Hall', code: 'AC_HALL', color: '#198754', displayOrder: 2, isActive: true },
-  { id: 'zone_rooftop', name: 'Rooftop Terrace', code: 'ROOFTOP', color: '#6f42c1', displayOrder: 3, isActive: true },
-  { id: 'zone_garden', name: 'Garden Lawn', code: 'GARDEN', color: '#20c997', displayOrder: 4, isActive: true },
-  { id: 'zone_vip', name: 'VIP Executive Lounge', code: 'VIP', color: '#ffc107', displayOrder: 5, isActive: true }
-];
-
-const getStoredZones = (): FloorZone[] => {
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_ZONES_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveStoredZones = (zones: FloorZone[]) => {
-  try {
-    localStorage.setItem(LOCAL_STORAGE_ZONES_KEY, JSON.stringify(zones));
-  } catch {}
-};
-
 import { appCache } from '../../api/cache';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const MastersPage: React.FC = () => {
   const { can } = usePermission();
@@ -47,7 +23,7 @@ export const MastersPage: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => Array.isArray(cachedItems) ? cachedItems : []);
   const [categories, setCategories] = useState<MenuCategory[]>(() => Array.isArray(cachedCats) ? cachedCats : []);
   const [tables, setTables] = useState<DiningTable[]>(() => Array.isArray(cachedTables) ? cachedTables : []);
-  const [floorZones, setFloorZones] = useState<FloorZone[]>(() => Array.isArray(cachedZones) && cachedZones.length > 0 ? cachedZones : getStoredZones());
+  const [floorZones, setFloorZones] = useState<FloorZone[]>(() => Array.isArray(cachedZones) ? cachedZones : []);
   const [customers, setCustomers] = useState<Customer[]>(() => Array.isArray(cachedCustomers) ? cachedCustomers : []);
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => Array.isArray(cachedSuppliers) ? cachedSuppliers : []);
   const [loading, setLoading] = useState(false);
@@ -61,26 +37,6 @@ export const MastersPage: React.FC = () => {
   // Confirm delete
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string; type: string } | null>(null);
 
-  const resolveZones = (backendZones: any) => {
-    const stored = getStoredZones();
-    if (backendZones?.success && Array.isArray(backendZones.data) && backendZones.data.length > 0) {
-      const merged = [...backendZones.data];
-      stored.forEach(sz => {
-        if (!merged.some(bz => bz.code === sz.code || bz.id === sz.id)) {
-          merged.push(sz);
-        }
-      });
-      return merged;
-    }
-    const merged = [...DEFAULT_FLOOR_ZONES];
-    stored.forEach(sz => {
-      if (!merged.some(dz => dz.code === sz.code || dz.id === sz.id)) {
-        merged.push(sz);
-      }
-    });
-    return merged;
-  };
-
   const hasDataForTab = () => {
     if (activeTab === 'menu' || activeTab === 'categories') return menuItems.length > 0;
     if (activeTab === 'tables') return tables.length > 0;
@@ -90,38 +46,39 @@ export const MastersPage: React.FC = () => {
     return false;
   };
 
-  const loadData = async (showSpinner = false) => {
+  const loadData = async (showSpinner = false, forceFresh = false) => {
     if (showSpinner || !hasDataForTab()) {
       setLoading(true);
     }
     try {
+      const config = forceFresh ? { forceFresh: true } : undefined;
       if (activeTab === 'menu' && can('masters.menu.view')) {
         const [mRes, cRes]: any = await Promise.all([
-          apiClient.get('/masters/menu-items').catch(() => null),
-          apiClient.get('/masters/menu-categories').catch(() => null)
+          apiClient.get('/masters/menu-items', config).catch(() => null),
+          apiClient.get('/masters/menu-categories', config).catch(() => null)
         ]);
         if (mRes?.success) setMenuItems(mRes.data);
         if (cRes?.success) setCategories(cRes.data);
       } else if (activeTab === 'tables' && can('masters.table.view')) {
         const [tRes, zRes]: any = await Promise.all([
-          apiClient.get('/masters/tables').catch(() => null),
-          apiClient.get('/masters/floor-zones').catch(() => null)
+          apiClient.get('/masters/tables', config).catch(() => null),
+          apiClient.get('/masters/floor-zones', config).catch(() => null)
         ]);
         if (tRes?.success) setTables(tRes.data);
-        setFloorZones(resolveZones(zRes));
+        if (zRes?.success && Array.isArray(zRes.data)) setFloorZones(zRes.data);
       } else if (activeTab === 'zones' && can('masters.table.view')) {
-        const res: any = await apiClient.get('/masters/floor-zones').catch(() => null);
-        setFloorZones(resolveZones(res));
+        const res: any = await apiClient.get('/masters/floor-zones', config).catch(() => null);
+        if (res?.success && Array.isArray(res.data)) setFloorZones(res.data);
       } else if (activeTab === 'customers' && can('masters.customer.view')) {
-        const res: any = await apiClient.get('/masters/customers').catch(() => null);
+        const res: any = await apiClient.get('/masters/customers', config).catch(() => null);
         if (res?.success) setCustomers(res.data);
       } else if (activeTab === 'suppliers' && can('masters.supplier.view')) {
-        const res: any = await apiClient.get('/masters/suppliers').catch(() => null);
+        const res: any = await apiClient.get('/masters/suppliers', config).catch(() => null);
         if (res?.success) setSuppliers(res.data);
       } else if (activeTab === 'categories' && can('masters.menu.view')) {
         const [cRes, mRes]: any = await Promise.all([
-          apiClient.get('/masters/menu-categories').catch(() => null),
-          apiClient.get('/masters/menu-items').catch(() => null)
+          apiClient.get('/masters/menu-categories', config).catch(() => null),
+          apiClient.get('/masters/menu-items', config).catch(() => null)
         ]);
         if (cRes?.success) setCategories(cRes.data);
         if (mRes?.success) setMenuItems(mRes.data);
@@ -132,6 +89,13 @@ export const MastersPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Universal Auto-Refresh: Real-time sync across devices and tabs
+  useAutoRefresh(() => loadData(false, true), {
+    entities: ['masters', 'tables', 'floor-zones', 'menu', 'categories', 'customers', 'suppliers'],
+    intervalMs: 3000,
+    refreshOnFocus: true
+  });
 
   useEffect(() => {
     const tabs: Array<{ id: 'menu' | 'categories' | 'tables' | 'zones' | 'customers' | 'suppliers'; perms: string[] }> = [
@@ -152,7 +116,7 @@ export const MastersPage: React.FC = () => {
   }, [can]);
 
   useEffect(() => {
-    loadData();
+    loadData(false, true);
   }, [activeTab]);
 
   const handleOpenModal = (type: string, item: any = null) => {
@@ -206,26 +170,11 @@ export const MastersPage: React.FC = () => {
           isActive: formData.isActive !== false
         };
 
-        let saved = false;
-        try {
-          if (editingId && !editingId.startsWith('zone_local_')) {
-            await apiClient.put(`/masters/floor-zones/${editingId}`, payload);
-          } else {
-            const res: any = await apiClient.post('/masters/floor-zones', payload);
-            if (res?.success) saved = true;
-          }
-        } catch (apiErr: any) {
-          console.warn('Backend floor-zone API error, saving locally:', apiErr.message);
+        if (editingId) {
+          await apiClient.put(`/masters/floor-zones/${editingId}`, payload);
+        } else {
+          await apiClient.post('/masters/floor-zones', payload);
         }
-
-        // Always sync with localStorage
-        const zoneObj: FloorZone = {
-          id: editingId || `zone_local_${Date.now()}`,
-          ...payload
-        };
-        const currentStored = getStoredZones();
-        const updated = [...currentStored.filter(z => z.id !== zoneObj.id && z.code !== zoneObj.code), zoneObj];
-        saveStoredZones(updated);
       } else if (modalType === 'customer') {
         if (editingId) {
           await apiClient.put(`/masters/customers/${editingId}`, formData);
@@ -253,7 +202,7 @@ export const MastersPage: React.FC = () => {
         }
       }
       setIsModalOpen(false);
-      loadData();
+      loadData(false, true);
     } catch (err: any) {
       alert(err.message || 'Failed to save record.');
     }
@@ -265,21 +214,13 @@ export const MastersPage: React.FC = () => {
       if (deleteConfirm.type === 'menuItem') await apiClient.delete(`/masters/menu-items/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'table') await apiClient.delete(`/masters/tables/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'zone') {
-        try {
-          if (!deleteConfirm.id.startsWith('zone_local_')) {
-            await apiClient.delete(`/masters/floor-zones/${deleteConfirm.id}`);
-          }
-        } catch (err: any) {
-          console.warn('Backend delete floor zone error:', err.message);
-        }
-        const currentStored = getStoredZones();
-        saveStoredZones(currentStored.filter(z => z.id !== deleteConfirm.id));
+        await apiClient.delete(`/masters/floor-zones/${deleteConfirm.id}`);
       }
       else if (deleteConfirm.type === 'customer') await apiClient.delete(`/masters/customers/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'supplier') await apiClient.delete(`/masters/suppliers/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'category') await apiClient.delete(`/masters/menu-categories/${deleteConfirm.id}`);
       setDeleteConfirm(null);
-      loadData();
+      loadData(false, true);
     } catch (err: any) {
       alert(err.message || 'Failed to delete record.');
     }

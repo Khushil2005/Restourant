@@ -29,6 +29,7 @@ interface CartItem {
 }
 
 import { appCache } from '../../api/cache';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const PosTerminalPage: React.FC = () => {
   const { can } = usePermission();
@@ -67,13 +68,14 @@ export const PosTerminalPage: React.FC = () => {
   const [dailyMenuNotes, setDailyMenuNotes] = useState<string>(() => cachedDaily?.notes || '');
   const [mobileTab, setMobileTab] = useState<'MENU' | 'CART'>('MENU');
 
-  const loadData = async () => {
+  const loadData = async (forceFresh = false) => {
     try {
+      const config = forceFresh ? { forceFresh: true } : undefined;
       const [cRes, mRes, tRes, dRes]: any = await Promise.all([
-        apiClient.get('/masters/menu-categories'),
-        apiClient.get('/masters/menu-items'),
-        apiClient.get('/masters/tables'),
-        apiClient.get('/daily-menu/today')
+        apiClient.get('/masters/menu-categories', config),
+        apiClient.get('/masters/menu-items', config),
+        apiClient.get('/masters/tables', config),
+        apiClient.get('/daily-menu/today', config)
       ]);
       if (cRes.success) setCategories(cRes.data);
       if (mRes.success) setMenuItems(mRes.data);
@@ -86,7 +88,7 @@ export const PosTerminalPage: React.FC = () => {
       }
 
       if (activeOrderId) {
-        const oRes: any = await apiClient.get(`/orders/${activeOrderId}`);
+        const oRes: any = await apiClient.get(`/orders/${activeOrderId}`, config);
         if (oRes.success && oRes.data) {
           const ord = oRes.data;
           setActiveOrder(ord);
@@ -104,7 +106,7 @@ export const PosTerminalPage: React.FC = () => {
 
   const handleSwitchDailyDay = async (day: string) => {
     try {
-      const res: any = await apiClient.get(`/daily-menu/today?day=${day}`);
+      const res: any = await apiClient.get(`/daily-menu/today?day=${day}`, { forceFresh: true });
       if (res.success && res.data) {
         setActiveDailyDay(day);
         setDailyMenuItemIds(res.data.itemIds || []);
@@ -116,8 +118,14 @@ export const PosTerminalPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, [activeOrderId]);
+
+  useAutoRefresh(() => loadData(true), {
+    entities: ['tables', 'menu', 'categories', 'daily-menu', 'masters', 'orders'],
+    intervalMs: 4000,
+    refreshOnFocus: true
+  });
 
   const handleAddToCart = (item: MenuItem) => {
     if (!item.isAvailable) {
@@ -273,8 +281,8 @@ export const PosTerminalPage: React.FC = () => {
           <img
             src="/logo.jpg"
             alt="Bhatigal Bhanu"
-            className="brand-logo-img shadow-sm"
-            style={{ width: 32, height: 32 }}
+            className="brand-logo-img shadow-sm flex-shrink-0"
+            style={{ width: 32, height: 32, minWidth: 32, minHeight: 32 }}
           />
           <span className="fw-bold text-white fs-6 fs-sm-5 text-truncate" style={{ maxWidth: 160 }}>Bhatigal Bhanu</span>
           <span className="badge bg-gold text-dark fw-bold font-monospace d-none d-sm-inline">TOUCH POS</span>

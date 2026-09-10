@@ -81,13 +81,11 @@ npm run dev
 
 ---
 
-## 🌐 Application URL Directory
-
-- **Unified Restaurant ERP Portal**: [http://localhost:3000](http://localhost:3000)
-- **Touch POS Terminal (Fullscreen)**: [http://localhost:3000/pos](http://localhost:3000/pos)
-- **Kitchen Display System (KDS)**: [http://localhost:3000/kitchen](http://localhost:3000/kitchen)
-- **Public Queue TV Display**: [http://localhost:3000/display/tokens](http://localhost:3000/display/tokens)
-- **Super Admin Governance**: [http://localhost:3000/admin](http://localhost:3000/admin)
-- **Backend REST API Gateway**: [http://localhost:5000/api](http://localhost:5000/api)
-- **Backend Health Check**: [http://localhost:5000/health](http://localhost:5000/health)
+## 🌐 Live Application URL Directory
+- **Live Production Portal (Vercel)**: [https://restourant-ten.vercel.app/](https://restourant-ten.vercel.app/)
+- **Touch POS Terminal**: [https://restourant-ten.vercel.app/pos](https://restourant-ten.vercel.app/pos)
+- **Kitchen Display System (KDS)**: [https://restourant-ten.vercel.app/kitchen](https://restourant-ten.vercel.app/kitchen)
+- **Public Queue TV Display**: [https://restourant-ten.vercel.app/display/tokens](https://restourant-ten.vercel.app/display/tokens)
+- **Super Admin Governance**: [https://restourant-ten.vercel.app/admin](https://restourant-ten.vercel.app/admin)
+- **Live Backend REST API**: [https://restourant-eoj3.onrender.com/api](https://restourant-eoj3.onrender.com/api)
 
