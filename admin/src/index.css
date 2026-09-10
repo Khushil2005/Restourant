@@ -451,6 +451,21 @@ html, body, #root {
   display: none;
 }
 
+/* Horizontal scrollable badge for zone names without ugly scrollbar */
+.scrollable-zone-tag {
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollable-zone-tag::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Mobile Sidebar Backdrop */
 .sidebar-backdrop {
   position: fixed;

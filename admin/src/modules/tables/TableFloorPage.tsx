@@ -371,13 +371,23 @@ export const TableFloorPage: React.FC = () => {
                 <div className="card-body p-2 p-sm-3 d-flex flex-column justify-content-between" style={{ minHeight: '130px' }}>
                   <div>
                     {/* Capacity & Floor Zone Tag - NO "Capacity:" and NO "Persons" words */}
-                    <div className="d-flex flex-wrap align-items-center gap-1 mb-2">
-                      <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-1.5" style={{ fontSize: '0.72rem' }} title={`Seats ${table.capacity}`}>
+                    <div className="d-flex align-items-center gap-1 mb-2 overflow-hidden" style={{ maxWidth: '100%' }}>
+                      <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-1.5 flex-shrink-0" style={{ fontSize: '0.72rem' }} title={`Seats ${table.capacity}`}>
                         <Users size={11} className="text-secondary flex-shrink-0" />
                         <span className="fw-bold">{table.capacity}</span>
                       </span>
-                      <span className="badge bg-light text-dark border d-inline-flex align-items-center py-1 px-1.5 text-truncate" style={{ fontSize: '0.72rem', maxWidth: 'calc(100% - 42px)' }} title={zoneCodeMap.get(table.floorZone)?.name || table.floorZone}>
-                        <span className="text-truncate">{zoneCodeMap.get(table.floorZone)?.name || table.floorZone.replace('_', ' ')}</span>
+                      <span
+                        className="badge bg-light text-dark border py-1 px-2 scrollable-zone-tag flex-grow-1"
+                        style={{
+                          fontSize: '0.72rem',
+                          maxWidth: 'calc(100% - 38px)',
+                          overflowX: 'auto',
+                          whiteSpace: 'nowrap',
+                          WebkitOverflowScrolling: 'touch'
+                        }}
+                        title={zoneCodeMap.get(table.floorZone)?.name || table.floorZone}
+                      >
+                        {zoneCodeMap.get(table.floorZone)?.name || table.floorZone.replace('_', ' ')}
                       </span>
                     </div>
 
