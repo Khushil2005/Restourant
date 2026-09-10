@@ -28,6 +28,52 @@ export class BillingService {
     const order = await Order.findOne({ id: orderId });
     if (!order) throw { statusCode: 404, message: 'Order not found.' };
 
+    // Prevent duplicate bill generation for the same order or table
+    let existingBill = await Bill.findOne({
+      orderId: order.id,
+      status: { $in: ['UNPAID', 'PARTIALLY_PAID', 'PAID'] }
+    });
+
+    if (!existingBill && order.tableId) {
+      existingBill = await Bill.findOne({
+        tableId: order.tableId,
+        status: { $in: ['UNPAID', 'PARTIALLY_PAID'] }
+      });
+    }
+
+    if (existingBill) {
+      // If existing bill is UNPAID, sync items and calculations in case order was updated
+      if (existingBill.status === 'UNPAID') {
+        const items: IBillItem[] = order.items.map(it => ({
+          id: uuidv4(),
+          itemName: it.itemName,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          totalPrice: it.totalPrice,
+          taxRate: 5.0,
+          taxAmount: it.taxAmount
+        }));
+        existingBill.items = items;
+        existingBill.subtotal = order.totalAmount;
+        existingBill.taxAmount = order.taxAmount;
+        if (order.tableNumber && !existingBill.tableNumber) existingBill.tableNumber = order.tableNumber;
+        if (order.tableId && !existingBill.tableId) existingBill.tableId = order.tableId;
+
+        const discountAmount = options.discountAmount !== undefined ? options.discountAmount : existingBill.discountAmount;
+        const serviceCharge = options.serviceCharge !== undefined ? options.serviceCharge : (existingBill.serviceCharge || Math.round(existingBill.subtotal * 0.05));
+        const rawTotal = existingBill.subtotal + existingBill.taxAmount + serviceCharge - discountAmount;
+        existingBill.discountAmount = discountAmount;
+        existingBill.serviceCharge = serviceCharge;
+        existingBill.totalPayable = Math.round(rawTotal);
+        existingBill.roundOff = Number((existingBill.totalPayable - rawTotal).toFixed(2));
+        existingBill.balanceAmount = Math.max(0, existingBill.totalPayable - (existingBill.paidAmount || 0));
+        await existingBill.save();
+        SocketEvents.emitOrderUpdated(order);
+        return existingBill;
+      }
+      return existingBill;
+    }
+
     const count = await Bill.countDocuments();
     const billNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
     const id = `bill_${uuidv4().slice(0, 8)}`;
@@ -54,6 +100,8 @@ export class BillingService {
       id,
       billNumber,
       orderId: order.id,
+      tableId: order.tableId,
+      tableNumber: order.tableNumber,
       customerId: order.customerId,
       customerName: order.customerName,
       items,

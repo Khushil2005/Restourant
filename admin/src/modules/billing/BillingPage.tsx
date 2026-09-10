@@ -3,9 +3,10 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
 import { Bill } from '../../types';
-import { Receipt, CreditCard, Percent, Scissors, Printer, Eye } from 'lucide-react';
+import { Receipt, CreditCard, Percent, Scissors, Printer, Eye, Download } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { generateInvoicePdf, printInvoiceReceipt } from '../../utils/invoicePdf';
 
 export const BillingPage: React.FC = () => {
   const { can } = usePermission();
@@ -88,7 +89,11 @@ export const BillingPage: React.FC = () => {
   };
 
   const handlePrintReceipt = () => {
-    window.print();
+    if (selectedBill) {
+      printInvoiceReceipt(selectedBill);
+    } else {
+      window.print();
+    }
   };
 
   return (
@@ -105,6 +110,7 @@ export const BillingPage: React.FC = () => {
       <DataTable<Bill>
         columns={[
           { header: 'Bill No', accessor: 'billNumber', width: 140 },
+          { header: 'Table', accessor: (row) => row.tableNumber || '-' },
           { header: 'Customer', accessor: (row) => row.customerName || 'Walk-in Guest' },
           { header: 'Subtotal', accessor: (row) => `₹${row.subtotal}` },
           { header: 'Discount', accessor: (row) => row.discountAmount > 0 ? <span className="text-danger">-₹{row.discountAmount}</span> : '₹0' },
@@ -134,6 +140,22 @@ export const BillingPage: React.FC = () => {
               title="View Invoice"
             >
               <Eye size={14} /> View
+            </button>
+
+            <button
+              className="btn btn-outline-danger btn-sm p-1 px-2 d-flex align-items-center gap-1"
+              onClick={() => generateInvoicePdf(row)}
+              title="Download Tax Invoice PDF"
+            >
+              <Download size={14} /> PDF
+            </button>
+
+            <button
+              className="btn btn-outline-secondary btn-sm p-1 px-2 d-flex align-items-center gap-1"
+              onClick={() => printInvoiceReceipt(row)}
+              title="Print Receipt"
+            >
+              <Printer size={14} /> Print
             </button>
 
             {row.status === 'UNPAID' && can('discount.apply') && (
@@ -200,6 +222,7 @@ export const BillingPage: React.FC = () => {
             <div className="d-flex justify-content-between small text-secondary mb-3">
               <div>
                 <div><strong>Invoice No:</strong> {selectedBill.billNumber}</div>
+                <div><strong>Table No:</strong> <span className="badge bg-light text-dark border ms-1">{selectedBill.tableNumber || 'Dine-In'}</span></div>
                 <div><strong>Customer:</strong> {selectedBill.customerName || 'Walk-in Guest'}</div>
               </div>
               <div className="text-end">
@@ -270,7 +293,10 @@ export const BillingPage: React.FC = () => {
 
             <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top no-print">
               <button className="btn btn-secondary btn-sm" onClick={() => setSelectedBill(null)}>Close</button>
-              <button className="btn btn-primary btn-sm d-flex align-items-center gap-1" onClick={handlePrintReceipt}>
+              <button className="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={() => generateInvoicePdf(selectedBill)}>
+                <Download size={16} /> Download PDF
+              </button>
+              <button className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={handlePrintReceipt}>
                 <Printer size={16} /> Print Receipt
               </button>
             </div>

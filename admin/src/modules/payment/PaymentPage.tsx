@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
-import { Payment } from '../../types';
-import { CreditCard, CheckCircle2, RotateCcw, DollarSign, QrCode, Banknote } from 'lucide-react';
+import { Payment, Bill } from '../../types';
+import { CreditCard, CheckCircle2, RotateCcw, DollarSign, QrCode, Banknote, Download, Printer } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { generateInvoicePdf, printInvoiceReceipt } from '../../utils/invoicePdf';
 
 export const PaymentPage: React.FC = () => {
   const { can } = usePermission();
@@ -20,6 +21,9 @@ export const PaymentPage: React.FC = () => {
   const [payAmount, setPayAmount] = useState<number>(Number(searchParams.get('amount') || 0));
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CARD' | 'SPLIT'>('CASH');
   const [referenceNumber, setReferenceNumber] = useState<string>('');
+  
+  // Completed Bill for Auto-Print & Download
+  const [completedBill, setCompletedBill] = useState<Bill | null>(null);
   
   // Cash Tendered calculator
   const [tenderedCash, setTenderedCash] = useState<number>(0);
@@ -78,13 +82,52 @@ export const PaymentPage: React.FC = () => {
       });
 
       if (res.success) {
-        alert('Payment collected successfully! Order completed, recipe inventory reduced, and Journal Entry posted to Accounts.');
         setIsPayModalOpen(false);
-        navigate('/payments');
         loadPayments();
+
+        // Retrieve full bill details to trigger auto-print and enable PDF download
+        let settledBill: Bill | null = res.data?.bill || null;
+        if (payBillId) {
+          try {
+            const bRes: any = await apiClient.get(`/billing/${payBillId}`);
+            if (bRes?.success && bRes.data) {
+              settledBill = bRes.data;
+            }
+          } catch {}
+        }
+
+        if (settledBill) {
+          setCompletedBill(settledBill);
+          // Auto-print receipt on payment completion as requested
+          printInvoiceReceipt(settledBill);
+        } else {
+          alert('Payment collected successfully! Order completed and Journal Entry posted.');
+        }
       }
     } catch (err: any) {
       alert(err.message || 'Payment processing failed.');
+    }
+  };
+
+  const handleDownloadBillPdf = async (billId: string) => {
+    try {
+      const res: any = await apiClient.get(`/billing/${billId}`);
+      if (res?.success && res.data) {
+        generateInvoicePdf(res.data);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to download bill PDF.');
+    }
+  };
+
+  const handlePrintBillReceipt = async (billId: string) => {
+    try {
+      const res: any = await apiClient.get(`/billing/${billId}`);
+      if (res?.success && res.data) {
+        printInvoiceReceipt(res.data);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to print receipt.');
     }
   };
 
@@ -149,6 +192,25 @@ export const PaymentPage: React.FC = () => {
         searchPlaceholder="Search payment # or reference..."
         actions={(row) => (
           <>
+            {row.billId && (
+              <>
+                <button
+                  className="btn btn-outline-danger btn-sm p-1 px-2 d-flex align-items-center gap-1"
+                  onClick={() => handleDownloadBillPdf(row.billId)}
+                  title="Download Invoice PDF"
+                >
+                  <Download size={14} /> PDF
+                </button>
+                <button
+                  className="btn btn-outline-secondary btn-sm p-1 px-2 d-flex align-items-center gap-1"
+                  onClick={() => handlePrintBillReceipt(row.billId)}
+                  title="Print Invoice Receipt"
+                >
+                  <Printer size={14} /> Print
+                </button>
+              </>
+            )}
+
             {!row.isReconciled && can('payment.reconcile') && (
               <button
                 className="btn btn-outline-success btn-sm p-1 px-2 d-flex align-items-center gap-1"
@@ -267,6 +329,61 @@ export const PaymentPage: React.FC = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* PAYMENT SETTLED & INVOICE READY MODAL */}
+      <Modal
+        isOpen={!!completedBill}
+        onClose={() => setCompletedBill(null)}
+        title="Payment Settled Successfully"
+      >
+        {completedBill && (
+          <div className="d-flex flex-column align-items-center text-center p-3 gap-3">
+            <div className="rounded-circle bg-success-subtle text-success p-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: 68, height: 68 }}>
+              <CheckCircle2 size={38} />
+            </div>
+
+            <div>
+              <h5 className="fw-bold text-dark mb-1">Payment Received & Billed</h5>
+              <p className="text-muted small mb-0">
+                Invoice <strong>{completedBill.billNumber}</strong> is marked as <strong>PAID</strong>. Auto-print has been triggered.
+              </p>
+              {completedBill.tableNumber && (
+                <div className="mt-2">
+                  <span className="badge bg-primary px-3 py-1">Table: {completedBill.tableNumber}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-light rounded border w-100 d-flex justify-content-between align-items-center">
+              <span className="text-secondary fw-medium">Total Paid Amount:</span>
+              <span className="fw-bold text-success fs-5">₹{completedBill.totalPayable}</span>
+            </div>
+
+            <div className="d-flex flex-wrap justify-content-center gap-2 w-100 pt-3 border-top">
+              <button
+                className="btn btn-danger d-flex align-items-center gap-2 px-3 shadow-sm"
+                onClick={() => generateInvoicePdf(completedBill)}
+              >
+                <Download size={16} /> Download PDF
+              </button>
+
+              <button
+                className="btn btn-primary d-flex align-items-center gap-2 px-3 shadow-sm"
+                onClick={() => printInvoiceReceipt(completedBill)}
+              >
+                <Printer size={16} /> Print Receipt Again
+              </button>
+
+              <button
+                className="btn btn-secondary px-3"
+                onClick={() => setCompletedBill(null)}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

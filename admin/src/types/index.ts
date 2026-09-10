@@ -223,6 +223,8 @@ export interface Bill {
   id: string;
   billNumber: string;
   orderId: string;
+  tableId?: string;
+  tableNumber?: string;
   customerName?: string;
   items: Array<{
     id: string;

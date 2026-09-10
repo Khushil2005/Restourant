@@ -24,6 +24,8 @@ export interface IBill extends Document {
   id: string;
   billNumber: string;
   orderId: string;
+  tableId?: string;
+  tableNumber?: string;
   customerId?: string;
   customerName?: string;
   items: IBillItem[];
@@ -47,6 +49,8 @@ const BillSchema = new Schema<IBill>({
   id: { type: String, required: true, unique: true },
   billNumber: { type: String, required: true, unique: true, index: true },
   orderId: { type: String, required: true, ref: 'Order' },
+  tableId: { type: String, ref: 'DiningTable' },
+  tableNumber: { type: String },
   customerId: { type: String, ref: 'Customer' },
   customerName: { type: String },
   items: [BillItemSchema],
