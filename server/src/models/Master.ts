@@ -172,12 +172,35 @@ const MenuItemSchema = new Schema<IMenuItem>({
   displayOrder: { type: Number, default: 0 }
 }, { timestamps: true });
 
+// Floor Zone
+export interface IFloorZone extends Document {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  color?: string;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const FloorZoneSchema = new Schema<IFloorZone>({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  code: { type: String, required: true, unique: true },
+  description: { type: String },
+  color: { type: String, default: '#6366f1' },
+  displayOrder: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true });
+
 // Dining Table
 export interface IDiningTable extends Document {
   id: string;
   tableNumber: string;
   capacity: number;
-  floorZone: 'MAIN_HALL' | 'AC_HALL' | 'ROOFTOP' | 'GARDEN' | 'VIP';
+  floorZone: string;
   status: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'BLOCKED' | 'MAINTENANCE';
   currentOrderId?: string;
   isActive: boolean;
@@ -202,4 +225,6 @@ export const Unit = model<IUnit>('Unit', UnitSchema);
 export const TaxMaster = model<ITaxMaster>('TaxMaster', TaxMasterSchema);
 export const MenuCategory = model<IMenuCategory>('MenuCategory', MenuCategorySchema);
 export const MenuItem = model<IMenuItem>('MenuItem', MenuItemSchema);
+export const FloorZone = model<IFloorZone>('FloorZone', FloorZoneSchema);
 export const DiningTable = model<IDiningTable>('DiningTable', DiningTableSchema);
+

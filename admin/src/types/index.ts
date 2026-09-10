@@ -98,11 +98,24 @@ export interface DailyMenuConfig {
   activeOverrideDay?: DayOfWeek;
 }
 
+export interface FloorZone {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  color?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+  tableCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface DiningTable {
   id: string;
   tableNumber: string;
   capacity: number;
-  floorZone: 'MAIN_HALL' | 'AC_HALL' | 'ROOFTOP' | 'GARDEN' | 'VIP';
+  floorZone: string;
   status: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'BLOCKED' | 'MAINTENANCE';
   currentOrderId?: string;
   activeOrder?: {

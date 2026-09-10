@@ -140,7 +140,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
         </span>
       </div>
 
-      <nav className="nav flex-column p-2 gap-1 sidebar-nav" style={{ flexWrap: 'nowrap' }}>
+      <nav className="nav flex-column p-2 gap-1 sidebar-nav" style={{ flexWrap: 'nowrap', paddingBottom: '3.5rem' }}>
         {visibleItems.map(item => (
           <NavLink
             key={item.path}
@@ -168,6 +168,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
             )}
           </NavLink>
         ))}
+        {/* Bottom breathing space so the last module doesn't touch the bottom edge */}
+        <div style={{ height: '3.5rem', flexShrink: 0 }} aria-hidden="true" />
       </nav>
     </aside>
   );

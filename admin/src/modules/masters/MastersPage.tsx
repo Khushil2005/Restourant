@@ -2,17 +2,43 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal, ConfirmDialog, PermissionGate } from '../../components/PermissionGate';
-import { Customer, Supplier, MenuCategory, MenuItem, DiningTable } from '../../types';
+import { Customer, Supplier, MenuCategory, MenuItem, DiningTable, FloorZone } from '../../types';
 import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Eye } from 'lucide-react';
+
+const LOCAL_STORAGE_ZONES_KEY = 'bb_custom_floor_zones';
+
+const DEFAULT_FLOOR_ZONES: FloorZone[] = [
+  { id: 'zone_main', name: 'Main Dining Hall', code: 'MAIN_HALL', color: '#0d6efd', displayOrder: 1, isActive: true },
+  { id: 'zone_ac', name: 'AC Family Hall', code: 'AC_HALL', color: '#198754', displayOrder: 2, isActive: true },
+  { id: 'zone_rooftop', name: 'Rooftop Terrace', code: 'ROOFTOP', color: '#6f42c1', displayOrder: 3, isActive: true },
+  { id: 'zone_garden', name: 'Garden Lawn', code: 'GARDEN', color: '#20c997', displayOrder: 4, isActive: true },
+  { id: 'zone_vip', name: 'VIP Executive Lounge', code: 'VIP', color: '#ffc107', displayOrder: 5, isActive: true }
+];
+
+const getStoredZones = (): FloorZone[] => {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_ZONES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveStoredZones = (zones: FloorZone[]) => {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_ZONES_KEY, JSON.stringify(zones));
+  } catch {}
+};
 
 export const MastersPage: React.FC = () => {
   const { can } = usePermission();
-  const [activeTab, setActiveTab] = useState<'menu' | 'tables' | 'customers' | 'suppliers' | 'categories'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'tables' | 'zones' | 'customers' | 'suppliers' | 'categories'>('menu');
 
   // State data
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [tables, setTables] = useState<DiningTable[]>([]);
+  const [floorZones, setFloorZones] = useState<FloorZone[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,6 +52,26 @@ export const MastersPage: React.FC = () => {
   // Confirm delete
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string; type: string } | null>(null);
 
+  const resolveZones = (backendZones: any) => {
+    const stored = getStoredZones();
+    if (backendZones?.success && Array.isArray(backendZones.data) && backendZones.data.length > 0) {
+      const merged = [...backendZones.data];
+      stored.forEach(sz => {
+        if (!merged.some(bz => bz.code === sz.code || bz.id === sz.id)) {
+          merged.push(sz);
+        }
+      });
+      return merged;
+    }
+    const merged = [...DEFAULT_FLOOR_ZONES];
+    stored.forEach(sz => {
+      if (!merged.some(dz => dz.code === sz.code || dz.id === sz.id)) {
+        merged.push(sz);
+      }
+    });
+    return merged;
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -37,8 +83,15 @@ export const MastersPage: React.FC = () => {
         if (mRes?.success) setMenuItems(mRes.data);
         if (cRes?.success) setCategories(cRes.data);
       } else if (activeTab === 'tables' && can('masters.table.view')) {
-        const res: any = await apiClient.get('/masters/tables').catch(() => null);
-        if (res?.success) setTables(res.data);
+        const [tRes, zRes]: any = await Promise.all([
+          apiClient.get('/masters/tables').catch(() => null),
+          apiClient.get('/masters/floor-zones').catch(() => null)
+        ]);
+        if (tRes?.success) setTables(tRes.data);
+        setFloorZones(resolveZones(zRes));
+      } else if (activeTab === 'zones' && can('masters.table.view')) {
+        const res: any = await apiClient.get('/masters/floor-zones').catch(() => null);
+        setFloorZones(resolveZones(res));
       } else if (activeTab === 'customers' && can('masters.customer.view')) {
         const res: any = await apiClient.get('/masters/customers').catch(() => null);
         if (res?.success) setCustomers(res.data);
@@ -61,10 +114,11 @@ export const MastersPage: React.FC = () => {
   };
 
   useEffect(() => {
-    const tabs: Array<{ id: 'menu' | 'categories' | 'tables' | 'customers' | 'suppliers'; perms: string[] }> = [
+    const tabs: Array<{ id: 'menu' | 'categories' | 'tables' | 'zones' | 'customers' | 'suppliers'; perms: string[] }> = [
       { id: 'menu', perms: ['masters.menu.view'] },
       { id: 'categories', perms: ['masters.menu.view'] },
       { id: 'tables', perms: ['masters.table.view'] },
+      { id: 'zones', perms: ['masters.table.view'] },
       { id: 'customers', perms: ['masters.customer.view'] },
       { id: 'suppliers', perms: ['masters.supplier.view'] }
     ];
@@ -91,7 +145,10 @@ export const MastersPage: React.FC = () => {
       if (type === 'menuItem') {
         setFormData({ name: '', code: '', price: 0, categoryId: categories[0]?.id || '', isVeg: true, isAvailable: true, preparationTimeMinutes: 15 });
       } else if (type === 'table') {
-        setFormData({ tableNumber: '', capacity: 4, floorZone: 'MAIN_HALL', status: 'AVAILABLE' });
+        setFormData({ tableNumber: '', capacity: 4, floorZone: floorZones[0]?.code || 'MAIN_HALL', status: 'AVAILABLE' });
+      } else if (type === 'zone') {
+        const nextOrder = floorZones.length > 0 ? Math.max(...floorZones.map(z => Number(z.displayOrder) || 0)) + 1 : 1;
+        setFormData({ name: '', code: '', description: '', color: '#0d6efd', displayOrder: nextOrder, isActive: true });
       } else if (type === 'customer') {
         setFormData({ name: '', phone: '', email: '', address: '', city: '' });
       } else if (type === 'supplier') {
@@ -119,6 +176,36 @@ export const MastersPage: React.FC = () => {
         } else {
           await apiClient.post('/masters/tables', formData);
         }
+      } else if (modalType === 'zone') {
+        const payload = {
+          name: formData.name?.trim(),
+          code: formData.code?.trim() || formData.name?.trim().toUpperCase().replace(/[^A-Z0-9]/g, '_'),
+          description: formData.description?.trim() || '',
+          color: formData.color || '#0d6efd',
+          displayOrder: Number(formData.displayOrder || 1),
+          isActive: formData.isActive !== false
+        };
+
+        let saved = false;
+        try {
+          if (editingId && !editingId.startsWith('zone_local_')) {
+            await apiClient.put(`/masters/floor-zones/${editingId}`, payload);
+          } else {
+            const res: any = await apiClient.post('/masters/floor-zones', payload);
+            if (res?.success) saved = true;
+          }
+        } catch (apiErr: any) {
+          console.warn('Backend floor-zone API error, saving locally:', apiErr.message);
+        }
+
+        // Always sync with localStorage
+        const zoneObj: FloorZone = {
+          id: editingId || `zone_local_${Date.now()}`,
+          ...payload
+        };
+        const currentStored = getStoredZones();
+        const updated = [...currentStored.filter(z => z.id !== zoneObj.id && z.code !== zoneObj.code), zoneObj];
+        saveStoredZones(updated);
       } else if (modalType === 'customer') {
         if (editingId) {
           await apiClient.put(`/masters/customers/${editingId}`, formData);
@@ -157,6 +244,17 @@ export const MastersPage: React.FC = () => {
     try {
       if (deleteConfirm.type === 'menuItem') await apiClient.delete(`/masters/menu-items/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'table') await apiClient.delete(`/masters/tables/${deleteConfirm.id}`);
+      else if (deleteConfirm.type === 'zone') {
+        try {
+          if (!deleteConfirm.id.startsWith('zone_local_')) {
+            await apiClient.delete(`/masters/floor-zones/${deleteConfirm.id}`);
+          }
+        } catch (err: any) {
+          console.warn('Backend delete floor zone error:', err.message);
+        }
+        const currentStored = getStoredZones();
+        saveStoredZones(currentStored.filter(z => z.id !== deleteConfirm.id));
+      }
       else if (deleteConfirm.type === 'customer') await apiClient.delete(`/masters/customers/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'supplier') await apiClient.delete(`/masters/suppliers/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'category') await apiClient.delete(`/masters/menu-categories/${deleteConfirm.id}`);
@@ -193,6 +291,11 @@ export const MastersPage: React.FC = () => {
           {activeTab === 'tables' && can('masters.table.create') && (
             <button className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={() => handleOpenModal('table')}>
               <Plus size={16} /> Add Dining Table
+            </button>
+          )}
+          {activeTab === 'zones' && can('masters.table.create') && (
+            <button className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={() => handleOpenModal('zone')}>
+              <Plus size={16} /> Add Floor Zone
             </button>
           )}
           {activeTab === 'customers' && can('masters.customer.create') && (
@@ -233,6 +336,13 @@ export const MastersPage: React.FC = () => {
           <li className="nav-item">
             <button className={`nav-link btn-sm text-nowrap ${activeTab === 'tables' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('tables')}>
               Dining Tables ({tables.length})
+            </button>
+          </li>
+        )}
+        {can('masters.table.view') && (
+          <li className="nav-item">
+            <button className={`nav-link btn-sm text-nowrap ${activeTab === 'zones' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('zones')}>
+              Floor Zones ({floorZones.length})
             </button>
           </li>
         )}
@@ -389,8 +499,28 @@ export const MastersPage: React.FC = () => {
         <DataTable<DiningTable>
           columns={[
             { header: 'Table No', accessor: 'tableNumber', width: 120 },
-            { header: 'Capacity', accessor: (row) => `${row.capacity} Persons` },
-            { header: 'Floor Zone', accessor: 'floorZone' },
+            { 
+              header: 'Capacity', 
+              accessor: (row) => (
+                <span className="badge bg-light text-dark border font-monospace">
+                  {row.capacity}
+                </span>
+              ),
+              width: 100
+            },
+            {
+              header: 'Floor Zone',
+              accessor: (row) => {
+                const zone = floorZones.find(z => z.code === row.floorZone);
+                return (
+                  <div className="d-flex align-items-center gap-1.5">
+                    <span className="p-1 rounded-circle flex-shrink-0" style={{ backgroundColor: zone?.color || '#0d6efd', width: 8, height: 8 }} />
+                    <span className="fw-medium">{zone?.name || row.floorZone.replace('_', ' ')}</span>
+                    <span className="badge bg-light text-secondary border small ms-1 font-monospace">{row.floorZone}</span>
+                  </div>
+                );
+              }
+            },
             {
               header: 'Status',
               accessor: (row) => (
@@ -413,6 +543,74 @@ export const MastersPage: React.FC = () => {
               )}
               {can('masters.table.delete') && (
                 <button className="btn btn-outline-danger btn-sm p-1" onClick={() => setDeleteConfirm({ isOpen: true, id: row.id, type: 'table' })} title="Delete">
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </>
+          )}
+        />
+      )}
+
+      {activeTab === 'zones' && (
+        <DataTable<FloorZone>
+          columns={[
+            {
+              header: 'Zone Code',
+              accessor: (row) => (
+                <span className="badge bg-light text-dark border font-monospace fw-bold">
+                  {row.code}
+                </span>
+              ),
+              width: 140
+            },
+            {
+              header: 'Zone Name',
+              accessor: (row) => (
+                <div className="d-flex align-items-center gap-2">
+                  <span className="p-1.5 rounded-circle flex-shrink-0" style={{ backgroundColor: row.color || '#0d6efd', width: 10, height: 10 }} />
+                  <span className="fw-bold text-dark">{row.name}</span>
+                </div>
+              )
+            },
+            {
+              header: 'Description',
+              accessor: (row) => row.description || '-'
+            },
+            {
+              header: 'Display Order',
+              accessor: (row) => <span className="badge bg-secondary-subtle text-secondary border">{row.displayOrder || 0}</span>,
+              width: 120
+            },
+            {
+              header: 'Assigned Tables',
+              accessor: (row) => (
+                <span className="badge bg-warning text-dark fw-bold">
+                  {row.tableCount || 0} Tables
+                </span>
+              ),
+              width: 130
+            },
+            {
+              header: 'Status',
+              accessor: (row) => (
+                <span className={`badge bg-${row.isActive !== false ? 'success' : 'secondary'}`}>
+                  {row.isActive !== false ? 'Active' : 'Inactive'}
+                </span>
+              ),
+              width: 100
+            }
+          ]}
+          data={floorZones}
+          searchPlaceholder="Search floor zones..."
+          actions={(row) => (
+            <>
+              {can('masters.table.edit') && (
+                <button className="btn btn-outline-primary btn-sm p-1" onClick={() => handleOpenModal('zone', row)} title="Edit Zone">
+                  <Edit2 size={14} />
+                </button>
+              )}
+              {can('masters.table.delete') && (
+                <button className="btn btn-outline-danger btn-sm p-1" onClick={() => setDeleteConfirm({ isOpen: true, id: row.id, type: 'zone' })} title="Delete Zone">
                   <Trash2 size={14} />
                 </button>
               )}
@@ -481,7 +679,14 @@ export const MastersPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`${editingId ? 'Edit' : 'Create'} ${modalType.toUpperCase()}`}
+        title={`${editingId ? 'Edit' : 'Create'} ${
+          modalType === 'zone' ? 'Floor Zone' :
+          modalType === 'menuItem' ? 'Menu Dish' :
+          modalType === 'category' ? 'Menu Category' :
+          modalType === 'table' ? 'Dining Table' :
+          modalType === 'customer' ? 'Customer' :
+          modalType === 'supplier' ? 'Supplier' : modalType.toUpperCase()
+        }`}
       >
         <form onSubmit={handleSave} className="d-flex flex-column gap-3">
           {modalType === 'menuItem' && (
@@ -518,21 +723,45 @@ export const MastersPage: React.FC = () => {
           {modalType === 'table' && (
             <div className="row g-2">
               <div className="col-6">
-                <label className="form-label small fw-bold">Table Number</label>
+                <label className="form-label small fw-bold">Table Number *</label>
                 <input type="text" className="form-control form-control-sm" placeholder="e.g. T-10" required value={formData.tableNumber || ''} onChange={e => setFormData({ ...formData, tableNumber: e.target.value })} />
               </div>
               <div className="col-6">
-                <label className="form-label small fw-bold">Capacity (Persons)</label>
-                <input type="number" className="form-control form-control-sm" required value={formData.capacity || 4} onChange={e => setFormData({ ...formData, capacity: Number(e.target.value) })} />
+                <label className="form-label small fw-bold">Capacity (Persons) *</label>
+                <input type="number" className="form-control form-control-sm" required min={1} value={formData.capacity || 4} onChange={e => setFormData({ ...formData, capacity: Number(e.target.value) })} />
               </div>
               <div className="col-12 mt-2">
-                <label className="form-label small fw-bold">Floor Zone</label>
-                <select className="form-select form-select-sm" value={formData.floorZone || 'MAIN_HALL'} onChange={e => setFormData({ ...formData, floorZone: e.target.value })}>
-                  <option value="MAIN_HALL">Main Dining Hall</option>
-                  <option value="AC_HALL">AC Family Section</option>
-                  <option value="ROOFTOP">Rooftop Lounge</option>
-                  <option value="GARDEN">Garden Patio</option>
-                  <option value="VIP">VIP Private Room</option>
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <label className="form-label small fw-bold mb-0">Floor Zone *</label>
+                  <button
+                    type="button"
+                    className="btn btn-link btn-sm p-0 text-decoration-none small text-primary fw-semibold"
+                    onClick={() => handleOpenModal('zone')}
+                  >
+                    + Add New Zone
+                  </button>
+                </div>
+                <select
+                  className="form-select form-select-sm"
+                  required
+                  value={formData.floorZone || (floorZones[0]?.code || 'MAIN_HALL')}
+                  onChange={e => setFormData({ ...formData, floorZone: e.target.value })}
+                >
+                  {floorZones.length > 0 ? (
+                    floorZones.map(z => (
+                      <option key={z.id || z.code} value={z.code}>
+                        {z.name} ({z.code})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="MAIN_HALL">Main Dining Hall (MAIN_HALL)</option>
+                      <option value="AC_HALL">AC Family Section (AC_HALL)</option>
+                      <option value="ROOFTOP">Rooftop Lounge (ROOFTOP)</option>
+                      <option value="GARDEN">Garden Patio (GARDEN)</option>
+                      <option value="VIP">VIP Private Room (VIP)</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>
@@ -632,6 +861,85 @@ export const MastersPage: React.FC = () => {
                 />
               </div>
             </>
+          )}
+
+          {modalType === 'zone' && (
+            <div className="row g-2">
+              <div className="col-12 col-sm-8">
+                <label className="form-label small fw-bold">Zone Name <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="form-control form-control-sm"
+                  placeholder="e.g. First Floor Balcony, Poolside Patio"
+                  required
+                  value={formData.name || ''}
+                  onChange={e => {
+                    const name = e.target.value;
+                    const autoCode = !editingId ? name.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 20) : formData.code;
+                    setFormData({ ...formData, name, code: autoCode });
+                  }}
+                />
+              </div>
+              <div className="col-12 col-sm-4">
+                <label className="form-label small fw-bold">Zone Code <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  className="form-control form-control-sm text-uppercase font-monospace"
+                  placeholder="e.g. BALCONY"
+                  required
+                  value={formData.code || ''}
+                  onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '') })}
+                />
+              </div>
+              <div className="col-12">
+                <label className="form-label small fw-bold">Description</label>
+                <input
+                  type="text"
+                  className="form-control form-control-sm"
+                  placeholder="e.g. Open-air balcony seating with scenic garden view"
+                  value={formData.description || ''}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+              <div className="col-6">
+                <label className="form-label small fw-bold">Display Order</label>
+                <input
+                  type="number"
+                  className="form-control form-control-sm"
+                  value={formData.displayOrder ?? 1}
+                  min={1}
+                  onChange={e => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
+                />
+              </div>
+              <div className="col-6">
+                <label className="form-label small fw-bold">Color Theme Indicator</label>
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="color"
+                    className="form-control form-control-sm form-control-color"
+                    value={formData.color || '#0d6efd'}
+                    onChange={e => setFormData({ ...formData, color: e.target.value })}
+                    title="Choose zone color indicator"
+                    style={{ width: '45px', height: '31px' }}
+                  />
+                  <span className="small font-monospace text-muted">{formData.color || '#0d6efd'}</span>
+                </div>
+              </div>
+              <div className="col-12 mt-2">
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="zoneActiveSwitch"
+                    checked={formData.isActive !== false}
+                    onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
+                  />
+                  <label className="form-check-label small fw-bold" htmlFor="zoneActiveSwitch">
+                    Active Zone (Available for dining table assignments)
+                  </label>
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">

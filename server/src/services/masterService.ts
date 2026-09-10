@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Customer, Supplier, Department, Designation, Unit, TaxMaster, MenuCategory, MenuItem, DiningTable } from '../models/Master';
+import { Customer, Supplier, Department, Designation, Unit, TaxMaster, MenuCategory, MenuItem, DiningTable, FloorZone } from '../models/Master';
 import { Order } from '../models/Order';
 import { Booking } from '../models/Booking';
 import { createAuditLog } from '../middleware/auditMiddleware';
@@ -325,6 +325,122 @@ export class MasterService {
 
   static async deleteTable(id: string) {
     return DiningTable.deleteOne({ id });
+  }
+
+  // --- FLOOR ZONES ---
+  static async getFloorZones() {
+    const zones = await FloorZone.find().sort({ displayOrder: 1, name: 1 });
+    const tables = await DiningTable.find();
+    return zones.map(z => {
+      const count = tables.filter(t => t.floorZone === z.code).length;
+      return {
+        ...z.toObject(),
+        tableCount: count
+      };
+    });
+  }
+
+  static async createFloorZone(data: any, userId?: string, username?: string) {
+    let code = (data.code || data.name || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    if (!code) {
+      code = `ZONE_${uuidv4().slice(0, 6).toUpperCase()}`;
+    }
+    const existing = await FloorZone.findOne({ $or: [{ code }, { name: data.name?.trim() }] });
+    if (existing) {
+      throw new Error(`Floor Zone with name "${data.name}" or code "${code}" already exists.`);
+    }
+
+    const id = data.id || `zone_${uuidv4().slice(0, 8)}`;
+    const zone = await FloorZone.create({
+      ...data,
+      id,
+      name: data.name?.trim(),
+      code,
+      description: data.description?.trim(),
+      color: data.color || '#6366f1',
+      displayOrder: Number(data.displayOrder || 0),
+      isActive: data.isActive !== false
+    });
+
+    await createAuditLog({
+      userId,
+      username,
+      module: 'Masters',
+      submodule: 'FloorZone',
+      action: 'CREATE',
+      recordId: id,
+      newValue: zone
+    });
+    return zone;
+  }
+
+  static async updateFloorZone(id: string, data: any, userId?: string, username?: string) {
+    const query = mongoose.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
+    const old = await FloorZone.findOne(query);
+    if (!old) {
+      throw new Error('Floor Zone not found.');
+    }
+
+    let updateData: any = { ...data };
+    if (data.name) {
+      updateData.name = data.name.trim();
+    }
+    if (data.code && data.code.trim().toUpperCase() !== old.code) {
+      const code = data.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '_');
+      const conflict = await FloorZone.findOne({ code, id: { $ne: old.id } });
+      if (conflict) {
+        throw new Error(`Zone code "${code}" is already in use.`);
+      }
+      updateData.code = code;
+      // Also update any tables with old code to new code!
+      await DiningTable.updateMany({ floorZone: old.code }, { $set: { floorZone: code } });
+    }
+
+    if (data.displayOrder !== undefined) {
+      updateData.displayOrder = Number(data.displayOrder);
+    }
+
+    const updated = await FloorZone.findOneAndUpdate(query, { $set: updateData }, { new: true });
+    await createAuditLog({
+      userId,
+      username,
+      module: 'Masters',
+      submodule: 'FloorZone',
+      action: 'EDIT',
+      recordId: id,
+      oldValue: old,
+      newValue: updated
+    });
+    return updated;
+  }
+
+  static async deleteFloorZone(id: string, userId?: string, username?: string) {
+    const query = mongoose.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
+    const old = await FloorZone.findOne(query);
+    if (!old) {
+      throw new Error('Floor Zone not found.');
+    }
+
+    // Automatically reassign any assigned tables to an active fallback zone so tables are never blocked or orphaned
+    const fallbackZone = await FloorZone.findOne({ code: { $ne: old.code }, isActive: true }).sort({ displayOrder: 1 });
+    const fallbackCode = fallbackZone ? fallbackZone.code : 'MAIN_HALL';
+
+    await DiningTable.updateMany(
+      { floorZone: old.code },
+      { $set: { floorZone: fallbackCode } }
+    );
+
+    await FloorZone.deleteOne(query);
+    await createAuditLog({
+      userId,
+      username,
+      module: 'Masters',
+      submodule: 'FloorZone',
+      action: 'DELETE',
+      recordId: id,
+      oldValue: old
+    });
+    return { success: true };
   }
 
   // --- DEPARTMENTS, DESIGNATIONS, UNITS, TAXES ---

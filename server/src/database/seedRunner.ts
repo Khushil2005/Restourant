@@ -1,7 +1,7 @@
 import { connectDatabase, disconnectDatabase } from '../config/database';
 import { Permission, Role } from '../models/Role';
 import { User } from '../models/User';
-import { Department, Designation, Unit, TaxMaster, MenuCategory, MenuItem, DiningTable, Supplier, Customer } from '../models/Master';
+import { Department, Designation, Unit, TaxMaster, MenuCategory, MenuItem, DiningTable, FloorZone, Supplier, Customer } from '../models/Master';
 import { InventoryItem, Recipe } from '../models/Inventory';
 import { DiscountRule } from '../models/Discount';
 import { ChartOfAccount } from '../models/Account';
@@ -193,6 +193,16 @@ export async function runDatabaseMigrationsAndSeeds(): Promise<void> {
     { id: 'item_kesar_milk', categoryId: 'cat_chaas_bev', name: 'Kesar Badam Milk (Cold)', code: 'BEV-05', price: 80, costPrice: 25, taxId: 'tax_gst_5', isVeg: true, preparationTimeMinutes: 3, displayOrder: 35 }
   ];
   await MenuItem.bulkWrite(menuItems.map(m => ({ updateOne: { filter: { id: m.id }, update: { $set: m }, upsert: true } })) as any);
+
+  // 7b. Seed Standard Floor Zones
+  const defaultFloorZones = [
+    { id: 'zone_main_hall', code: 'MAIN_HALL', name: 'Main Dining Hall', description: 'Ground floor spacious main dining area', color: '#0d6efd', displayOrder: 1, isActive: true },
+    { id: 'zone_ac_hall', code: 'AC_HALL', name: 'AC Family Section', description: 'Cool air-conditioned family dining section', color: '#0dcaf0', displayOrder: 2, isActive: true },
+    { id: 'zone_rooftop', code: 'ROOFTOP', name: 'Rooftop Lounge', description: 'Open-air scenic rooftop and terrace dining', color: '#6f42c1', displayOrder: 3, isActive: true },
+    { id: 'zone_garden', code: 'GARDEN', name: 'Garden Patio', description: 'Fresh green outdoor garden patio dining', color: '#198754', displayOrder: 4, isActive: true },
+    { id: 'zone_vip', code: 'VIP', name: 'VIP Private Room', description: 'Exclusive private dining and party room', color: '#ffc107', displayOrder: 5, isActive: true }
+  ];
+  await FloorZone.bulkWrite(defaultFloorZones.map(z => ({ updateOne: { filter: { code: z.code }, update: { $set: z }, upsert: true } })) as any);
 
   // 8. Seed Tables (Previous Standard Table Numbers)
   const tables = [

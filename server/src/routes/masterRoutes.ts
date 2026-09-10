@@ -208,6 +208,43 @@ masterRouter.delete('/tables/:id', authenticate, authorize('masters.table.delete
   }
 });
 
+// --- FLOOR ZONES ---
+masterRouter.get('/floor-zones', authenticate, authorize(['masters.table.view', 'tables.view']), async (req, res: Response) => {
+  try {
+    const zones = await MasterService.getFloorZones();
+    return ApiResponse.success(res, zones, 'Floor zones retrieved.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+masterRouter.post('/floor-zones', authenticate, authorize(['masters.table.create', 'tables.view']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const zone = await MasterService.createFloorZone(req.body, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, zone, 'Floor zone created.', 201);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+masterRouter.put('/floor-zones/:id', authenticate, authorize(['masters.table.edit', 'tables.view']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const zone = await MasterService.updateFloorZone(req.params.id, req.body, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, zone, 'Floor zone updated.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+masterRouter.delete('/floor-zones/:id', authenticate, authorize(['masters.table.delete', 'tables.view']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await MasterService.deleteFloorZone(req.params.id, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, null, 'Floor zone deleted.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
 // --- META MASTERS ---
 masterRouter.get('/departments', authenticate, async (req, res: Response) => {
   const depts = await MasterService.getDepartments();
