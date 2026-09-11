@@ -880,7 +880,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             style={{ fontSize: '0.82rem', borderRadius: 6 }}
             onClick={() => setViewMode('UNIFIED')}
           >
-            <Receipt size={15} />
+            <Receipt size={15} className="billing-tab-icon" />
             Unified Register (બિલ & પેમેન્ટ્સ)
             <span className={`badge ${viewMode === 'UNIFIED' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
               {dayBills.length}
@@ -895,7 +895,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             style={{ fontSize: '0.82rem', borderRadius: 6 }}
             onClick={() => setViewMode('RECEIPTS')}
           >
-            <CreditCard size={15} />
+            <CreditCard size={15} className="billing-tab-icon" />
             Receipts Log (રસીદ લોગ)
             <span className={`badge ${viewMode === 'RECEIPTS' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
               {dayPayments.length}
@@ -940,13 +940,6 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
               onClick={() => setRegisterFilter('CARD')}
             >
               Card ({filterCounts.card})
-            </button>
-            <button
-              className={`btn py-1 px-2.5 ${registerFilter === 'PAID' ? 'btn-success fw-bold' : 'day-filter-btn'}`}
-              style={{ fontSize: '0.78rem' }}
-              onClick={() => setRegisterFilter('PAID')}
-            >
-              All Settled ({filterCounts.paid})
             </button>
           </div>
         )}

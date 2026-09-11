@@ -616,6 +616,13 @@ html, body, #root {
   .form-control, .form-select {
     font-size: 0.95rem;
   }
+
+  /* Only enlarge Unified Register and Receipts Log tab icons on mobile screens */
+  .billing-tab-icon {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+  }
 }
 
 /* Mobile Modals */
