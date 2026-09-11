@@ -82,10 +82,37 @@ systemRouter.get('/settings', authenticate, async (req: AuthenticatedRequest, re
   }
 });
 
+systemRouter.get('/settings/detailed', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const settings = await SystemControlService.getAllDetailedSettings();
+    return ApiResponse.success(res, settings, 'Detailed system settings loaded.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
 systemRouter.post('/settings', authenticate, authorize('settings.edit'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await SystemControlService.updateSettings(req.body.settings, req.user!.userId, req.user!.username);
     return ApiResponse.success(res, result, result.message);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+systemRouter.post('/settings/single', authenticate, authorize('settings.edit'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await SystemControlService.saveSingleSetting(req.body, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, result, 'Setting saved successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+systemRouter.delete('/settings/:key', authenticate, authorize('settings.edit'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await SystemControlService.deleteSetting(req.params.key, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, result, 'Setting deleted successfully.');
   } catch (err: any) {
     return ApiResponse.error(res, err.message, 400);
   }

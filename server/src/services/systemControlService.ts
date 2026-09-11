@@ -145,6 +145,56 @@ export class SystemControlService {
     return { success: true, message: 'Settings updated successfully.' };
   }
 
+  static async getAllDetailedSettings() {
+    return await SystemSetting.find().sort({ category: 1, key: 1 });
+  }
+
+  static async saveSingleSetting(
+    setting: { key: string; value: string; category?: string; description?: string },
+    userId?: string,
+    username?: string
+  ) {
+    if (!setting.key) throw new Error('Setting key is required.');
+    const updated = await SystemSetting.findOneAndUpdate(
+      { key: setting.key },
+      {
+        $set: {
+          value: setting.value,
+          category: setting.category || 'CUSTOM',
+          description: setting.description || '',
+          updatedAt: new Date()
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    await createAuditLog({
+      userId,
+      username,
+      module: 'Settings',
+      action: 'SAVE_SINGLE_SETTING',
+      newValue: setting
+    });
+
+    return updated;
+  }
+
+  static async deleteSetting(key: string, userId?: string, username?: string) {
+    if (!key) throw new Error('Setting key is required.');
+    const deleted = await SystemSetting.findOneAndDelete({ key });
+    if (!deleted) throw new Error(`Setting with key "${key}" not found.`);
+
+    await createAuditLog({
+      userId,
+      username,
+      module: 'Settings',
+      action: 'DELETE_SETTING',
+      oldValue: { key }
+    });
+
+    return deleted;
+  }
+
   static async createDatabaseSnapshot() {
     const [
       users,

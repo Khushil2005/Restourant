@@ -28,7 +28,8 @@ import { LeavePage } from './modules/leave/LeavePage';
 import { PayrollPage } from './modules/payroll/PayrollPage';
 import { ReportsPage } from './modules/reports/ReportsPage';
 import { UsersRolesPage } from './modules/users-roles/UsersRolesPage';
-import { NotificationsPage, SettingsPage } from './modules/notifications/NotificationsPage';
+import { NotificationsPage } from './modules/notifications/NotificationsPage';
+import { StoreSettingsPage } from './modules/settings/StoreSettingsPage';
 import { AuditPage, SystemControlPage } from './modules/audit/AuditPage';
 
 // System Diagnostics & Maintenance
@@ -112,7 +113,7 @@ export const App: React.FC = () => {
                   <Route path="reports" element={<ReportsPage />} />
                   <Route path="users-roles" element={<UsersRolesPage />} />
                   <Route path="notifications" element={<NotificationsPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="settings" element={<StoreSettingsPage />} />
                   <Route path="audit-logs" element={<AuditPage />} />
                   <Route path="system-control" element={<SystemControlPage />} />
                   <Route path="diagnostics" element={<SystemDiagnosticsPage />} />
