@@ -248,6 +248,32 @@ export class OrderService {
     return order;
   }
 
+  static async markServed(orderId: string, userId?: string, username?: string) {
+    const order = await Order.findOne({ id: orderId });
+    if (!order) throw { statusCode: 404, message: 'Order not found.' };
+
+    order.status = 'SERVED';
+    await order.save();
+
+    await KOTTicket.updateMany(
+      { orderId: order.id, status: { $ne: 'CANCELLED' } },
+      { $set: { status: 'SERVED', servedAt: new Date(), 'items.$[].status': 'SERVED' } }
+    );
+
+    SocketEvents.emitOrderUpdated(order);
+
+    await createAuditLog({
+      userId,
+      username,
+      module: 'POS / Orders',
+      action: 'ORDER_SERVED',
+      recordId: orderId,
+      newValue: { status: 'SERVED' }
+    });
+
+    return order;
+  }
+
   static async cancelOrder(orderId: string, reason?: string, userId?: string, username?: string) {
     const order = await Order.findOne({ id: orderId });
     if (!order) throw { statusCode: 404, message: 'Order not found.' };

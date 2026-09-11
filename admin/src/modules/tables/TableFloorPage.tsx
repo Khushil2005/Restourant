@@ -346,8 +346,17 @@ export const TableFloorPage: React.FC = () => {
                           <span className="text-truncate me-1">{table.activeOrder.orderNumber}</span>
                           <span className="text-nowrap">₹{table.activeOrder.netAmount}</span>
                         </div>
-                        <div className="text-secondary text-truncate" style={{ fontSize: '0.7rem' }}>
-                          {table.activeOrder.itemCount} items • {table.activeOrder.status}
+                        <div className="d-flex justify-content-between align-items-center mt-1" style={{ fontSize: '0.7rem' }}>
+                          <span className="text-secondary">{table.activeOrder.itemCount} items</span>
+                          <span className={`badge ${
+                            table.activeOrder.status === 'SERVED' 
+                              ? 'bg-success text-white' 
+                              : table.activeOrder.status === 'BILLED' 
+                              ? 'bg-info text-dark' 
+                              : 'bg-warning text-dark'
+                          }`} style={{ fontSize: '0.65rem' }}>
+                            {table.activeOrder.status === 'SERVED' ? '✓ SERVED' : table.activeOrder.status}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -374,30 +383,96 @@ export const TableFloorPage: React.FC = () => {
                         >
                           <ShoppingBag size={13} /> View
                         </button>
-                        {table.activeOrder && can('billing.create') && (
-                          <button
-                            className="btn btn-primary btn-sm d-flex align-items-center justify-content-center gap-1 py-1 px-2"
-                            style={{ fontSize: '0.75rem' }}
-                            disabled={billLoadingTableId === table.id}
-                            onClick={async () => {
-                              if (!table.activeOrder?.id) return;
-                              try {
-                                setBillLoadingTableId(table.id);
-                                const res: any = await apiClient.post('/billing/generate', { orderId: table.activeOrder?.id });
-                                if (res?.success && res.data) {
-                                  setTableBill(res.data);
-                                }
-                              } catch (err: any) {
-                                alert(err.message || 'Failed to generate bill.');
-                              } finally {
-                                setBillLoadingTableId(null);
-                              }
-                            }}
-                            title="Generate Tax Invoice for Table"
-                          >
-                            <Receipt size={13} /> {billLoadingTableId === table.id ? '...' : 'Bill'}
-                          </button>
-                        )}
+                        {table.activeOrder && (() => {
+                          const order = table.activeOrder;
+                          const isServed = order.status === 'SERVED' || order.status === 'BILLED';
+                          return (
+                            <>
+                              {!isServed && (
+                                <button
+                                  className="btn btn-outline-success btn-sm d-flex align-items-center justify-content-center gap-1 py-1 px-1.5"
+                                  style={{ fontSize: '0.75rem' }}
+                                  disabled={billLoadingTableId === table.id}
+                                  onClick={async () => {
+                                    const confirmServe = window.confirm(
+                                      `Mark Order #${order.orderNumber} (Table ${table.tableNumber}) as SERVED?\n\nશું ટેબલ ${table.tableNumber} માટે આ ઓર્ડર સર્વ થઈ ગયો છે?`
+                                    );
+                                    if (!confirmServe) return;
+                                    try {
+                                      setBillLoadingTableId(table.id);
+                                      const serveRes: any = await apiClient.patch(`/orders/${order.id}/serve`);
+                                      if (serveRes?.success) {
+                                        await loadFloor(false, true);
+                                      }
+                                    } catch (err: any) {
+                                      alert(err.message || 'Failed to mark order as served.');
+                                    } finally {
+                                      setBillLoadingTableId(null);
+                                    }
+                                  }}
+                                  title="Mark Order as Served"
+                                >
+                                  <CheckCircle size={13} /> Serve
+                                </button>
+                              )}
+                              {can('billing.create') && (
+                                <button
+                                  className={`btn ${isServed ? 'btn-primary' : 'btn-outline-secondary'} btn-sm d-flex align-items-center justify-content-center gap-1 py-1 px-2`}
+                                  style={{ fontSize: '0.75rem' }}
+                                  disabled={billLoadingTableId === table.id}
+                                  onClick={async () => {
+                                    if (!order?.id) return;
+
+                                    // If not served, block and offer to serve first
+                                    if (!isServed) {
+                                      const wantToServe = window.confirm(
+                                        `Cannot generate bill: Order #${order.orderNumber} is currently '${order.status}'.\nOrders must be SERVED before generating a bill.\n(ઓર્ડર સર્વ થયા પછી જ બિલ જનરેટ કરી શકાય છે).\n\nHas the food been served to Table ${table.tableNumber}? Click OK to mark as SERVED now, or Cancel to wait.`
+                                      );
+                                      if (!wantToServe) return;
+
+                                      try {
+                                        setBillLoadingTableId(table.id);
+                                        const serveRes: any = await apiClient.patch(`/orders/${order.id}/serve`);
+                                        if (!serveRes?.success) {
+                                          alert(serveRes?.message || 'Failed to mark order as served.');
+                                          return;
+                                        }
+                                        order.status = 'SERVED';
+                                      } catch (err: any) {
+                                        alert(err.message || 'Failed to mark order as served.');
+                                        return;
+                                      } finally {
+                                        setBillLoadingTableId(null);
+                                      }
+                                    }
+
+                                    // Explicit Confirmation before generating bill
+                                    const isConfirmed = window.confirm(
+                                      `Confirm Bill Generation (બિલ જનરેટ કન્ફર્મેશન):\n\nAre you sure you want to generate the bill for Table ${table.tableNumber} (Order #${order.orderNumber})?\nTotal Amount: ₹${order.netAmount || 0}\n\nશું તમે ખરેખર ટેબલ ${table.tableNumber} માટે બિલ જનરેટ કરવા માંગો છો?`
+                                    );
+                                    if (!isConfirmed) return;
+
+                                    try {
+                                      setBillLoadingTableId(table.id);
+                                      const res: any = await apiClient.post('/billing/generate', { orderId: order.id });
+                                      if (res?.success && res.data) {
+                                        setTableBill(res.data);
+                                        await loadFloor(false, true);
+                                      }
+                                    } catch (err: any) {
+                                      alert(err.message || 'Failed to generate bill.');
+                                    } finally {
+                                      setBillLoadingTableId(null);
+                                    }
+                                  }}
+                                  title={isServed ? 'Generate Tax Invoice for Table' : `Order is ${order.status} - Must be SERVED before billing`}
+                                >
+                                  <Receipt size={13} /> {billLoadingTableId === table.id ? '...' : 'Bill'}
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
                         {can('tables.transfer') && (
                           <button
                             className="btn btn-outline-secondary btn-sm p-1 px-1.5"

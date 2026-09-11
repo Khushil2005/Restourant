@@ -63,6 +63,15 @@ orderRouter.patch('/:id/resume', authenticate, authorize('orders.resume'), async
   }
 });
 
+orderRouter.patch('/:id/serve', authenticate, authorize(['orders.edit', 'kot.served', 'billing.create']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const order = await OrderService.markServed(req.params.id, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, order, 'Order marked as served.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
 orderRouter.post('/:id/cancel', authenticate, authorize('orders.cancel'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const order = await OrderService.cancelOrder(req.params.id, req.body.reason, req.user!.userId, req.user!.username);

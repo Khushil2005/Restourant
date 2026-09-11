@@ -70,7 +70,8 @@ export class KOTService {
     if (kot) {
       SocketEvents.emitKOTReady(kot);
       SocketEvents.emitKOTUpdated(kot);
-      await Order.findOneAndUpdate({ id: kot.orderId }, { $set: { status: 'READY' } });
+      const order = await Order.findOneAndUpdate({ id: kot.orderId }, { $set: { status: 'READY' } }, { new: true });
+      if (order) SocketEvents.emitOrderUpdated(order);
     }
     return kot;
   }
@@ -89,7 +90,8 @@ export class KOTService {
     );
     if (kot) {
       SocketEvents.emitKOTUpdated(kot);
-      await Order.findOneAndUpdate({ id: kot.orderId }, { $set: { status: 'SERVED' } });
+      const order = await Order.findOneAndUpdate({ id: kot.orderId }, { $set: { status: 'SERVED' } }, { new: true });
+      if (order) SocketEvents.emitOrderUpdated(order);
     }
     return kot;
   }

@@ -519,7 +519,44 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
   };
 
   // Generate Bill for an Active Table Order
-  const handleGenerateBillForOrder = async (orderId: string) => {
+  const handleGenerateBillForOrder = async (
+    orderId: string,
+    tableNumber?: string,
+    orderNumber?: string,
+    status?: string,
+    amount?: number
+  ) => {
+    const isServed = status === 'SERVED' || status === 'BILLED';
+
+    // Gate: Must be SERVED before bill generation
+    if (!isServed) {
+      const wantToServe = window.confirm(
+        `Cannot generate bill: Order #${orderNumber || orderId} is currently '${status || 'IN_KITCHEN'}'.\n\nOrders must be SERVED before generating a bill.\n(ઓર્ડર સર્વ થયા પછી જ બિલ જનરેટ કરી શકાય છે).\n\nHas the food been served to Table ${tableNumber || ''}? Click OK to mark as SERVED now, or Cancel to wait.`
+      );
+      if (!wantToServe) return;
+
+      try {
+        setGeneratingForOrderId(orderId);
+        const serveRes: any = await apiClient.patch(`/orders/${orderId}/serve`);
+        if (!serveRes?.success) {
+          alert(serveRes?.message || 'Failed to mark order as served.');
+          return;
+        }
+        await loadActiveTables();
+      } catch (err: any) {
+        alert(err.message || 'Failed to mark order as served.');
+        return;
+      } finally {
+        setGeneratingForOrderId(null);
+      }
+    }
+
+    // Explicit Confirmation Prompt before generating bill
+    const isConfirmed = window.confirm(
+      `Confirm Bill Generation (બિલ જનરેટ કન્ફર્મેશન):\n\nAre you sure you want to generate the bill for Table ${tableNumber || 'N/A'} (Order #${orderNumber || orderId})?${amount ? `\nTotal Amount: ₹${amount}` : ''}\n\nશું તમે ખરેખર આ ટેબલ માટે બિલ જનરેટ કરવા માંગો છો?`
+    );
+    if (!isConfirmed) return;
+
     setGeneratingForOrderId(orderId);
     try {
       const res: any = await apiClient.post('/billing/generate', { orderId });
@@ -1746,6 +1783,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
               {activeTables.map((tbl) => {
                 const order = tbl.activeOrder;
                 const isGenerating = generatingForOrderId === order?.id;
+                const isServed = order?.status === 'SERVED' || order?.status === 'BILLED';
                 return (
                   <div key={tbl.id} className="col-sm-6">
                     <div className="card border shadow-sm h-100">
@@ -1753,8 +1791,8 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                         <div>
                           <div className="d-flex justify-content-between align-items-center mb-1">
                             <span className="fw-bold fs-6 text-dark">{tbl.tableNumber}</span>
-                            <span className="badge bg-warning text-dark" style={{ fontSize: '0.68rem' }}>
-                              {order?.status || 'OCCUPIED'}
+                            <span className={`badge ${isServed ? 'bg-success text-white' : 'bg-warning text-dark'}`} style={{ fontSize: '0.68rem' }}>
+                              {isServed ? '✓ SERVED' : (order?.status || 'OCCUPIED')}
                             </span>
                           </div>
                           <div className="text-muted mb-1" style={{ fontSize: '0.72rem' }}>
@@ -1765,22 +1803,50 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                           </div>
                         </div>
 
-                        <button
-                          className="btn btn-primary btn-sm py-1 w-100 d-flex align-items-center justify-content-center gap-1 shadow-sm fw-bold"
-                          style={{ fontSize: '0.75rem' }}
-                          onClick={() => handleGenerateBillForOrder(order.id)}
-                          disabled={isGenerating}
-                        >
-                          {isGenerating ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm" role="status" /> Generating...
-                            </>
-                          ) : (
-                            <>
-                              <Receipt size={13} /> Bill Table
-                            </>
+                        <div className="d-flex gap-1">
+                          {!isServed && (
+                            <button
+                              className="btn btn-outline-success btn-sm py-1 flex-grow-1 d-flex align-items-center justify-content-center gap-1 shadow-sm fw-bold"
+                              style={{ fontSize: '0.72rem' }}
+                              onClick={async () => {
+                                const confirmServe = window.confirm(
+                                  `Mark Order #${order?.orderNumber} (Table ${tbl.tableNumber}) as SERVED?\n\nશું ટેબલ ${tbl.tableNumber} માટે આ ઓર્ડર સર્વ થઈ ગયો છે?`
+                                );
+                                if (!confirmServe) return;
+                                try {
+                                  setGeneratingForOrderId(order.id);
+                                  await apiClient.patch(`/orders/${order.id}/serve`);
+                                  await loadActiveTables();
+                                } catch (err: any) {
+                                  alert(err.message || 'Failed to mark served.');
+                                } finally {
+                                  setGeneratingForOrderId(null);
+                                }
+                              }}
+                              disabled={isGenerating}
+                              title="Mark Order as Served"
+                            >
+                              <CheckCircle2 size={12} /> Serve
+                            </button>
                           )}
-                        </button>
+                          <button
+                            className={`btn ${isServed ? 'btn-primary' : 'btn-outline-secondary'} btn-sm py-1 flex-grow-1 d-flex align-items-center justify-content-center gap-1 shadow-sm fw-bold`}
+                            style={{ fontSize: '0.75rem' }}
+                            onClick={() => handleGenerateBillForOrder(order.id, tbl.tableNumber, order?.orderNumber, order?.status, order?.totalAmount)}
+                            disabled={isGenerating}
+                            title={isServed ? 'Generate Tax Invoice' : `Order is ${order?.status} - Click to serve & generate bill`}
+                          >
+                            {isGenerating ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm" role="status" /> Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Receipt size={13} /> {isServed ? 'Bill Table' : 'Serve & Bill'}
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -27,6 +27,14 @@ export class BillingService {
     const order = await Order.findOne({ id: orderId });
     if (!order) throw { statusCode: 404, message: 'Order not found.' };
 
+    // Strict Rule: Order must be SERVED before generating a bill
+    if (order.status !== 'SERVED' && order.status !== 'BILLED') {
+      throw {
+        statusCode: 400,
+        message: `Cannot generate bill: Order #${order.orderNumber || order.id} is currently '${order.status}'. Orders must be SERVED before generating a bill (ઓર્ડર સર્વ થયા પછી જ બિલ જનરેટ કરી શકાય છે).`
+      };
+    }
+
     // Prevent duplicate bill generation for the same order or table
     let existingBill = await Bill.findOne({
       orderId: order.id,

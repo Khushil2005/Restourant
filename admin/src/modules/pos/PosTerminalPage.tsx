@@ -245,6 +245,35 @@ export const PosTerminalPage: React.FC = () => {
       alert('Please send KOT and place the order before generating a bill.');
       return;
     }
+
+    const isServed = activeOrder?.status === 'SERVED' || activeOrder?.status === 'BILLED';
+
+    // Gate: Must be SERVED before bill generation
+    if (!isServed) {
+      const wantToServe = window.confirm(
+        `Cannot generate bill: Order #${activeOrder?.orderNumber || activeOrderId} is currently '${activeOrder?.status || 'IN_KITCHEN'}'.\n\nOrders must be SERVED before generating a bill.\n(ઓર્ડર સર્વ થયા પછી જ બિલ જનરેટ કરી શકાય છે).\n\nHas the food been served to Table ${activeOrder?.tableNumber || ''}? Click OK to mark as SERVED now, or Cancel to wait.`
+      );
+      if (!wantToServe) return;
+
+      try {
+        const serveRes: any = await apiClient.patch(`/orders/${activeOrderId}/serve`);
+        if (!serveRes?.success) {
+          alert(serveRes?.message || 'Failed to mark order as served.');
+          return;
+        }
+        if (activeOrder) activeOrder.status = 'SERVED';
+      } catch (err: any) {
+        alert(err.message || 'Failed to mark order as served.');
+        return;
+      }
+    }
+
+    // Explicit Confirmation Prompt before generating bill
+    const isConfirmed = window.confirm(
+      `Confirm Bill Generation (બિલ જનરેટ કન્ફર્મેશન):\n\nAre you sure you want to generate the bill for Order #${activeOrder?.orderNumber || activeOrderId} (Table: ${activeOrder?.tableNumber || 'N/A'})?\nTotal Amount: ₹${grandTotal}\n\nશું તમે ખરેખર આ ઓર્ડર માટે બિલ જનરેટ કરવા માંગો છો?`
+    );
+    if (!isConfirmed) return;
+
     try {
       const res: any = await apiClient.post('/billing/generate', { orderId: activeOrderId });
       if (res.success) {
@@ -625,14 +654,25 @@ export const PosTerminalPage: React.FC = () => {
                 </button>
               )}
 
-              {activeOrderId && can('billing.create') && (
-                <button
-                  className="btn btn-success py-2 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
-                  onClick={handleGenerateBill}
-                >
-                  <Receipt size={18} /> Request & Generate Bill
-                </button>
-              )}
+              {activeOrderId && can('billing.create') && (() => {
+                const isServed = activeOrder?.status === 'SERVED' || activeOrder?.status === 'BILLED';
+                return (
+                  <div className="d-flex flex-column gap-1">
+                    {!isServed && (
+                      <div className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle text-center py-1 small">
+                        Order Status: <strong>{activeOrder?.status || 'IN_KITCHEN'}</strong> (Not Served Yet)
+                      </div>
+                    )}
+                    <button
+                      className={`btn ${isServed ? 'btn-success' : 'btn-outline-secondary'} py-2 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm`}
+                      onClick={handleGenerateBill}
+                      title={isServed ? 'Generate Tax Invoice' : `Order is ${activeOrder?.status || 'IN_KITCHEN'} - Must be SERVED before billing`}
+                    >
+                      <Receipt size={18} /> {isServed ? 'Request & Generate Bill' : 'Serve & Generate Bill'}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
