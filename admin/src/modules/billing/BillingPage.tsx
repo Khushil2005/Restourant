@@ -564,23 +564,23 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
   return (
     <div className="d-flex flex-column gap-3 p-1 p-md-2" style={{ fontSize: '0.85rem' }}>
       {/* Top Header Bar */}
-      <div className="card shadow-sm border-0 mb-1 rounded-3 bg-white">
+      <div className="card shadow-sm border-0 mb-1">
         <div className="card-body p-3 px-sm-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
-          <div className="d-flex align-items-center gap-3">
-            <div className="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style={{ width: 42, height: 42 }}>
-              <Receipt size={22} />
+          <div className="d-flex align-items-center gap-2.5">
+            <div className="bg-primary-subtle text-primary p-2 rounded-2 d-flex align-items-center justify-content-center shadow-sm" style={{ width: 36, height: 36 }}>
+              <Receipt size={20} />
             </div>
             <div>
               <div className="d-flex align-items-center gap-2 flex-wrap">
-                <h6 className="fw-bold mb-0 text-dark" style={{ fontSize: '1.05rem' }}>Billing & Payments Register</h6>
-                <span className="badge bg-light text-secondary border px-2 py-0.5" style={{ fontSize: '0.7rem' }}>
+                <h6 className="fw-bold mb-0 text-dark">Billing & Payments Register</h6>
+                <span className="badge bg-light text-secondary border px-1.5 py-0.5" style={{ fontSize: '0.7rem' }}>
                   Unified POS & Settlements
                 </span>
                 <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style={{ fontSize: '0.7rem' }}>
                   {getActiveFilterLabel()}
                 </span>
               </div>
-              <div className="text-muted small mt-0.5" style={{ fontSize: '0.75rem' }}>
+              <div className="text-muted small mt-0.5" style={{ fontSize: '0.72rem' }}>
                 Single-window tax invoices, instant settlement, receipts & 80mm slip printing
               </div>
             </div>
@@ -590,43 +590,43 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             {/* Quick Bill Active Table */}
             {can('billing.create') && (
               <button
-                className="btn btn-primary btn-sm py-2 px-3.5 d-flex align-items-center justify-content-center gap-1.5 shadow-sm fw-bold w-100 w-sm-auto rounded-2"
-                style={{ fontSize: '0.82rem' }}
+                className="btn btn-primary btn-sm py-1.5 px-3 d-flex align-items-center justify-content-center gap-1.5 shadow-sm fw-bold w-100 w-sm-auto"
+                style={{ fontSize: '0.8rem' }}
                 onClick={() => {
                   loadActiveTables();
                   setIsBillTableModalOpen(true);
                 }}
               >
-                <Plus size={17} /> Bill Active Table
+                <Plus size={15} /> Bill Active Table
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* 4 CONSOLIDATED SUMMARY METRIC CARDS (Formatted with prominent icons & clean boxes) */}
+      {/* 4 CONSOLIDATED SUMMARY METRIC CARDS (Zero duplicate strips needed!) */}
       <div className="row g-2 g-md-3 mb-1">
         {/* Card 1: Total Billing / Orders */}
         <div className="col-6 col-lg-3">
-          <div className="card shadow-sm border-0 h-100 bg-white billing-metric-card">
+          <div className="card shadow-sm border-0 h-100 bg-white">
             <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
-              <div className="d-flex align-items-center justify-content-between mb-1.5">
-                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.8rem' }}>
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
                   Total Billing (કુલ બિલિંગ)
                 </span>
-                <div className="billing-icon-box bg-primary-subtle text-primary shadow-xs">
-                  <Receipt size={20} />
+                <div className="p-1.5 rounded-2 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Receipt size={16} />
                 </div>
               </div>
               <div>
-                <div className="fs-5 fs-sm-4 fw-bold text-dark mb-1">
+                <div className="fs-5 fs-sm-4 fw-bold text-dark mb-0.5">
                   ₹{totalBillsValue.toLocaleString()}
                 </div>
                 <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
-                  <span className="badge bg-primary text-white" style={{ fontSize: '0.7rem' }}>
+                  <span className="badge bg-primary text-white" style={{ fontSize: '0.68rem' }}>
                     {totalBillsCount} Bills
                   </span>
-                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                  <span className="text-muted" style={{ fontSize: '0.68rem' }}>
                     Tax: ₹{invoicesGst.toLocaleString()}
                   </span>
                 </div>
@@ -637,26 +637,26 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
 
         {/* Card 2: Pending Receivables */}
         <div className="col-6 col-lg-3">
-          <div className="card shadow-sm border-0 h-100 bg-white billing-metric-card">
+          <div className="card shadow-sm border-0 h-100 bg-white">
             <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
-              <div className="d-flex align-items-center justify-content-between mb-1.5">
-                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.8rem' }}>
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
                   Pending Due (બાકી બિલ)
                 </span>
-                <div className="billing-icon-box bg-danger-subtle text-danger shadow-xs">
-                  <Clock size={20} />
+                <div className="p-1.5 rounded-2 bg-danger-subtle text-danger d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Clock size={16} />
                 </div>
               </div>
               <div>
-                <div className="fs-5 fs-sm-4 fw-bold text-danger mb-1">
+                <div className="fs-5 fs-sm-4 fw-bold text-danger mb-0.5">
                   ₹{totalPendingAmount.toLocaleString()}
                 </div>
                 <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
-                  <span className="badge bg-danger text-white" style={{ fontSize: '0.7rem' }}>
-                    {unpaidBillsCount} Unpaid
+                  <span className="badge bg-danger text-white" style={{ fontSize: '0.68rem' }}>
+                    {unpaidBillsCount} Unpaid Bills
                   </span>
-                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>
-                    Awaiting payment
+                  <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+                    Awaiting cash/UPI
                   </span>
                 </div>
               </div>
@@ -666,25 +666,25 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
 
         {/* Card 3: Settled Revenue */}
         <div className="col-6 col-lg-3">
-          <div className="card shadow-sm border-0 h-100 bg-white billing-metric-card">
+          <div className="card shadow-sm border-0 h-100 bg-white">
             <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
-              <div className="d-flex align-items-center justify-content-between mb-1.5">
-                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.8rem' }}>
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
                   Settled Revenue (જમા આવક)
                 </span>
-                <div className="billing-icon-box bg-success-subtle text-success shadow-xs">
-                  <CheckCircle2 size={20} />
+                <div className="p-1.5 rounded-2 bg-success-subtle text-success d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <CheckCircle2 size={16} />
                 </div>
               </div>
               <div>
-                <div className="fs-5 fs-sm-4 fw-bold text-success mb-1">
+                <div className="fs-5 fs-sm-4 fw-bold text-success mb-0.5">
                   ₹{totalRevenue.toLocaleString()}
                 </div>
                 <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
-                  <span className="badge bg-success text-white" style={{ fontSize: '0.7rem' }}>
-                    {paidBillsCount} Settled
+                  <span className="badge bg-success text-white" style={{ fontSize: '0.68rem' }}>
+                    {paidBillsCount} Paid Bills
                   </span>
-                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                  <span className="text-muted" style={{ fontSize: '0.68rem' }}>
                     100% Cleared
                   </span>
                 </div>
@@ -695,21 +695,21 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
 
         {/* Card 4: Collections & Modes */}
         <div className="col-6 col-lg-3">
-          <div className="card shadow-sm border-0 h-100 bg-white billing-metric-card">
+          <div className="card shadow-sm border-0 h-100 bg-white">
             <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
-              <div className="d-flex align-items-center justify-content-between mb-1.5">
-                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.8rem' }}>
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
                   Collections (કુલ વસૂલાત)
                 </span>
-                <div className="billing-icon-box bg-warning-subtle text-warning-emphasis shadow-xs">
-                  <Banknote size={20} />
+                <div className="p-1.5 rounded-2 bg-warning-subtle text-warning-emphasis d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Banknote size={16} />
                 </div>
               </div>
               <div>
-                <div className="fs-5 fs-sm-4 fw-bold text-dark mb-1">
+                <div className="fs-5 fs-sm-4 fw-bold text-dark mb-0.5">
                   ₹{totalCollectedAmount.toLocaleString()}
                 </div>
-                <div className="d-flex align-items-center gap-1.5 flex-wrap" style={{ fontSize: '0.7rem' }}>
+                <div className="d-flex align-items-center gap-1.5 flex-wrap" style={{ fontSize: '0.68rem' }}>
                   <span className="text-success fw-medium">💵 ₹{cashPaymentsTotal.toLocaleString()}</span>
                   <span className="text-primary fw-medium">📱 ₹{upiPaymentsTotal.toLocaleString()}</span>
                   <span className="text-warning-emphasis fw-medium">💳 ₹{cardPaymentsTotal.toLocaleString()}</span>
@@ -721,20 +721,20 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
       </div>
 
       {/* Day Wise Filter - Single Integrated Bar (Zero duplicates, 1-line easy layout!) */}
-      <div className="card shadow-sm border-0 mb-2 rounded-3 bg-white">
+      <div className="card shadow-sm border-0 mb-2">
         <div className="card-body p-2 px-sm-3">
           <div className="d-flex flex-wrap align-items-center gap-2">
             {/* Filter Label */}
-            <span className="text-muted small fw-semibold d-none d-sm-inline me-1" style={{ fontSize: '0.82rem' }}>
-              <Calendar size={18} className="me-1.5 text-primary" />
+            <span className="text-muted small fw-semibold d-none d-sm-inline me-1" style={{ fontSize: '0.8rem' }}>
+              <Calendar size={15} className="me-1 text-primary" />
               Day Filter:
             </span>
 
             {/* 1. Today Button */}
             <button
               type="button"
-              className={`btn btn-sm py-1.5 px-3 day-filter-btn ${isToday ? 'active' : ''}`}
-              style={{ fontSize: '0.82rem', borderRadius: 6, minHeight: 36 }}
+              className={`btn btn-sm py-1 px-2.5 day-filter-btn ${isToday ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', borderRadius: 6 }}
               onClick={handleSetToday}
             >
               Today (આજે)
@@ -743,8 +743,8 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             {/* 2. Yesterday Button */}
             <button
               type="button"
-              className={`btn btn-sm py-1.5 px-3 day-filter-btn ${isYesterday ? 'active' : ''}`}
-              style={{ fontSize: '0.82rem', borderRadius: 6, minHeight: 36 }}
+              className={`btn btn-sm py-1 px-2.5 day-filter-btn ${isYesterday ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', borderRadius: 6 }}
               onClick={handleSetYesterday}
             >
               Yesterday (ગઈકાલે)
@@ -753,28 +753,27 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             {/* 3. Single Date Stepper & Picker (Combined directly in row 1!) */}
             {dateFilterMode !== 'RANGE' && (
               <div
-                className={`d-flex align-items-center gap-1 px-1.5 py-0.5 rounded-2 shadow-xs ${
+                className={`d-flex align-items-center gap-1 px-1 py-0.5 rounded shadow-sm ${
                   isOtherDay ? 'border border-primary bg-primary-subtle' : 'border bg-light'
                 }`}
-                style={{ minHeight: 36 }}
                 title={isOtherDay ? 'Selected Custom Day' : 'Change Day'}
               >
                 <button
                   type="button"
                   className="btn btn-sm p-0 d-flex align-items-center justify-content-center day-filter-btn border-0 bg-transparent"
-                  style={{ width: 28, height: 28, borderRadius: 4 }}
+                  style={{ width: 26, height: 26, borderRadius: 4 }}
                   onClick={handlePrevDay}
                   title="Previous Day"
                   disabled={dateFilterMode === 'ALL'}
                 >
-                  <ChevronLeft size={18} />
+                  <ChevronLeft size={16} />
                 </button>
 
-                <span className="text-secondary small fw-bold" style={{ fontSize: '0.8rem' }}>તારીખ:</span>
+                <span className="text-secondary small fw-bold" style={{ fontSize: '0.78rem' }}>તારીખ:</span>
                 <input
                   type="date"
                   className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark text-center"
-                  style={{ width: 125, fontSize: '0.84rem', boxShadow: 'none' }}
+                  style={{ width: 125, fontSize: '0.82rem', boxShadow: 'none' }}
                   value={selectedDate}
                   onChange={(e) => handleSetCustomDate(e.target.value)}
                   disabled={dateFilterMode === 'ALL'}
@@ -783,12 +782,12 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                 <button
                   type="button"
                   className="btn btn-sm p-0 d-flex align-items-center justify-content-center day-filter-btn border-0 bg-transparent"
-                  style={{ width: 28, height: 28, borderRadius: 4 }}
+                  style={{ width: 26, height: 26, borderRadius: 4 }}
                   onClick={handleNextDay}
                   title="Next Day"
                   disabled={dateFilterMode === 'ALL'}
                 >
-                  <ChevronRight size={18} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
             )}
@@ -796,41 +795,41 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             {/* 4. Date Range Button */}
             <button
               type="button"
-              className={`btn btn-sm py-1.5 px-3 day-filter-btn ${dateFilterMode === 'RANGE' ? 'active' : ''}`}
-              style={{ fontSize: '0.82rem', borderRadius: 6, minHeight: 36 }}
+              className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'RANGE' ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', borderRadius: 6 }}
               onClick={() => setDateFilterMode(dateFilterMode === 'RANGE' ? 'DAY' : 'RANGE')}
             >
-              <SlidersHorizontal size={15} className="me-1" />
+              <SlidersHorizontal size={13} className="me-1" />
               Date Range (તારીખ ગાળો)
             </button>
 
             {/* 5. Date Range Inputs (Inline in the same line when active!) */}
             {dateFilterMode === 'RANGE' && (
               <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                <div className="d-flex align-items-center gap-1 bg-light border rounded px-2 py-0.5 shadow-xs" style={{ minHeight: 36 }}>
-                  <span className="text-secondary small fw-bold" style={{ fontSize: '0.78rem' }}>From:</span>
+                <div className="d-flex align-items-center gap-1 bg-light border rounded px-2 py-0.5 shadow-sm">
+                  <span className="text-secondary small fw-bold" style={{ fontSize: '0.75rem' }}>From:</span>
                   <input
                     type="date"
                     className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
-                    style={{ width: 120, fontSize: '0.82rem', boxShadow: 'none' }}
+                    style={{ width: 118, fontSize: '0.8rem', boxShadow: 'none' }}
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
                   />
                 </div>
-                <div className="d-flex align-items-center gap-1 bg-light border rounded px-2 py-0.5 shadow-xs" style={{ minHeight: 36 }}>
-                  <span className="text-secondary small fw-bold" style={{ fontSize: '0.78rem' }}>To:</span>
+                <div className="d-flex align-items-center gap-1 bg-light border rounded px-2 py-0.5 shadow-sm">
+                  <span className="text-secondary small fw-bold" style={{ fontSize: '0.75rem' }}>To:</span>
                   <input
                     type="date"
                     className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
-                    style={{ width: 120, fontSize: '0.82rem', boxShadow: 'none' }}
+                    style={{ width: 118, fontSize: '0.8rem', boxShadow: 'none' }}
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
                   />
                 </div>
                 <button
                   type="button"
-                  className="btn btn-sm py-1 px-2.5 day-filter-btn"
-                  style={{ fontSize: '0.78rem', borderRadius: 6, minHeight: 36 }}
+                  className="btn btn-sm py-0.5 px-2 day-filter-btn"
+                  style={{ fontSize: '0.75rem', borderRadius: 4 }}
                   onClick={() => {
                     const d = new Date();
                     d.setDate(d.getDate() - 7);
@@ -842,8 +841,8 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                 </button>
                 <button
                   type="button"
-                  className="btn btn-sm py-1 px-2.5 day-filter-btn"
-                  style={{ fontSize: '0.78rem', borderRadius: 6, minHeight: 36 }}
+                  className="btn btn-sm py-0.5 px-2 day-filter-btn"
+                  style={{ fontSize: '0.75rem', borderRadius: 4 }}
                   onClick={() => {
                     const d = new Date();
                     const firstDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
@@ -859,8 +858,8 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             {/* 6. All Time Button */}
             <button
               type="button"
-              className={`btn btn-sm py-1.5 px-3 day-filter-btn ${dateFilterMode === 'ALL' ? 'active' : ''}`}
-              style={{ fontSize: '0.82rem', borderRadius: 6, minHeight: 36 }}
+              className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'ALL' ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', borderRadius: 6 }}
               onClick={handleSetAllTime}
             >
               All Time (તમામ દિવસો)
@@ -870,76 +869,84 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
       </div>
 
       {/* COMBINED REGISTRATION BAR: Unified Register vs Receipts Log Switch & Smart Filters */}
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2.5 py-1 mb-2">
-        {/* Primary View Switch (Responsive, Big Icons, Touch-Friendly) */}
-        <div className="d-flex align-items-center gap-2 w-100 w-md-auto">
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 py-1 mb-2">
+        {/* Primary View Switch */}
+        <div className="d-flex align-items-center gap-2">
           <button
             type="button"
-            className={`billing-tab-btn flex-fill flex-md-initial ${
-              viewMode === 'UNIFIED' ? 'active' : ''
+            className={`btn btn-sm py-1.5 px-3 d-flex align-items-center gap-2 ${
+              viewMode === 'UNIFIED' ? 'btn-primary fw-bold shadow-sm' : 'day-filter-btn'
             }`}
+            style={{ fontSize: '0.82rem', borderRadius: 6 }}
             onClick={() => setViewMode('UNIFIED')}
           >
-            <Receipt size={19} className="flex-shrink-0" />
-            <span>Unified Register (બિલ & પેમેન્ટ્સ)</span>
-            <span className="badge">
+            <Receipt size={15} />
+            Unified Register (બિલ & પેમેન્ટ્સ)
+            <span className={`badge ${viewMode === 'UNIFIED' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
               {dayBills.length}
             </span>
           </button>
 
           <button
             type="button"
-            className={`billing-tab-btn flex-fill flex-md-initial ${
-              viewMode === 'RECEIPTS' ? 'active' : ''
+            className={`btn btn-sm py-1.5 px-3 d-flex align-items-center gap-2 ${
+              viewMode === 'RECEIPTS' ? 'btn-primary fw-bold shadow-sm' : 'day-filter-btn'
             }`}
+            style={{ fontSize: '0.82rem', borderRadius: 6 }}
             onClick={() => setViewMode('RECEIPTS')}
           >
-            <CreditCard size={19} className="flex-shrink-0" />
-            <span>Receipts Log (રસીદ લોગ)</span>
-            <span className="badge">
+            <CreditCard size={15} />
+            Receipts Log (રસીદ લોગ)
+            <span className={`badge ${viewMode === 'RECEIPTS' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
               {dayPayments.length}
             </span>
           </button>
         </div>
 
-        {/* Smart Quick Filter Chips (for Unified Register - Responsive Wrap without clipping) */}
+        {/* Smart Quick Filter Pills (for Unified Register) */}
         {viewMode === 'UNIFIED' && (
-          <div className="d-flex align-items-center gap-1.5 flex-wrap w-100 w-md-auto justify-content-start justify-content-md-end">
+          <div className="btn-group shadow-sm flex-wrap" style={{ height: 32 }}>
             <button
-              className={`billing-filter-chip ${registerFilter === 'ALL' ? 'active-all' : ''}`}
+              className={`btn py-1 px-2.5 ${registerFilter === 'ALL' ? 'btn-dark fw-bold' : 'day-filter-btn'}`}
+              style={{ fontSize: '0.78rem' }}
               onClick={() => setRegisterFilter('ALL')}
             >
               All ({filterCounts.all})
             </button>
             <button
-              className={`billing-filter-chip ${registerFilter === 'UNPAID' ? 'active-unpaid' : ''}`}
+              className={`btn py-1 px-2.5 ${registerFilter === 'UNPAID' ? 'btn-danger fw-bold' : 'day-filter-btn'}`}
+              style={{ fontSize: '0.78rem' }}
               onClick={() => setRegisterFilter('UNPAID')}
             >
               Pending ({filterCounts.unpaid})
             </button>
             <button
-              className={`billing-filter-chip ${registerFilter === 'CASH' ? 'active-cash' : ''}`}
+              className={`btn py-1 px-2.5 ${registerFilter === 'CASH' ? 'btn-success fw-bold' : 'day-filter-btn'}`}
+              style={{ fontSize: '0.78rem' }}
               onClick={() => setRegisterFilter('CASH')}
             >
-              💵 Cash ({filterCounts.cash})
+              Cash ({filterCounts.cash})
             </button>
             <button
-              className={`billing-filter-chip ${registerFilter === 'UPI' ? 'active-upi' : ''}`}
+              className={`btn py-1 px-2.5 ${registerFilter === 'UPI' ? 'btn-primary fw-bold' : 'day-filter-btn'}`}
+              style={{ fontSize: '0.78rem' }}
               onClick={() => setRegisterFilter('UPI')}
             >
-              📱 UPI ({filterCounts.upi})
+              UPI ({filterCounts.upi})
             </button>
             <button
-              className={`billing-filter-chip ${registerFilter === 'CARD' ? 'active-card' : ''}`}
+              className={`btn py-1 px-2.5 ${registerFilter === 'CARD' ? 'btn-warning-emphasis fw-bold' : 'day-filter-btn'}`}
+              style={{ fontSize: '0.78rem' }}
               onClick={() => setRegisterFilter('CARD')}
             >
-              💳 Card ({filterCounts.card})
+              Card ({filterCounts.card})
             </button>
             <button
-              className={`billing-filter-chip ${registerFilter === 'PAID' ? 'active-paid' : ''}`}
+              className={`btn py-1 px-2.5 ${registerFilter === 'PAID' ? 'btn-success fw-bold' : 'day-filter-btn'}`}
+              style={{ fontSize: '0.78rem' }}
               onClick={() => setRegisterFilter('PAID')}
             >
-              ✅ Settled ({filterCounts.paid})
+              All Settled ({filterCounts.paid})
             </button>
           </div>
         )}
@@ -1069,48 +1076,48 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
           actions={(row) => {
             const isPaid = row.status === 'PAID';
             return (
-              <div className="d-flex align-items-center justify-content-end gap-1.5 flex-nowrap">
+              <div className="d-flex align-items-center gap-1 flex-nowrap">
                 {/* 1. PAY BUTTON (Shown prominently for unpaid bills) */}
                 {!isPaid && can('payment.create') && (
                   <button
-                    className="btn btn-success btn-sm py-1 px-2 d-flex align-items-center gap-1 fw-bold shadow-sm"
-                    style={{ fontSize: '0.75rem', minHeight: 30 }}
+                    className="btn btn-success btn-sm py-0.5 px-2 d-flex align-items-center gap-1 fw-bold shadow-sm"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => openPaymentModal(row)}
                     title="Settle Payment"
                   >
-                    <CreditCard size={14} /> Pay
+                    <CreditCard size={12} /> Pay
                   </button>
                 )}
 
                 {/* 2. SLIP / VIEW BUTTON (Opens full 80mm preview with Print, PDF & Split options) */}
                 <button
-                  className="btn btn-outline-primary btn-sm py-1 px-2 d-flex align-items-center gap-1"
-                  style={{ fontSize: '0.75rem', minHeight: 30 }}
+                  className="btn btn-outline-primary btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                  style={{ fontSize: '0.72rem' }}
                   onClick={() => setSelectedBill(row)}
                   title="View Receipt Slip"
                 >
-                  <Eye size={14} /> Slip
+                  <Eye size={12} /> Slip
                 </button>
 
                 {/* 3. DIRECT PRINT BUTTON */}
                 <button
-                  className="btn btn-outline-secondary btn-sm py-1 px-2 d-flex align-items-center gap-1"
-                  style={{ fontSize: '0.75rem', minHeight: 30 }}
+                  className="btn btn-outline-secondary btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                  style={{ fontSize: '0.72rem' }}
                   onClick={() => printInvoiceReceipt(row, settings)}
                   title="Print 80mm Thermal Receipt"
                 >
-                  <Printer size={14} /> Print
+                  <Printer size={12} /> Print
                 </button>
 
                 {/* 4. DIRECT PDF BUTTON (For Paid bills) */}
                 {isPaid && (
                   <button
-                    className="btn btn-outline-danger btn-sm py-1 px-2 d-flex align-items-center gap-1"
-                    style={{ fontSize: '0.75rem', minHeight: 30 }}
+                    className="btn btn-outline-danger btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => generateInvoicePdf(row, { download: true, customSettings: settings })}
                     title="Download PDF"
                   >
-                    <Download size={14} /> PDF
+                    <Download size={12} /> PDF
                   </button>
                 )}
               </div>
@@ -1176,24 +1183,24 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
           data={dayPayments}
           searchPlaceholder="Search payments by UTR, number..."
           actions={(row) => (
-            <div className="d-flex align-items-center justify-content-end gap-1.5 flex-nowrap">
+            <div className="d-flex align-items-center gap-1">
               {row.billId && (
                 <>
                   <button
-                    className="btn btn-outline-danger btn-sm py-1 px-2 d-flex align-items-center gap-1"
-                    style={{ fontSize: '0.75rem', minHeight: 30 }}
+                    className="btn btn-outline-danger btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => handleDownloadPaymentPdf(row.billId)}
                     title="Download PDF"
                   >
-                    <Download size={14} /> PDF
+                    <Download size={12} /> PDF
                   </button>
                   <button
-                    className="btn btn-outline-secondary btn-sm py-1 px-2 d-flex align-items-center gap-1"
-                    style={{ fontSize: '0.75rem', minHeight: 30 }}
+                    className="btn btn-outline-secondary btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => handlePrintPaymentReceipt(row.billId)}
                     title="Print Receipt"
                   >
-                    <Printer size={14} /> Print
+                    <Printer size={12} /> Print
                   </button>
                 </>
               )}
@@ -1229,16 +1236,16 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
 
             {/* Payment Method Selector */}
             <div>
-              <label className="form-label small fw-bold text-secondary mb-1" style={{ fontSize: '0.78rem' }}>Payment Mode</label>
-              <div className="btn-group w-100 shadow-sm" style={{ minHeight: 38 }}>
+              <label className="form-label small fw-bold text-secondary mb-1" style={{ fontSize: '0.75rem' }}>Payment Mode</label>
+              <div className="btn-group w-100 shadow-sm" style={{ height: 32 }}>
                 {(['CASH', 'UPI', 'CARD', 'SPLIT'] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
-                    className={`btn py-1.5 px-2 d-flex align-items-center justify-content-center gap-1.5 ${
+                    className={`btn py-0 px-2 ${
                       paymentMethod === m ? 'btn-primary fw-bold' : 'btn-outline-secondary'
                     }`}
-                    style={{ fontSize: '0.8rem' }}
+                    style={{ fontSize: '0.75rem' }}
                     onClick={() => {
                       setPaymentMethod(m);
                       if (m === 'CASH') {
@@ -1246,10 +1253,9 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                       }
                     }}
                   >
-                    {m === 'CASH' && <Banknote size={15} />}
-                    {m === 'UPI' && <QrCode size={15} />}
-                    {m === 'CARD' && <CreditCard size={15} />}
-                    {m === 'SPLIT' && <Scissors size={15} />}
+                    {m === 'CASH' && <Banknote size={13} className="me-1" />}
+                    {m === 'UPI' && <QrCode size={13} className="me-1" />}
+                    {m === 'CARD' && <CreditCard size={13} className="me-1" />}
                     {m}
                   </button>
                 ))}
@@ -1622,8 +1628,8 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
               {selectedBill.status === 'UNPAID' && can('billing.split') && (
                 <button
                   type="button"
-                  className="btn btn-outline-secondary btn-sm py-1.5 px-3 d-flex align-items-center gap-1.5 me-auto"
-                  style={{ fontSize: '0.78rem', minHeight: 34 }}
+                  className="btn btn-outline-secondary btn-sm py-1 px-2.5 d-flex align-items-center gap-1 me-auto"
+                  style={{ fontSize: '0.75rem' }}
                   onClick={() => {
                     const b = selectedBill;
                     setSelectedBill(null);
@@ -1631,47 +1637,47 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                   }}
                   title="Split into multiple checks"
                 >
-                  <Scissors size={15} /> Split Bill
+                  <Scissors size={13} /> Split Bill
                 </button>
               )}
 
               <button
                 type="button"
-                className="btn btn-outline-danger btn-sm py-1.5 px-3 d-flex align-items-center gap-1.5"
-                style={{ fontSize: '0.78rem', minHeight: 34 }}
+                className="btn btn-outline-danger btn-sm py-1 px-2.5 d-flex align-items-center gap-1"
+                style={{ fontSize: '0.75rem' }}
                 onClick={() => generateInvoicePdf(selectedBill, { download: true, customSettings: settings })}
                 title="Download PDF"
               >
-                <Download size={15} /> Download PDF
+                <Download size={13} /> Download PDF
               </button>
 
               <button
                 type="button"
-                className="btn btn-primary btn-sm py-1.5 px-3 d-flex align-items-center gap-1.5 shadow-sm"
-                style={{ fontSize: '0.78rem', minHeight: 34 }}
+                className="btn btn-primary btn-sm py-1 px-2.5 d-flex align-items-center gap-1 shadow-sm"
+                style={{ fontSize: '0.75rem' }}
                 onClick={() => printInvoiceReceipt(selectedBill, settings)}
               >
-                <Printer size={15} /> Print Slip
+                <Printer size={13} /> Print Slip
               </button>
 
               {selectedBill.status !== 'PAID' && can('payment.create') ? (
                 <button
                   type="button"
-                  className="btn btn-success btn-sm py-1.5 px-3.5 d-flex align-items-center gap-1.5 shadow-sm fw-bold"
-                  style={{ fontSize: '0.78rem', minHeight: 34 }}
+                  className="btn btn-success btn-sm py-1 px-3 d-flex align-items-center gap-1 shadow-sm fw-bold"
+                  style={{ fontSize: '0.75rem' }}
                   onClick={() => {
                     const b = selectedBill;
                     setSelectedBill(null);
                     openPaymentModal(b);
                   }}
                 >
-                  <CreditCard size={15} /> Pay ₹{selectedBill.totalPayable}
+                  <CreditCard size={13} /> Pay ₹{selectedBill.totalPayable}
                 </button>
               ) : (
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm py-1.5 px-3"
-                  style={{ fontSize: '0.78rem', minHeight: 34 }}
+                  className="btn btn-secondary btn-sm py-1 px-2.5"
+                  style={{ fontSize: '0.75rem' }}
                   onClick={handleCloseBillModal}
                 >
                   Done
@@ -1767,8 +1773,8 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                         </div>
 
                         <button
-                          className="btn btn-primary btn-sm py-1.5 w-100 d-flex align-items-center justify-content-center gap-1.5 shadow-sm fw-bold"
-                          style={{ fontSize: '0.78rem', minHeight: 34 }}
+                          className="btn btn-primary btn-sm py-1 w-100 d-flex align-items-center justify-content-center gap-1 shadow-sm fw-bold"
+                          style={{ fontSize: '0.75rem' }}
                           onClick={() => handleGenerateBillForOrder(order.id)}
                           disabled={isGenerating}
                         >
@@ -1778,7 +1784,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                             </>
                           ) : (
                             <>
-                              <Receipt size={15} /> Bill Table
+                              <Receipt size={13} /> Bill Table
                             </>
                           )}
                         </button>

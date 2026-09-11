@@ -122,8 +122,8 @@ export function DataTable<T extends { id?: string | number }>({
               })}
               {actions && (
                 <th style={{
-                  width: compact ? 200 : 110,
-                  minWidth: compact ? '195px' : '100px',
+                  width: compact ? 160 : 110,
+                  minWidth: compact ? '140px' : '100px',
                   textAlign: 'end',
                   fontSize: compact ? '0.76rem' : '0.82rem',
                   padding: compact ? '4px 6px' : undefined,
