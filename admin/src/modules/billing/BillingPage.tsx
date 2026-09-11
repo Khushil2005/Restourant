@@ -80,8 +80,8 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  // Day-wise & Custom Date Filter States ("New Day New List" - Combined Single Bar)
-  const [dateFilterMode, setDateFilterMode] = useState<'TODAY' | 'YESTERDAY' | 'SINGLE' | 'RANGE' | 'ALL'>('TODAY');
+  // Day-wise Date Filter States (Simplified Single Bar, zero duplicates!)
+  const [dateFilterMode, setDateFilterMode] = useState<'DAY' | 'RANGE' | 'ALL'>('DAY');
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [customStartDate, setCustomStartDate] = useState<string>(getLocalDateString());
   const [customEndDate, setCustomEndDate] = useState<string>(getLocalDateString());
@@ -208,43 +208,41 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
     return map;
   }, [payments]);
 
-  // Day navigation handlers
+  // Day navigation & preset helpers
+  const todayStr = getLocalDateString();
+  const yestStr = getYesterdayDateString();
+  const isToday = dateFilterMode === 'DAY' && selectedDate === todayStr;
+  const isYesterday = dateFilterMode === 'DAY' && selectedDate === yestStr;
+  const isOtherDay = dateFilterMode === 'DAY' && !isToday && !isYesterday;
+
   const handlePrevDay = () => {
     const [y, m, d] = selectedDate.split('-').map(Number);
     const prev = new Date(y, m - 1, d - 1);
-    const prevStr = getLocalDateString(prev);
-    setSelectedDate(prevStr);
-    const todayStr = getLocalDateString();
-    const yestStr = getYesterdayDateString();
-    setDateFilterMode(prevStr === todayStr ? 'TODAY' : prevStr === yestStr ? 'YESTERDAY' : 'SINGLE');
+    setSelectedDate(getLocalDateString(prev));
+    setDateFilterMode('DAY');
   };
 
   const handleNextDay = () => {
     const [y, m, d] = selectedDate.split('-').map(Number);
     const next = new Date(y, m - 1, d + 1);
-    const nextStr = getLocalDateString(next);
-    setSelectedDate(nextStr);
-    const todayStr = getLocalDateString();
-    const yestStr = getYesterdayDateString();
-    setDateFilterMode(nextStr === todayStr ? 'TODAY' : nextStr === yestStr ? 'YESTERDAY' : 'SINGLE');
+    setSelectedDate(getLocalDateString(next));
+    setDateFilterMode('DAY');
   };
 
   const handleSetToday = () => {
-    setDateFilterMode('TODAY');
     setSelectedDate(getLocalDateString());
+    setDateFilterMode('DAY');
   };
 
   const handleSetYesterday = () => {
-    setDateFilterMode('YESTERDAY');
     setSelectedDate(getYesterdayDateString());
+    setDateFilterMode('DAY');
   };
 
   const handleSetCustomDate = (val: string) => {
     if (!val) return;
     setSelectedDate(val);
-    const todayStr = getLocalDateString();
-    const yestStr = getYesterdayDateString();
-    setDateFilterMode(val === todayStr ? 'TODAY' : val === yestStr ? 'YESTERDAY' : 'SINGLE');
+    setDateFilterMode('DAY');
   };
 
   const handleSetAllTime = () => {
@@ -254,14 +252,6 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
   // 1. Day / Range / All Filtered Bills ("New Day New List")
   const dayBills = useMemo(() => {
     if (dateFilterMode === 'ALL') return bills;
-    if (dateFilterMode === 'TODAY') {
-      const today = getLocalDateString();
-      return bills.filter((b) => b.createdAt && getLocalDateString(new Date(b.createdAt)) === today);
-    }
-    if (dateFilterMode === 'YESTERDAY') {
-      const yest = getYesterdayDateString();
-      return bills.filter((b) => b.createdAt && getLocalDateString(new Date(b.createdAt)) === yest);
-    }
     if (dateFilterMode === 'RANGE') {
       return bills.filter((b) => {
         if (!b.createdAt) return false;
@@ -269,7 +259,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
         return bDate >= customStartDate && bDate <= customEndDate;
       });
     }
-    // 'SINGLE' mode:
+    // 'DAY' mode (Today, Yesterday, or any single selected date):
     return bills.filter((b) => {
       if (!b.createdAt) return false;
       const bDate = getLocalDateString(new Date(b.createdAt));
@@ -280,14 +270,6 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
   // 2. Day / Range / All Filtered Payments
   const dayPayments = useMemo(() => {
     if (dateFilterMode === 'ALL') return payments;
-    if (dateFilterMode === 'TODAY') {
-      const today = getLocalDateString();
-      return payments.filter((p) => p.createdAt && getLocalDateString(new Date(p.createdAt)) === today);
-    }
-    if (dateFilterMode === 'YESTERDAY') {
-      const yest = getYesterdayDateString();
-      return payments.filter((p) => p.createdAt && getLocalDateString(new Date(p.createdAt)) === yest);
-    }
     if (dateFilterMode === 'RANGE') {
       return payments.filter((p) => {
         if (!p.createdAt) return false;
@@ -295,7 +277,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
         return pDate >= customStartDate && pDate <= customEndDate;
       });
     }
-    // 'SINGLE' mode:
+    // 'DAY' mode:
     return payments.filter((p) => {
       if (!p.createdAt) return false;
       const pDate = getLocalDateString(new Date(p.createdAt));
@@ -305,14 +287,14 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
 
   const getActiveFilterLabel = () => {
     if (dateFilterMode === 'ALL') return 'All Time (તમામ દિવસો)';
-    if (dateFilterMode === 'TODAY') return `Today (${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
-    if (dateFilterMode === 'YESTERDAY') {
+    if (dateFilterMode === 'RANGE') {
+      return `${customStartDate} થી ${customEndDate}`;
+    }
+    if (isToday) return `Today (${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+    if (isYesterday) {
       const d = new Date();
       d.setDate(d.getDate() - 1);
       return `Yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
-    }
-    if (dateFilterMode === 'RANGE') {
-      return `${customStartDate} થી ${customEndDate}`;
     }
     return formatDisplayDate(selectedDate);
   };
@@ -738,175 +720,151 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
         </div>
       </div>
 
-      {/* Day Wise Filter - Single Integrated Bar (Combined into one clean card without nested sub-boxes!) */}
+      {/* Day Wise Filter - Single Integrated Bar (Zero duplicates, 1-line easy layout!) */}
       <div className="card shadow-sm border-0 mb-2">
-        <div className="card-body p-2.5 px-sm-3">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-            {/* Level 1 Mode Buttons */}
-            <div className="d-flex align-items-center gap-1.5 flex-wrap">
-              <span className="text-muted small fw-semibold d-none d-sm-inline me-1" style={{ fontSize: '0.8rem' }}>
-                <Calendar size={15} className="me-1.5 text-primary" />
-                Day Filter:
-              </span>
-              <button
-                type="button"
-                className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'TODAY' ? 'active' : ''}`}
-                style={{ fontSize: '0.8rem', borderRadius: 6 }}
-                onClick={handleSetToday}
-              >
-                Today (આજે)
-              </button>
-              <button
-                type="button"
-                className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'YESTERDAY' ? 'active' : ''}`}
-                style={{ fontSize: '0.8rem', borderRadius: 6 }}
-                onClick={handleSetYesterday}
-              >
-                Yesterday (ગઈકાલે)
-              </button>
-              <button
-                type="button"
-                className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'SINGLE' ? 'active' : ''}`}
-                style={{ fontSize: '0.8rem', borderRadius: 6 }}
-                onClick={() => setDateFilterMode('SINGLE')}
-              >
-                Single Day (ચોક્કસ તારીખ)
-              </button>
-              <button
-                type="button"
-                className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'RANGE' ? 'active' : ''}`}
-                style={{ fontSize: '0.8rem', borderRadius: 6 }}
-                onClick={() => setDateFilterMode('RANGE')}
-              >
-                Date Range (તારીખ ગાળો)
-              </button>
-              <button
-                type="button"
-                className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'ALL' ? 'active' : ''}`}
-                style={{ fontSize: '0.8rem', borderRadius: 6 }}
-                onClick={handleSetAllTime}
-              >
-                All Time (તમામ દિવસો)
-              </button>
-            </div>
+        <div className="card-body p-2 px-sm-3">
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {/* Filter Label */}
+            <span className="text-muted small fw-semibold d-none d-sm-inline me-1" style={{ fontSize: '0.8rem' }}>
+              <Calendar size={15} className="me-1 text-primary" />
+              Day Filter:
+            </span>
 
-            {/* Active Filter Badge */}
-            <div className="d-flex align-items-center gap-2 ms-auto">
-              <span className="day-filter-badge">
-                {getActiveFilterLabel()}
-              </span>
-            </div>
+            {/* 1. Today Button */}
+            <button
+              type="button"
+              className={`btn btn-sm py-1 px-2.5 day-filter-btn ${isToday ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', borderRadius: 6 }}
+              onClick={handleSetToday}
+            >
+              Today (આજે)
+            </button>
+
+            {/* 2. Yesterday Button */}
+            <button
+              type="button"
+              className={`btn btn-sm py-1 px-2.5 day-filter-btn ${isYesterday ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', borderRadius: 6 }}
+              onClick={handleSetYesterday}
+            >
+              Yesterday (ગઈકાલે)
+            </button>
+
+            {/* 3. Single Date Stepper & Picker (Combined directly in row 1!) */}
+            {dateFilterMode !== 'RANGE' && (
+              <div
+                className={`d-flex align-items-center gap-1 px-1 py-0.5 rounded shadow-sm ${
+                  isOtherDay ? 'border border-primary bg-primary-subtle' : 'border bg-light'
+                }`}
+                title={isOtherDay ? 'Selected Custom Day' : 'Change Day'}
+              >
+                <button
+                  type="button"
+                  className="btn btn-sm p-0 d-flex align-items-center justify-content-center day-filter-btn border-0 bg-transparent"
+                  style={{ width: 26, height: 26, borderRadius: 4 }}
+                  onClick={handlePrevDay}
+                  title="Previous Day"
+                  disabled={dateFilterMode === 'ALL'}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <span className="text-secondary small fw-bold" style={{ fontSize: '0.78rem' }}>તારીખ:</span>
+                <input
+                  type="date"
+                  className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark text-center"
+                  style={{ width: 125, fontSize: '0.82rem', boxShadow: 'none' }}
+                  value={selectedDate}
+                  onChange={(e) => handleSetCustomDate(e.target.value)}
+                  disabled={dateFilterMode === 'ALL'}
+                />
+
+                <button
+                  type="button"
+                  className="btn btn-sm p-0 d-flex align-items-center justify-content-center day-filter-btn border-0 bg-transparent"
+                  style={{ width: 26, height: 26, borderRadius: 4 }}
+                  onClick={handleNextDay}
+                  title="Next Day"
+                  disabled={dateFilterMode === 'ALL'}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* 4. Date Range Button */}
+            <button
+              type="button"
+              className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'RANGE' ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', borderRadius: 6 }}
+              onClick={() => setDateFilterMode(dateFilterMode === 'RANGE' ? 'DAY' : 'RANGE')}
+            >
+              <SlidersHorizontal size={13} className="me-1" />
+              Date Range (તારીખ ગાળો)
+            </button>
+
+            {/* 5. Date Range Inputs (Inline in the same line when active!) */}
+            {dateFilterMode === 'RANGE' && (
+              <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                <div className="d-flex align-items-center gap-1 bg-light border rounded px-2 py-0.5 shadow-sm">
+                  <span className="text-secondary small fw-bold" style={{ fontSize: '0.75rem' }}>From:</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
+                    style={{ width: 118, fontSize: '0.8rem', boxShadow: 'none' }}
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="d-flex align-items-center gap-1 bg-light border rounded px-2 py-0.5 shadow-sm">
+                  <span className="text-secondary small fw-bold" style={{ fontSize: '0.75rem' }}>To:</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
+                    style={{ width: 118, fontSize: '0.8rem', boxShadow: 'none' }}
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm py-0.5 px-2 day-filter-btn"
+                  style={{ fontSize: '0.75rem', borderRadius: 4 }}
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 7);
+                    setCustomStartDate(getLocalDateString(d));
+                    setCustomEndDate(getLocalDateString());
+                  }}
+                >
+                  7 Days
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm py-0.5 px-2 day-filter-btn"
+                  style={{ fontSize: '0.75rem', borderRadius: 4 }}
+                  onClick={() => {
+                    const d = new Date();
+                    const firstDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+                    setCustomStartDate(firstDay);
+                    setCustomEndDate(getLocalDateString());
+                  }}
+                >
+                  This Month
+                </button>
+              </div>
+            )}
+
+            {/* 6. All Time Button */}
+            <button
+              type="button"
+              className={`btn btn-sm py-1 px-2.5 day-filter-btn ${dateFilterMode === 'ALL' ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', borderRadius: 6 }}
+              onClick={handleSetAllTime}
+            >
+              All Time (તમામ દિવસો)
+            </button>
           </div>
-
-          {/* Integrated Inline Controls in Same Card (Zero nested gray sub-boxes!) */}
-          {dateFilterMode !== 'ALL' && (
-            <div className="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top">
-              {dateFilterMode === 'RANGE' ? (
-                <div className="d-flex align-items-center gap-2 flex-wrap w-100">
-                  <div className="d-flex align-items-center gap-1.5 bg-light border rounded px-2 py-1 shadow-sm">
-                    <span className="text-secondary small fw-bold" style={{ fontSize: '0.78rem' }}>From:</span>
-                    <input
-                      type="date"
-                      className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
-                      style={{ width: 130, fontSize: '0.82rem', boxShadow: 'none' }}
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="d-flex align-items-center gap-1.5 bg-light border rounded px-2 py-1 shadow-sm">
-                    <span className="text-secondary small fw-bold" style={{ fontSize: '0.78rem' }}>To:</span>
-                    <input
-                      type="date"
-                      className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
-                      style={{ width: 130, fontSize: '0.82rem', boxShadow: 'none' }}
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-sm py-1 px-2.5 day-filter-btn"
-                    style={{ fontSize: '0.78rem', borderRadius: 6 }}
-                    onClick={() => {
-                      const d = new Date();
-                      d.setDate(d.getDate() - 7);
-                      setCustomStartDate(getLocalDateString(d));
-                      setCustomEndDate(getLocalDateString());
-                    }}
-                  >
-                    Last 7 Days
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm py-1 px-2.5 day-filter-btn"
-                    style={{ fontSize: '0.78rem', borderRadius: 6 }}
-                    onClick={() => {
-                      const d = new Date();
-                      const firstDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-                      setCustomStartDate(firstDay);
-                      setCustomEndDate(getLocalDateString());
-                    }}
-                  >
-                    This Month
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-outline-primary btn-sm py-1 px-2.5 ms-auto fw-medium"
-                    style={{ fontSize: '0.78rem', borderRadius: 6 }}
-                    onClick={handleSetToday}
-                  >
-                    Reset to Today
-                  </button>
-                </div>
-              ) : (
-                <div className="d-flex align-items-center gap-2 flex-wrap w-100">
-                  <div className="d-flex align-items-center gap-1">
-                    <button
-                      type="button"
-                      className="btn btn-sm p-1 d-flex align-items-center justify-content-center day-filter-btn shadow-sm"
-                      style={{ width: 30, height: 30, borderRadius: 6 }}
-                      onClick={handlePrevDay}
-                      title="Previous Day"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-
-                    <div className="d-flex align-items-center gap-1.5 bg-light border rounded px-2.5 py-1 shadow-sm">
-                      <span className="text-secondary small fw-bold" style={{ fontSize: '0.78rem' }}>તારીખ:</span>
-                      <input
-                        type="date"
-                        className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
-                        style={{ width: 135, fontSize: '0.82rem', boxShadow: 'none' }}
-                        value={selectedDate}
-                        onChange={(e) => handleSetCustomDate(e.target.value)}
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      className="btn btn-sm p-1 d-flex align-items-center justify-content-center day-filter-btn shadow-sm"
-                      style={{ width: 30, height: 30, borderRadius: 6 }}
-                      onClick={handleNextDay}
-                      title="Next Day"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-
-                  {selectedDate !== getLocalDateString() && (
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary btn-sm py-1 px-2.5 fw-medium ms-sm-2"
-                      style={{ fontSize: '0.78rem', borderRadius: 6 }}
-                      onClick={handleSetToday}
-                    >
-                      Reset to Today
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
