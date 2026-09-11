@@ -3,9 +3,10 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { useSocket } from '../../context/SocketContext';
 import { Modal } from '../../components/PermissionGate';
-import { DiningTable, FloorZone } from '../../types';
-import { Grid, Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2, Receipt } from 'lucide-react';
+import { DiningTable, FloorZone, Bill } from '../../types';
+import { Grid, Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2, Receipt, Download, Printer, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { generateInvoicePdf, printInvoiceReceipt } from '../../utils/invoicePdf';
 
 import { appCache } from '../../api/cache';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
@@ -42,6 +43,10 @@ export const TableFloorPage: React.FC = () => {
   // Transfer Modal
   const [transferSource, setTransferSource] = useState<DiningTable | null>(null);
   const [transferTargetId, setTransferTargetId] = useState('');
+
+  // Bill Preview Modal
+  const [tableBill, setTableBill] = useState<Bill | null>(null);
+  const [billLoadingTableId, setBillLoadingTableId] = useState<string | null>(null);
 
   const loadFloor = async (showSpinner = false, forceFresh = false) => {
     if (showSpinner || tables.length === 0) {
@@ -373,17 +378,24 @@ export const TableFloorPage: React.FC = () => {
                           <button
                             className="btn btn-primary btn-sm d-flex align-items-center justify-content-center gap-1 py-1 px-2"
                             style={{ fontSize: '0.75rem' }}
+                            disabled={billLoadingTableId === table.id}
                             onClick={async () => {
+                              if (!table.activeOrder?.id) return;
                               try {
+                                setBillLoadingTableId(table.id);
                                 const res: any = await apiClient.post('/billing/generate', { orderId: table.activeOrder?.id });
-                                navigate(`/billing?billId=${res?.data?.id || ''}`);
+                                if (res?.success && res.data) {
+                                  setTableBill(res.data);
+                                }
                               } catch (err: any) {
                                 alert(err.message || 'Failed to generate bill.');
+                              } finally {
+                                setBillLoadingTableId(null);
                               }
                             }}
                             title="Generate Tax Invoice for Table"
                           >
-                            <Receipt size={13} /> Bill
+                            <Receipt size={13} /> {billLoadingTableId === table.id ? '...' : 'Bill'}
                           </button>
                         )}
                         {can('tables.transfer') && (
@@ -592,6 +604,146 @@ export const TableFloorPage: React.FC = () => {
             )}
           </div>
         </div>
+      </Modal>
+
+      {/* TABLE INVOICE MODAL */}
+      <Modal
+        isOpen={!!tableBill}
+        onClose={() => setTableBill(null)}
+        title={`Tax Invoice: ${tableBill?.billNumber}`}
+        size="lg"
+      >
+        {tableBill && (
+          <div className="p-3 bg-white print-area" id="printable-table-invoice">
+            {/* Invoice Header */}
+            <div className="text-center border-bottom pb-3 mb-3">
+              <div className="d-flex justify-content-center mb-2">
+                <img
+                  src="/logo.jpg"
+                  alt="Bhatigal Bhanu"
+                  style={{ width: 68, height: 68, borderRadius: '50%', border: '2px solid #D48B28' }}
+                />
+              </div>
+              <h4 className="fw-bold mb-0 text-dark" style={{ letterSpacing: '0.02em' }}>
+                BHATIGAL BHANU
+              </h4>
+              <p className="small text-muted mb-1">Traditional Kathiyawadi & Gujarati Dining</p>
+              <p className="small text-muted mb-0">Kothariya Ring Road, Rajkot, Gujarat - 360022</p>
+              <p className="small text-muted mb-0">GSTIN: 24AAAFB1234A1Z8 | Phone: +91 98790 12345</p>
+              <span className="badge bg-primary mt-2 px-3 py-1">ORIGINAL TAX INVOICE</span>
+            </div>
+
+            {/* Bill Meta */}
+            <div className="d-flex justify-content-between small text-secondary mb-3">
+              <div>
+                <div><strong>Invoice No:</strong> {tableBill.billNumber}</div>
+                <div><strong>Table:</strong> <span className="badge bg-light text-dark border ms-1">{tableBill.tableNumber || 'Dining'}</span></div>
+                <div><strong>Guest:</strong> {tableBill.customerName || 'Walk-in Guest'}</div>
+              </div>
+              <div className="text-end">
+                <div><strong>Date:</strong> {new Date(tableBill.createdAt).toLocaleDateString()}</div>
+                <div><strong>Time:</strong> {new Date(tableBill.createdAt).toLocaleTimeString()}</div>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="table-responsive">
+              <table className="table table-sm table-bordered align-middle mb-3" style={{ minWidth: 420 }}>
+                <thead className="table-light">
+                  <tr>
+                    <th style={{ minWidth: 200, whiteSpace: 'nowrap' }}>Item Description</th>
+                    <th className="text-center" style={{ width: 80, whiteSpace: 'nowrap' }}>Qty</th>
+                    <th className="text-end" style={{ width: 110, whiteSpace: 'nowrap' }}>Unit Price</th>
+                    <th className="text-end" style={{ width: 110, whiteSpace: 'nowrap' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableBill.items?.map((it, idx) => (
+                    <tr key={idx}>
+                      <td style={{ whiteSpace: 'nowrap' }} className="fw-medium text-dark">{it.itemName}</td>
+                      <td className="text-center" style={{ whiteSpace: 'nowrap' }}>{it.quantity}</td>
+                      <td className="text-end" style={{ whiteSpace: 'nowrap' }}>₹{it.unitPrice}</td>
+                      <td className="text-end fw-bold" style={{ whiteSpace: 'nowrap' }}>₹{it.totalPrice}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary */}
+            <div className="row justify-content-end">
+              <div className="col-12 col-sm-8 col-md-6">
+                <div className="d-flex justify-content-between small mb-1">
+                  <span>Subtotal:</span>
+                  <span>₹{tableBill.subtotal}</span>
+                </div>
+                {tableBill.discountAmount > 0 && (
+                  <div className="d-flex justify-content-between small text-danger mb-1">
+                    <span>Discount:</span>
+                    <span>-₹{tableBill.discountAmount}</span>
+                  </div>
+                )}
+                <div className="d-flex justify-content-between small mb-1">
+                  <span>CGST (2.5%):</span>
+                  <span>₹{Math.round(tableBill.taxAmount / 2)}</span>
+                </div>
+                <div className="d-flex justify-content-between small mb-1">
+                  <span>SGST (2.5%):</span>
+                  <span>₹{Math.round(tableBill.taxAmount / 2)}</span>
+                </div>
+                <div className="d-flex justify-content-between fw-bold text-dark fs-5 border-top pt-2 mt-1">
+                  <span>Grand Total:</span>
+                  <span>₹{tableBill.totalPayable}</span>
+                </div>
+                <div className="d-flex justify-content-between small text-muted">
+                  <span>Status:</span>
+                  <span className="fw-bold">{tableBill.status}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center border-top pt-3 mt-4 small text-muted">
+              Thank you for dining with us! Please visit again.
+            </div>
+
+            <div className="d-flex flex-wrap justify-content-end gap-2 mt-4 pt-3 border-top no-print">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setTableBill(null)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-sm"
+                onClick={() => generateInvoicePdf(tableBill)}
+              >
+                <Download size={16} /> Download PDF
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm"
+                onClick={() => printInvoiceReceipt(tableBill)}
+              >
+                <Printer size={16} /> Print Receipt
+              </button>
+              {tableBill.status !== 'PAID' && can('payment.create') && (
+                <button
+                  type="button"
+                  className="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm"
+                  onClick={() => {
+                    const b = tableBill;
+                    setTableBill(null);
+                    navigate(`/payments?billId=${b.id}&amount=${b.totalPayable}`);
+                  }}
+                >
+                  <CreditCard size={16} /> Pay ₹{tableBill.totalPayable}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

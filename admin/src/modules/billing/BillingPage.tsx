@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
@@ -18,6 +18,7 @@ export const BillingPage: React.FC = () => {
 
   // Bill View & Print Modal
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+  const dismissedBillIdRef = useRef<string | null>(null);
 
   // Discount Modal
   const [discountBill, setDiscountBill] = useState<Bill | null>(null);
@@ -32,6 +33,15 @@ export const BillingPage: React.FC = () => {
   const [activeTables, setActiveTables] = useState<any[]>([]);
   const [generatingForOrderId, setGeneratingForOrderId] = useState<string | null>(null);
 
+  const handleCloseBillModal = () => {
+    setSelectedBill(null);
+    const qBillId = searchParams.get('billId');
+    if (qBillId) {
+      dismissedBillIdRef.current = qBillId;
+      navigate('/billing', { replace: true });
+    }
+  };
+
   const loadBills = async (showSpinner = false, forceFresh = false) => {
     if (showSpinner || bills.length === 0) {
       setLoading(true);
@@ -42,9 +52,13 @@ export const BillingPage: React.FC = () => {
       if (res.success) {
         setBills(res.data);
         const qBillId = searchParams.get('billId');
-        if (qBillId) {
+        // Only auto-open once on mount; never re-open in periodic polling or after dismissal
+        if (qBillId && dismissedBillIdRef.current !== qBillId) {
           const found = res.data.find((b: Bill) => b.id === qBillId);
-          if (found) setSelectedBill(found);
+          if (found) {
+            setSelectedBill(found);
+            dismissedBillIdRef.current = qBillId;
+          }
         }
       }
     } catch (err) {
@@ -235,7 +249,7 @@ export const BillingPage: React.FC = () => {
       {/* BILL VIEW & PRINT INVOICE MODAL */}
       <Modal
         isOpen={!!selectedBill}
-        onClose={() => setSelectedBill(null)}
+        onClose={handleCloseBillModal}
         title={`Tax Invoice: ${selectedBill?.billNumber}`}
         size="lg"
       >
@@ -332,14 +346,40 @@ export const BillingPage: React.FC = () => {
               Thank you for dining with us! Please visit again.
             </div>
 
-            <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top no-print">
-              <button className="btn btn-secondary btn-sm" onClick={() => setSelectedBill(null)}>Close</button>
-              <button className="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={() => generateInvoicePdf(selectedBill)}>
-                <Download size={16} /> Download PDF
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 pt-3 border-top no-print">
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={() => {
+                  handleCloseBillModal();
+                  navigate('/tables');
+                }}
+              >
+                ← Back to Tables
               </button>
-              <button className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={handlePrintReceipt}>
-                <Printer size={16} /> Print Receipt
-              </button>
+
+              <div className="d-flex flex-wrap gap-2 ms-auto">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleCloseBillModal}>Close</button>
+                <button type="button" className="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={() => generateInvoicePdf(selectedBill)}>
+                  <Download size={16} /> Download PDF
+                </button>
+                <button type="button" className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm" onClick={handlePrintReceipt}>
+                  <Printer size={16} /> Print Receipt
+                </button>
+                {selectedBill.status !== 'PAID' && can('payment.create') && (
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm"
+                    onClick={() => {
+                      const b = selectedBill;
+                      handleCloseBillModal();
+                      navigate(`/payments?billId=${b.id}&amount=${b.totalPayable}`);
+                    }}
+                  >
+                    <CreditCard size={16} /> Pay ₹{selectedBill.totalPayable}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
