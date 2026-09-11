@@ -616,12 +616,51 @@ html, body, #root {
   .form-control, .form-select {
     font-size: 0.95rem;
   }
+}
+
+/* Symmetrical Switch Tabs for Billing */
+.billing-switch-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.billing-switch-btn {
+  font-size: 0.82rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+  .billing-switch-group {
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  .billing-switch-btn {
+    flex: 1 1 0 !important;
+    width: 50% !important;
+    min-width: 0 !important;
+    font-size: 0.74rem !important;
+    padding: 6px 4px !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+  }
+
+  .billing-switch-btn .badge {
+    font-size: 0.68rem !important;
+    padding: 2px 5px !important;
+  }
 
   /* Only enlarge Unified Register and Receipts Log tab icons on mobile screens */
   .billing-tab-icon {
-    width: 20px !important;
-    height: 20px !important;
-    min-width: 20px !important;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
   }
 }
 

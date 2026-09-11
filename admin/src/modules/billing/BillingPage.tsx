@@ -870,34 +870,34 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
 
       {/* COMBINED REGISTRATION BAR: Unified Register vs Receipts Log Switch & Smart Filters */}
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 py-1 mb-2">
-        {/* Primary View Switch */}
-        <div className="d-flex align-items-center gap-2">
+        {/* Primary View Switch (Equal Symmetrical Size on Mobile, No Text Break) */}
+        <div className="billing-switch-group">
           <button
             type="button"
-            className={`btn btn-sm py-1.5 px-3 d-flex align-items-center gap-2 ${
+            className={`btn btn-sm py-1.5 px-3 billing-switch-btn ${
               viewMode === 'UNIFIED' ? 'btn-primary fw-bold shadow-sm' : 'day-filter-btn'
             }`}
-            style={{ fontSize: '0.82rem', borderRadius: 6 }}
             onClick={() => setViewMode('UNIFIED')}
           >
-            <Receipt size={15} className="billing-tab-icon" />
-            Unified Register (બિલ & પેમેન્ટ્સ)
-            <span className={`badge ${viewMode === 'UNIFIED' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
+            <Receipt size={15} className="billing-tab-icon flex-shrink-0" />
+            <span className="d-none d-md-inline">Unified Register (બિલ & પેમેન્ટ્સ)</span>
+            <span className="d-inline d-md-none text-nowrap">Register (બિલ)</span>
+            <span className={`badge flex-shrink-0 ${viewMode === 'UNIFIED' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
               {dayBills.length}
             </span>
           </button>
 
           <button
             type="button"
-            className={`btn btn-sm py-1.5 px-3 d-flex align-items-center gap-2 ${
+            className={`btn btn-sm py-1.5 px-3 billing-switch-btn ${
               viewMode === 'RECEIPTS' ? 'btn-primary fw-bold shadow-sm' : 'day-filter-btn'
             }`}
-            style={{ fontSize: '0.82rem', borderRadius: 6 }}
             onClick={() => setViewMode('RECEIPTS')}
           >
-            <CreditCard size={15} className="billing-tab-icon" />
-            Receipts Log (રસીદ લોગ)
-            <span className={`badge ${viewMode === 'RECEIPTS' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
+            <CreditCard size={15} className="billing-tab-icon flex-shrink-0" />
+            <span className="d-none d-md-inline">Receipts Log (રસીદ લોગ)</span>
+            <span className="d-inline d-md-none text-nowrap">Receipts (રસીદ)</span>
+            <span className={`badge flex-shrink-0 ${viewMode === 'RECEIPTS' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
               {dayPayments.length}
             </span>
           </button>
