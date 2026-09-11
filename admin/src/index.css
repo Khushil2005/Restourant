@@ -139,6 +139,136 @@ body {
   align-items: center;
 }
 
+/* Billing Tab Buttons (Responsive, Large Icons, Touch-Friendly) */
+.billing-tab-btn {
+  min-height: 42px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  color: #374151;
+}
+
+.billing-tab-btn:hover {
+  background-color: #fdf2f4 !important;
+  color: var(--brand-maroon) !important;
+  border-color: var(--brand-maroon) !important;
+}
+
+.billing-tab-btn.active {
+  background-color: var(--brand-maroon) !important;
+  color: #ffffff !important;
+  border-color: var(--brand-maroon) !important;
+  box-shadow: 0 2px 5px rgba(128, 0, 32, 0.25) !important;
+}
+
+.billing-tab-btn .badge {
+  font-size: 0.76rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 3px 8px;
+  transition: all 0.15s ease-in-out;
+}
+
+.billing-tab-btn.active .badge {
+  background-color: #ffffff !important;
+  color: var(--brand-maroon) !important;
+}
+
+.billing-tab-btn:not(.active) .badge {
+  background-color: #6b7280 !important;
+  color: #ffffff !important;
+}
+
+/* Billing Filter Chips */
+.billing-filter-chip {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  color: #374151;
+  transition: all 0.15s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.billing-filter-chip:hover {
+  background-color: #fdf2f4;
+  color: var(--brand-maroon);
+  border-color: var(--brand-maroon);
+}
+
+.billing-filter-chip.active-all {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+  border-color: #1f2937 !important;
+}
+
+.billing-filter-chip.active-unpaid {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+}
+
+.billing-filter-chip.active-cash {
+  background-color: #16a34a !important;
+  color: #ffffff !important;
+  border-color: #16a34a !important;
+}
+
+.billing-filter-chip.active-upi {
+  background-color: var(--brand-maroon) !important;
+  color: #ffffff !important;
+  border-color: var(--brand-maroon) !important;
+}
+
+.billing-filter-chip.active-card {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+  border-color: #d97706 !important;
+}
+
+.billing-filter-chip.active-paid {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  border-color: #059669 !important;
+}
+
+/* Metric Card Formatting */
+.billing-metric-card {
+  border-radius: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid #edf2f7;
+}
+
+.billing-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+.billing-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* Brand Gold Accents */
 .bg-gold {
   background-color: var(--brand-gold) !important;
