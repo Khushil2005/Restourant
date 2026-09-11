@@ -15,22 +15,49 @@ import {
   QrCode,
   Banknote,
   Clock,
-  Settings,
-  RotateCcw,
-  Volume2,
-  SlidersHorizontal,
-  FileText
+  Calendar,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { generateInvoicePdf, printInvoiceReceipt } from '../../utils/invoicePdf';
 import {
   getPrintSettings,
-  savePrintSettings,
-  resetPrintSettings,
   playPaymentChime,
   PrintAndBillSettings
 } from '../../utils/printSettings';
+
+// Date helpers for Day-Wise List ("New Day New List")
+const getLocalDateString = (d: Date = new Date()): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getYesterdayDateString = (): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return getLocalDateString(d);
+};
+
+const formatDisplayDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const todayStr = getLocalDateString(new Date());
+  const yestStr = getYesterdayDateString();
+  if (dateStr === todayStr) {
+    return `Today (${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+  }
+  if (dateStr === yestStr) {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `Yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+  }
+  const [y, m, day] = dateStr.split('-').map(Number);
+  const d = new Date(y, m - 1, day);
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 interface BillingPageProps {
   defaultTab?: 'invoices' | 'payments';
@@ -41,10 +68,18 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Print & POS Settings State
+  // Print & Bill Settings (managed centrally in Store Settings)
   const [settings, setSettings] = useState<PrintAndBillSettings>(getPrintSettings());
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'automation' | 'content' | 'general'>('automation');
+
+  useEffect(() => {
+    const handleStorage = () => setSettings(getPrintSettings());
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  // Day-wise List Filter States ("New Day New List")
+  const [dateFilterMode, setDateFilterMode] = useState<'TODAY' | 'YESTERDAY' | 'CUSTOM' | 'ALL'>('TODAY');
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
 
   // Active Main Tab: 'invoices' or 'payments'
   const [activeTab, setActiveTab] = useState<'invoices' | 'payments'>(
@@ -159,36 +194,138 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
     }
   );
 
-  // Filtered Bills
+  // Day navigation handlers
+  const handlePrevDay = () => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const prev = new Date(y, m - 1, d - 1);
+    const prevStr = getLocalDateString(prev);
+    setSelectedDate(prevStr);
+    const todayStr = getLocalDateString();
+    const yestStr = getYesterdayDateString();
+    setDateFilterMode(prevStr === todayStr ? 'TODAY' : prevStr === yestStr ? 'YESTERDAY' : 'CUSTOM');
+  };
+
+  const handleNextDay = () => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    const nextStr = getLocalDateString(next);
+    setSelectedDate(nextStr);
+    const todayStr = getLocalDateString();
+    const yestStr = getYesterdayDateString();
+    setDateFilterMode(nextStr === todayStr ? 'TODAY' : nextStr === yestStr ? 'YESTERDAY' : 'CUSTOM');
+  };
+
+  const handleSetToday = () => {
+    setDateFilterMode('TODAY');
+    setSelectedDate(getLocalDateString());
+  };
+
+  const handleSetYesterday = () => {
+    setDateFilterMode('YESTERDAY');
+    setSelectedDate(getYesterdayDateString());
+  };
+
+  const handleSetCustomDate = (val: string) => {
+    if (!val) return;
+    setSelectedDate(val);
+    const todayStr = getLocalDateString();
+    const yestStr = getYesterdayDateString();
+    setDateFilterMode(val === todayStr ? 'TODAY' : val === yestStr ? 'YESTERDAY' : 'CUSTOM');
+  };
+
+  const handleSetAllTime = () => {
+    setDateFilterMode('ALL');
+  };
+
+  // 1. Day-Filtered Bills ("New Day New List")
+  const dayBills = useMemo(() => {
+    if (dateFilterMode === 'ALL') return bills;
+    return bills.filter((b) => {
+      if (!b.createdAt) return false;
+      const bDate = getLocalDateString(new Date(b.createdAt));
+      return bDate === selectedDate;
+    });
+  }, [bills, dateFilterMode, selectedDate]);
+
+  // 2. Day-Filtered Payments
+  const dayPayments = useMemo(() => {
+    if (dateFilterMode === 'ALL') return payments;
+    return payments.filter((p) => {
+      if (!p.createdAt) return false;
+      const pDate = getLocalDateString(new Date(p.createdAt));
+      return pDate === selectedDate;
+    });
+  }, [payments, dateFilterMode, selectedDate]);
+
+  // 3. Sub-filtered Bills (ALL | UNPAID | PAID)
   const filteredBills = useMemo(() => {
     if (invoiceFilter === 'UNPAID') {
-      return bills.filter(b => b.status === 'UNPAID' || b.status === 'PARTIALLY_PAID');
+      return dayBills.filter((b) => b.status === 'UNPAID' || b.status === 'PARTIALLY_PAID');
     }
     if (invoiceFilter === 'PAID') {
-      return bills.filter(b => b.status === 'PAID');
+      return dayBills.filter((b) => b.status === 'PAID');
     }
-    return bills;
-  }, [bills, invoiceFilter]);
+    return dayBills;
+  }, [dayBills, invoiceFilter]);
+
+  // Top Summary Metric Totals (Count AND Price for each card)
+  const totalBillsCount = dayBills.length;
+  const totalBillsValue = useMemo(() => {
+    return dayBills.reduce((acc, b) => acc + (b.totalPayable || 0), 0);
+  }, [dayBills]);
 
   const unpaidBillsCount = useMemo(() => {
-    return bills.filter(b => b.status === 'UNPAID' || b.status === 'PARTIALLY_PAID').length;
-  }, [bills]);
-
-  const paidBillsCount = useMemo(() => {
-    return bills.filter(b => b.status === 'PAID').length;
-  }, [bills]);
-
-  const totalRevenue = useMemo(() => {
-    return bills
-      .filter(b => b.status === 'PAID')
-      .reduce((acc, b) => acc + (b.paidAmount || b.totalPayable || 0), 0);
-  }, [bills]);
+    return dayBills.filter((b) => b.status === 'UNPAID' || b.status === 'PARTIALLY_PAID').length;
+  }, [dayBills]);
 
   const totalPendingAmount = useMemo(() => {
-    return bills
-      .filter(b => b.status !== 'PAID')
+    return dayBills
+      .filter((b) => b.status !== 'PAID')
       .reduce((acc, b) => acc + (b.balanceAmount !== undefined ? b.balanceAmount : b.totalPayable || 0), 0);
-  }, [bills]);
+  }, [dayBills]);
+
+  const paidBillsCount = useMemo(() => {
+    return dayBills.filter((b) => b.status === 'PAID').length;
+  }, [dayBills]);
+
+  const totalRevenue = useMemo(() => {
+    return dayBills
+      .filter((b) => b.status === 'PAID')
+      .reduce((acc, b) => acc + (b.paidAmount || b.totalPayable || 0), 0);
+  }, [dayBills]);
+
+  const totalPaymentsCount = dayPayments.length;
+  const totalCollectedAmount = useMemo(() => {
+    return dayPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
+  }, [dayPayments]);
+
+  // Detailed Invoices Breakdown (Spacious Summary Strip)
+  const invoicesSubtotal = useMemo(() => {
+    return dayBills.reduce((acc, b) => acc + (b.subtotal || 0), 0);
+  }, [dayBills]);
+
+  const invoicesGst = useMemo(() => {
+    return dayBills.reduce((acc, b) => acc + (b.taxAmount || 0), 0);
+  }, [dayBills]);
+
+  // Detailed Receipts Breakdown (Spacious Summary Strip)
+  const cashPaymentsTotal = useMemo(() => {
+    return dayPayments.filter((p) => p.paymentMethod === 'CASH').reduce((acc, p) => acc + (p.amount || 0), 0);
+  }, [dayPayments]);
+
+  const upiPaymentsTotal = useMemo(() => {
+    return dayPayments.filter((p) => p.paymentMethod === 'UPI').reduce((acc, p) => acc + (p.amount || 0), 0);
+  }, [dayPayments]);
+
+  const cardPaymentsTotal = useMemo(() => {
+    return dayPayments.filter((p) => p.paymentMethod === 'CARD').reduce((acc, p) => acc + (p.amount || 0), 0);
+  }, [dayPayments]);
+
+  const otherPaymentsTotal = useMemo(() => {
+    return dayPayments
+      .filter((p) => p.paymentMethod !== 'CASH' && p.paymentMethod !== 'UPI' && p.paymentMethod !== 'CARD')
+      .reduce((acc, p) => acc + (p.amount || 0), 0);
+  }, [dayPayments]);
 
   // Open in-place payment dialog
   const openPaymentModal = (bill: Bill) => {
@@ -354,70 +491,243 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
     }
   };
 
-  // Save Settings
-  const handleSaveSettings = (updates: Partial<PrintAndBillSettings>) => {
-    const updated = savePrintSettings(updates);
-    setSettings(updated);
-  };
-
-  // Reset Settings
-  const handleResetSettings = () => {
-    if (confirm('Are you sure you want to reset all print and billing settings to default?')) {
-      const reset = resetPrintSettings();
-      setSettings(reset);
-    }
-  };
-
   const changeReturn = Math.max(0, tenderedCash - payAmount);
 
   return (
     <div className="d-flex flex-column gap-2" style={{ fontSize: '0.85rem' }}>
-      {/* Top Compact Header Bar */}
+      {/* Top Header Bar (Responsive & Clean, without Settings button) */}
       <div className="card shadow-sm border-0">
-        <div className="card-body p-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-          <div className="d-flex align-items-center gap-2">
-            <div className="bg-primary-subtle text-primary p-1.5 rounded-2 d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
-              <Receipt size={18} />
+        <div className="card-body p-2.5 px-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+          <div className="d-flex align-items-center gap-2.5">
+            <div className="bg-primary-subtle text-primary p-2 rounded-2 d-flex align-items-center justify-content-center shadow-sm" style={{ width: 36, height: 36 }}>
+              <Receipt size={20} />
             </div>
             <div>
-              <div className="d-flex align-items-center gap-2">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
                 <h6 className="fw-bold mb-0 text-dark">Billing & Payments</h6>
                 <span className="badge bg-light text-secondary border px-1.5 py-0.5" style={{ fontSize: '0.7rem' }}>
-                  POS Invoicing & Settlements
+                  Daily Register & Settlements
+                </span>
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style={{ fontSize: '0.7rem' }}>
+                  {dateFilterMode === 'ALL' ? 'All Time' : formatDisplayDate(selectedDate)}
                 </span>
               </div>
-              <div className="d-flex align-items-center gap-3 mt-0.5 text-muted" style={{ fontSize: '0.72rem' }}>
-                <span>Total Bills: <strong>{bills.length}</strong></span>
-                <span className="text-danger">Pending: <strong>{unpaidBillsCount} (₹{totalPendingAmount.toLocaleString()})</strong></span>
-                <span className="text-success">Settled: <strong>{paidBillsCount} (₹{totalRevenue.toLocaleString()})</strong></span>
+              <div className="text-muted small mt-0.5" style={{ fontSize: '0.72rem' }}>
+                Day-wise invoice register, table order settlement & thermal slip printing
               </div>
             </div>
           </div>
 
-          <div className="d-flex align-items-center gap-1.5 flex-wrap">
+          <div className="d-flex align-items-center gap-2 w-100 w-sm-auto justify-content-end">
             {/* Quick Bill Active Table */}
             {can('billing.create') && (
               <button
-                className="btn btn-primary btn-sm py-1 px-2.5 d-flex align-items-center gap-1 shadow-sm fw-medium"
-                style={{ fontSize: '0.78rem' }}
+                className="btn btn-primary btn-sm py-1.5 px-3 d-flex align-items-center justify-content-center gap-1.5 shadow-sm fw-bold w-100 w-sm-auto"
+                style={{ fontSize: '0.8rem' }}
                 onClick={() => {
                   loadActiveTables();
                   setIsBillTableModalOpen(true);
                 }}
               >
-                <Plus size={14} /> Bill Active Table
+                <Plus size={15} /> Bill Active Table
               </button>
             )}
+          </div>
+        </div>
+      </div>
 
-            {/* Print & POS Settings Button */}
+      {/* 4 TOP SUMMARY METRIC CARDS: Count AND Total Price / Value for Each */}
+      <div className="row g-2 g-md-3 mb-1">
+        {/* Card 1: Total Invoices / Orders */}
+        <div className="col-6 col-lg-3">
+          <div className="card shadow-sm border-0 h-100 bg-white">
+            <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
+                  Total Invoices & Orders
+                </span>
+                <div className="p-1.5 rounded-2 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Receipt size={16} />
+                </div>
+              </div>
+              <div>
+                <div className="fs-5 fs-sm-4 fw-bold text-dark mb-0.5">
+                  ₹{totalBillsValue.toLocaleString()}
+                </div>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                  <span className="badge bg-primary text-white" style={{ fontSize: '0.68rem' }}>
+                    {totalBillsCount} Bills / Orders
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                    Gross billing
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Pending Unpaid Bills */}
+        <div className="col-6 col-lg-3">
+          <div className="card shadow-sm border-0 h-100 bg-white">
+            <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
+                  Pending Amount (બાકી)
+                </span>
+                <div className="p-1.5 rounded-2 bg-danger-subtle text-danger d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Clock size={16} />
+                </div>
+              </div>
+              <div>
+                <div className="fs-5 fs-sm-4 fw-bold text-danger mb-0.5">
+                  ₹{totalPendingAmount.toLocaleString()}
+                </div>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                  <span className="badge bg-danger text-white" style={{ fontSize: '0.68rem' }}>
+                    {unpaidBillsCount} Pending Bills
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                    Awaiting payment
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Settled Paid Revenue */}
+        <div className="col-6 col-lg-3">
+          <div className="card shadow-sm border-0 h-100 bg-white">
+            <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
+                  Settled Revenue (ચૂકવાયેલ)
+                </span>
+                <div className="p-1.5 rounded-2 bg-success-subtle text-success d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <CheckCircle2 size={16} />
+                </div>
+              </div>
+              <div>
+                <div className="fs-5 fs-sm-4 fw-bold text-success mb-0.5">
+                  ₹{totalRevenue.toLocaleString()}
+                </div>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                  <span className="badge bg-success text-white" style={{ fontSize: '0.68rem' }}>
+                    {paidBillsCount} Paid Bills
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                    Fully cleared
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Collections & Receipts */}
+        <div className="col-6 col-lg-3">
+          <div className="card shadow-sm border-0 h-100 bg-white">
+            <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
+                  Collections (કુલ વસૂલાત)
+                </span>
+                <div className="p-1.5 rounded-2 bg-warning-subtle text-warning-emphasis d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Banknote size={16} />
+                </div>
+              </div>
+              <div>
+                <div className="fs-5 fs-sm-4 fw-bold text-dark mb-0.5">
+                  ₹{totalCollectedAmount.toLocaleString()}
+                </div>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                  <span className="badge bg-warning text-dark fw-bold" style={{ fontSize: '0.68rem' }}>
+                    {totalPaymentsCount} Receipts
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                    Cash / UPI / Card
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Day Wise Filter & Navigator Bar ("New Day New List") */}
+      <div className="card shadow-sm border-0 mb-1">
+        <div className="card-body p-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+          {/* Quick Date Pills */}
+          <div className="d-flex align-items-center gap-1.5 flex-wrap">
+            <span className="text-muted small d-none d-sm-inline me-1" style={{ fontSize: '0.75rem' }}>
+              <Calendar size={13} className="me-1" />
+              Day Filter:
+            </span>
             <button
-              className="btn btn-outline-secondary btn-sm py-1 px-2.5 d-flex align-items-center gap-1 shadow-sm"
-              style={{ fontSize: '0.78rem' }}
-              onClick={() => setIsSettingsModalOpen(true)}
-              title="Configure Auto/Manual Print, PDF format & Slip Content"
+              type="button"
+              className={`btn btn-sm py-1 px-2.5 ${dateFilterMode === 'TODAY' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.75rem', borderRadius: 6 }}
+              onClick={handleSetToday}
             >
-              <Settings size={14} className="text-secondary" /> Print & Bill Settings
+              Today (આજે)
             </button>
+            <button
+              type="button"
+              className={`btn btn-sm py-1 px-2.5 ${dateFilterMode === 'YESTERDAY' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.75rem', borderRadius: 6 }}
+              onClick={handleSetYesterday}
+            >
+              Yesterday (ગઈકાલે)
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm py-1 px-2.5 ${dateFilterMode === 'ALL' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.75rem', borderRadius: 6 }}
+              onClick={handleSetAllTime}
+            >
+              All Time (તમામ દિવસો)
+            </button>
+          </div>
+
+          {/* Date Picker & Day Steppers (< Prev Day | Date | Next Day >) */}
+          <div className="d-flex align-items-center gap-1.5 ms-auto flex-wrap">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm p-1 d-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28 }}
+              onClick={handlePrevDay}
+              title="Previous Day"
+              disabled={dateFilterMode === 'ALL'}
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div className="d-flex align-items-center gap-1 bg-light border rounded px-2 py-0.5">
+              <input
+                type="date"
+                className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
+                style={{ width: 125, fontSize: '0.75rem', boxShadow: 'none' }}
+                value={selectedDate}
+                onChange={(e) => handleSetCustomDate(e.target.value)}
+                disabled={dateFilterMode === 'ALL'}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm p-1 d-flex align-items-center justify-content-center"
+              style={{ width: 28, height: 28 }}
+              onClick={handleNextDay}
+              title="Next Day"
+              disabled={dateFilterMode === 'ALL'}
+            >
+              <ChevronRight size={16} />
+            </button>
+
+            <span className="badge bg-light text-secondary border ms-1 py-1 px-2" style={{ fontSize: '0.72rem' }}>
+              {dateFilterMode === 'ALL' ? 'Showing All Time Records' : formatDisplayDate(selectedDate)}
+            </span>
           </div>
         </div>
       </div>
@@ -436,7 +746,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
               <Receipt size={14} />
               Invoices & Billing
               <span className={`badge ${activeTab === 'invoices' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.68rem' }}>
-                {bills.length}
+                {dayBills.length}
               </span>
               {unpaidBillsCount > 0 && (
                 <span className="badge bg-danger text-white rounded-pill px-1.5" style={{ fontSize: '0.68rem' }}>
@@ -456,7 +766,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
               <CreditCard size={14} />
               Receipts History
               <span className={`badge ${activeTab === 'payments' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.68rem' }}>
-                {payments.length}
+                {dayPayments.length}
               </span>
             </button>
           </li>
@@ -470,7 +780,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
               style={{ fontSize: '0.75rem' }}
               onClick={() => setInvoiceFilter('ALL')}
             >
-              All ({bills.length})
+              All ({dayBills.length})
             </button>
             <button
               className={`btn py-0 px-2 ${invoiceFilter === 'UNPAID' ? 'btn-danger fw-bold' : 'btn-outline-secondary'}`}
@@ -490,9 +800,44 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
         )}
       </div>
 
-      {/* TAB 1: COMPACT INVOICES & BILLING TABLE */}
+      {/* TAB 1: INVOICES & BILLING */}
       {activeTab === 'invoices' && (
-        <DataTable<Bill>
+        <>
+          {/* Spacious Invoices Breakdown Summary Strip (Clear Space & Visibility) */}
+          <div className="card shadow-sm border-0 mb-2 bg-white">
+            <div className="card-body py-2.5 px-3">
+              <div className="row g-2 align-items-center text-center text-sm-start">
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Invoices Count</span>
+                  <span className="fw-bold text-dark fs-6">{totalBillsCount}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Subtotal</span>
+                  <span className="fw-bold text-dark fs-6">₹{invoicesSubtotal.toLocaleString()}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>GST (5%)</span>
+                  <span className="fw-bold text-dark fs-6">₹{invoicesGst.toLocaleString()}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Total Payable</span>
+                  <span className="fw-bold text-primary fs-6">₹{totalBillsValue.toLocaleString()}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Paid Amount</span>
+                  <span className="fw-bold text-success fs-6">₹{totalRevenue.toLocaleString()}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Balance Due</span>
+                  <span className={`fw-bold fs-6 ${totalPendingAmount > 0 ? 'text-danger' : 'text-muted'}`}>
+                    ₹{totalPendingAmount.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DataTable<Bill>
           compact={true}
           columns={[
             {
@@ -627,63 +972,97 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             </div>
           )}
         />
+        </>
       )}
 
-      {/* TAB 2: COMPACT PAYMENT RECEIPTS HISTORY TABLE */}
+      {/* TAB 2: PAYMENT RECEIPTS HISTORY */}
       {activeTab === 'payments' && (
-        <DataTable<Payment>
-          compact={true}
-          columns={[
-            {
-              header: 'Payment #',
-              accessor: (row) => <span className="fw-bold text-dark">{row.paymentNumber}</span>,
-              width: 120
-            },
-            {
-              header: 'Method',
-              accessor: (row) => (
-                <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-1.5 py-0.5" style={{ fontSize: '0.72rem' }}>
-                  {row.paymentMethod === 'CASH' && <Banknote size={12} className="text-success" />}
-                  {row.paymentMethod === 'UPI' && <QrCode size={12} className="text-primary" />}
-                  {row.paymentMethod === 'CARD' && <CreditCard size={12} className="text-warning" />}
-                  {row.paymentMethod}
-                </span>
-              ),
-              width: 95
-            },
-            {
-              header: 'Settled Amount',
-              accessor: (row) => (
-                <span className="fw-bold text-success">₹{row.amount.toLocaleString()}</span>
-              ),
-              width: 95
-            },
-            {
-              header: 'Reference / UTR',
-              accessor: (row) => row.referenceNumber || '-',
-              width: 120
-            },
-            {
-              header: 'Date & Time',
-              accessor: (row) => new Date(row.createdAt).toLocaleString([], {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-              width: 110
-            },
-            {
-              header: 'Status',
-              accessor: () => (
-                <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5" style={{ fontSize: '0.7rem' }}>
-                  Settled
-                </span>
-              ),
-              width: 80
-            }
-          ]}
-          data={payments}
+        <>
+          {/* Spacious Receipts Breakdown Summary Strip (Clear Space & Visibility) */}
+          <div className="card shadow-sm border-0 mb-2 bg-white">
+            <div className="card-body py-2.5 px-3">
+              <div className="row g-2 align-items-center text-center text-sm-start">
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Total Receipts</span>
+                  <span className="fw-bold text-dark fs-6">{totalPaymentsCount}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Cash Tendered</span>
+                  <span className="fw-bold text-success fs-6">₹{cashPaymentsTotal.toLocaleString()}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>UPI QR Pay</span>
+                  <span className="fw-bold text-primary fs-6">₹{upiPaymentsTotal.toLocaleString()}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Card POS</span>
+                  <span className="fw-bold text-warning fs-6">₹{cardPaymentsTotal.toLocaleString()}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Split / Other</span>
+                  <span className="fw-bold text-secondary fs-6">₹{otherPaymentsTotal.toLocaleString()}</span>
+                </div>
+                <div className="col-6 col-sm-4 col-md-2">
+                  <span className="text-secondary d-block" style={{ fontSize: '0.72rem' }}>Grand Total Settled</span>
+                  <span className="fw-bold text-success fs-6">₹{totalCollectedAmount.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DataTable<Payment>
+            compact={true}
+            columns={[
+              {
+                header: 'Payment #',
+                accessor: (row) => <span className="fw-bold text-dark">{row.paymentNumber}</span>,
+                width: 120
+              },
+              {
+                header: 'Method',
+                accessor: (row) => (
+                  <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-1.5 py-0.5" style={{ fontSize: '0.72rem' }}>
+                    {row.paymentMethod === 'CASH' && <Banknote size={12} className="text-success" />}
+                    {row.paymentMethod === 'UPI' && <QrCode size={12} className="text-primary" />}
+                    {row.paymentMethod === 'CARD' && <CreditCard size={12} className="text-warning" />}
+                    {row.paymentMethod}
+                  </span>
+                ),
+                width: 95
+              },
+              {
+                header: 'Settled Amount',
+                accessor: (row) => (
+                  <span className="fw-bold text-success">₹{row.amount.toLocaleString()}</span>
+                ),
+                width: 95
+              },
+              {
+                header: 'Reference / UTR',
+                accessor: (row) => row.referenceNumber || '-',
+                width: 120
+              },
+              {
+                header: 'Date & Time',
+                accessor: (row) => new Date(row.createdAt).toLocaleString([], {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }),
+                width: 110
+              },
+              {
+                header: 'Status',
+                accessor: () => (
+                  <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5" style={{ fontSize: '0.7rem' }}>
+                    Settled
+                  </span>
+                ),
+                width: 80
+              }
+            ]}
+            data={dayPayments}
           searchPlaceholder="Search payments..."
           actions={(row) => (
             <div className="d-flex align-items-center gap-1">
@@ -710,6 +1089,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
             </div>
           )}
         />
+        </>
       )}
 
       {/* ======================================================== */}
@@ -1208,378 +1588,6 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
         )}
       </Modal>
 
-      {/* ======================================================== */}
-      {/* POINT-TO-POINT PRINT & POS SETTINGS MODAL                */}
-      {/* ======================================================== */}
-      <Modal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        title="Print & POS Billing Settings"
-        size="lg"
-      >
-        <div className="d-flex flex-column gap-3">
-          {/* Settings Tabs */}
-          <div className="d-flex border-bottom pb-2 gap-2">
-            <button
-              type="button"
-              className={`btn btn-sm py-1 px-3 ${settingsTab === 'automation' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
-              onClick={() => setSettingsTab('automation')}
-            >
-              <Printer size={14} className="me-1" /> Automation & Format
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm py-1 px-3 ${settingsTab === 'content' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
-              onClick={() => setSettingsTab('content')}
-            >
-              <SlidersHorizontal size={14} className="me-1" /> Slip Content (Point-to-Point)
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm py-1 px-3 ${settingsTab === 'general' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
-              onClick={() => setSettingsTab('general')}
-            >
-              <Volume2 size={14} className="me-1" /> Sound & Preferences
-            </button>
-          </div>
-
-          {/* TAB 1: AUTOMATION & FORMAT */}
-          {settingsTab === 'automation' && (
-            <div className="d-flex flex-column gap-2.5">
-              {/* Auto vs Manual Print */}
-              <div className="p-3 bg-light rounded border d-flex justify-content-between align-items-center">
-                <div>
-                  <div className="fw-bold text-dark">Auto-Print on Payment (ઓટોમેટિક પ્રિન્ટ)</div>
-                  <small className="text-muted">
-                    {settings.autoPrintOnPayment
-                      ? 'Enabled: પેમેન્ટ સેટલ થતાં જ થર્મલ પ્રિન્ટર પર ઓટોમેટિક પ્રિન્ટ ડાયલોગ ખૂલશે.'
-                      : 'Disabled: ફક્ત મેન્યુઅલ "Print" બટન ક્લિક કરવા પર જ પ્રિન્ટ થશે.'}
-                  </small>
-                </div>
-                <div className="form-check form-switch fs-5">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    checked={settings.autoPrintOnPayment}
-                    onChange={(e) => handleSaveSettings({ autoPrintOnPayment: e.target.checked })}
-                  />
-                </div>
-              </div>
-
-              {/* Auto vs Manual PDF Download */}
-              <div className="p-3 bg-light rounded border d-flex justify-content-between align-items-center">
-                <div>
-                  <div className="fw-bold text-dark">Auto-Download PDF on Payment (ઓટો PDF ડાઉનલોડ)</div>
-                  <small className="text-muted">
-                    {settings.autoDownloadPdfOnPayment
-                      ? 'Enabled: પેમેન્ટ સેટલ થતાં જ ઇન્વોઇસ PDF આપોઆપ ડાઉનલોડ થઈ જશે.'
-                      : 'Disabled: જ્યારે "PDF" બટન દબાવશો ત્યારે જ ડાઉનલોડ થશે.'}
-                  </small>
-                </div>
-                <div className="form-check form-switch fs-5">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    checked={settings.autoDownloadPdfOnPayment}
-                    onChange={(e) => handleSaveSettings({ autoDownloadPdfOnPayment: e.target.checked })}
-                  />
-                </div>
-              </div>
-
-              {/* PDF & Receipt Format */}
-              <div className="p-3 bg-light rounded border">
-                <div className="fw-bold text-dark mb-1">Default PDF Format (PDF ફોર્મેટ)</div>
-                <small className="text-muted d-block mb-2">
-                  પ્રિન્ટમાં જેવું ફોર્મેટ છે તેવું જ 80mm થર્મલ સ્લિપ PDF અથવા સ્ટાન્ડર્ડ A4 ઇન્વોઇસ પસંદ કરો:
-                </small>
-                <div className="d-flex gap-3">
-                  <div className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="pdfFormat"
-                      id="format80mm"
-                      checked={settings.printReceiptFormat === '80MM'}
-                      onChange={() => handleSaveSettings({ printReceiptFormat: '80MM' })}
-                    />
-                    <label className="form-check-label fw-bold" htmlFor="format80mm">
-                      80mm Thermal POS Slip (Exact match of printed paper receipt)
-                    </label>
-                  </div>
-                  <div className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="pdfFormat"
-                      id="formatA4"
-                      checked={settings.printReceiptFormat === 'A4'}
-                      onChange={() => handleSaveSettings({ printReceiptFormat: 'A4' })}
-                    />
-                    <label className="form-check-label" htmlFor="formatA4">
-                      Full A4 Tax Invoice Document
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Print Copies Count */}
-              <div className="p-3 bg-light rounded border">
-                <div className="fw-bold text-dark mb-1">Print Copies (પ્રિન્ટ નકલો)</div>
-                <small className="text-muted d-block mb-2">
-                  એક જ પ્રિન્ટમાં ગ્રાહક અને કિચન/ઓડિટ માટે કેટલી નકલ કાઢવી:
-                </small>
-                <div className="d-flex gap-3">
-                  <div className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="copiesCount"
-                      id="copy1"
-                      checked={settings.copiesCount === 1}
-                      onChange={() => handleSaveSettings({ copiesCount: 1 })}
-                    />
-                    <label className="form-check-label" htmlFor="copy1">
-                      1 Copy (Standard Customer Slip)
-                    </label>
-                  </div>
-                  <div className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="copiesCount"
-                      id="copy2"
-                      checked={settings.copiesCount === 2}
-                      onChange={() => handleSaveSettings({ copiesCount: 2 })}
-                    />
-                    <label className="form-check-label fw-bold" htmlFor="copy2">
-                      2 Copies (Customer Copy + Merchant/Kitchen Copy)
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: POINT-TO-POINT SLIP CONTENT */}
-          {settingsTab === 'content' && (
-            <div className="d-flex flex-column gap-2.5">
-              <div className="row g-2">
-                <div className="col-md-6">
-                  <label className="form-label small fw-bold text-secondary mb-1">Restaurant Header Name</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    value={settings.restaurantName}
-                    onChange={(e) => handleSaveSettings({ restaurantName: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label small fw-bold text-secondary mb-1">Tagline / Subtitle</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    value={settings.tagline}
-                    onChange={(e) => handleSaveSettings({ tagline: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label small fw-bold text-secondary mb-1">Address</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    value={settings.address}
-                    onChange={(e) => handleSaveSettings({ address: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label small fw-bold text-secondary mb-1">Phone Number</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    value={settings.phone}
-                    onChange={(e) => handleSaveSettings({ phone: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label small fw-bold text-secondary mb-1">GSTIN Number</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    value={settings.gstin}
-                    onChange={(e) => handleSaveSettings({ gstin: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label small fw-bold text-secondary mb-1">Custom Footer Note</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    value={settings.customFooterText}
-                    onChange={(e) => handleSaveSettings({ customFooterText: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-light rounded border mt-2">
-                <div className="fw-bold text-dark mb-2">Point-to-Point Visibility Toggles (દરેક માહિતી ચાલુ/બંધ કરો):</div>
-                <div className="row g-2">
-                  <div className="col-md-6">
-                    <div className="form-check form-switch">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="togGstin"
-                        checked={settings.showGstin}
-                        onChange={(e) => handleSaveSettings({ showGstin: e.target.checked })}
-                      />
-                      <label className="form-check-label small" htmlFor="togGstin">
-                        Show GSTIN & Phone
-                      </label>
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-check form-switch">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="togTable"
-                        checked={settings.showTable}
-                        onChange={(e) => handleSaveSettings({ showTable: e.target.checked })}
-                      />
-                      <label className="form-check-label small" htmlFor="togTable">
-                        Show Table Number
-                      </label>
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-check form-switch">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="togCustomer"
-                        checked={settings.showCustomer}
-                        onChange={(e) => handleSaveSettings({ showCustomer: e.target.checked })}
-                      />
-                      <label className="form-check-label small" htmlFor="togCustomer">
-                        Show Customer / Guest Name
-                      </label>
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-check form-switch">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="togTax"
-                        checked={settings.showTaxBreakdown}
-                        onChange={(e) => handleSaveSettings({ showTaxBreakdown: e.target.checked })}
-                      />
-                      <label className="form-check-label small" htmlFor="togTax">
-                        Show CGST (2.5%) & SGST (2.5%) Breakdown
-                      </label>
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-check form-switch">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="togService"
-                        checked={settings.showServiceCharge}
-                        onChange={(e) => handleSaveSettings({ showServiceCharge: e.target.checked })}
-                      />
-                      <label className="form-check-label small" htmlFor="togService">
-                        Show Service Charge
-                      </label>
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-check form-switch">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="togFooter"
-                        checked={settings.showFooterNote}
-                        onChange={(e) => handleSaveSettings({ showFooterNote: e.target.checked })}
-                      />
-                      <label className="form-check-label small" htmlFor="togFooter">
-                        Show Thank You Footer
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: SOUND & GENERAL */}
-          {settingsTab === 'general' && (
-            <div className="d-flex flex-column gap-2.5">
-              <div className="p-3 bg-light rounded border d-flex justify-content-between align-items-center">
-                <div>
-                  <div className="fw-bold text-dark">Payment Cash Register Chime (સાઉન્ડ ઇફેક્ટ)</div>
-                  <small className="text-muted">
-                    પેમેન્ટ કન્ફર્મ થતાં સુરીલો કેશ રજિસ્ટર ચાઇમ સાઉન્ડ વાગશે.
-                  </small>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm py-0.5 px-2"
-                    style={{ fontSize: '0.72rem' }}
-                    onClick={() => playPaymentChime()}
-                  >
-                    Test Sound
-                  </button>
-                  <div className="form-check form-switch fs-5">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      checked={settings.playPaymentSound}
-                      onChange={(e) => handleSaveSettings({ playPaymentSound: e.target.checked })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 bg-light rounded border d-flex justify-content-between align-items-center">
-                <div>
-                  <div className="fw-bold text-dark">Compact High-Density Screen Mode (કોમ્પેક્ટ સ્ક્રીન)</div>
-                  <small className="text-muted">
-                    બિનજરૂરી ખાલી જગ્યા અને પેડિંગ ઘટાડીને તમામ ટેબલ્સ અને ઇન્વોઇસ સ્ક્રીન પર પરફેક્ટ ફિટ કરશે.
-                  </small>
-                </div>
-                <div className="form-check form-switch fs-5">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    checked={settings.compactMode}
-                    onChange={(e) => handleSaveSettings({ compactMode: e.target.checked })}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Settings Modal Footer */}
-          <div className="d-flex justify-content-between align-items-center pt-3 border-top">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1"
-              onClick={handleResetSettings}
-            >
-              <RotateCcw size={13} /> Reset to Defaults
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm px-4 fw-bold"
-              onClick={() => setIsSettingsModalOpen(false)}
-            >
-              Save & Apply
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* ======================================================== */}
       {/* SPLIT BILL MODAL (Compact)                               */}
