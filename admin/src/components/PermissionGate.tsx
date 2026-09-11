@@ -42,6 +42,7 @@ interface DataTableProps<T> {
   searchField?: (row: T) => string;
   actions?: (row: T) => React.ReactNode;
   exportFileName?: string;
+  compact?: boolean;
 }
 
 export function DataTable<T extends { id?: string | number }>({
@@ -49,7 +50,8 @@ export function DataTable<T extends { id?: string | number }>({
   data,
   searchPlaceholder = 'Search records...',
   searchField,
-  actions
+  actions,
+  compact = false
 }: DataTableProps<T>) {
   const [search, setSearch] = React.useState('');
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -68,10 +70,14 @@ export function DataTable<T extends { id?: string | number }>({
   const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
   const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const minTableWidth = compact
+    ? `${Math.max(400, columns.length * 80)}px`
+    : `${Math.max(650, columns.length * 130)}px`;
+
   return (
     <div className="card shadow-sm border-0 w-100" style={{ minWidth: 0 }}>
-      <div className="card-header bg-white p-2 p-sm-3 border-bottom d-flex flex-column flex-sm-row gap-2 justify-content-between align-items-sm-center">
-        <div className="input-group input-group-sm w-100" style={{ maxWidth: 340 }}>
+      <div className={`card-header bg-white ${compact ? 'p-1.5 px-2.5' : 'p-2 p-sm-3'} border-bottom d-flex flex-column flex-sm-row gap-2 justify-content-between align-items-sm-center`}>
+        <div className="input-group input-group-sm w-100" style={{ maxWidth: compact ? 260 : 340 }}>
           <input
             type="text"
             className="form-control"
@@ -85,13 +91,13 @@ export function DataTable<T extends { id?: string | number }>({
             </button>
           )}
         </div>
-        <div className="text-muted small align-self-start align-self-sm-auto">
+        <div className="text-muted small align-self-start align-self-sm-auto" style={{ fontSize: compact ? '0.75rem' : undefined }}>
           Showing {filteredData.length} records
         </div>
       </div>
 
-      <div className="table-responsive" style={{ WebkitOverflowScrolling: 'touch', minHeight: paginatedData.length === 0 ? 'auto' : '160px' }}>
-        <table className="table table-hover align-middle mb-0" style={{ minWidth: `${Math.max(650, columns.length * 130)}px` }}>
+      <div className="table-responsive" style={{ WebkitOverflowScrolling: 'touch', minHeight: paginatedData.length === 0 ? 'auto' : '120px' }}>
+        <table className={`table ${compact ? 'table-sm' : ''} table-hover align-middle mb-0`} style={{ minWidth: minTableWidth }}>
           <thead className="table-light">
             <tr>
               {columns.map((col, idx) => {
@@ -104,8 +110,9 @@ export function DataTable<T extends { id?: string | number }>({
                     key={idx}
                     style={{
                       width: col.width,
-                      minWidth: col.width ? undefined : isDesc ? '240px' : '120px',
-                      fontSize: '0.82rem',
+                      minWidth: col.width ? undefined : isDesc ? '200px' : compact ? '70px' : '120px',
+                      fontSize: compact ? '0.76rem' : '0.82rem',
+                      padding: compact ? '4px 6px' : undefined,
                       whiteSpace: 'nowrap'
                     }}
                   >
@@ -113,7 +120,18 @@ export function DataTable<T extends { id?: string | number }>({
                   </th>
                 );
               })}
-              {actions && <th style={{ width: 110, minWidth: '100px', textAlign: 'end', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>Actions</th>}
+              {actions && (
+                <th style={{
+                  width: compact ? 160 : 110,
+                  minWidth: compact ? '140px' : '100px',
+                  textAlign: 'end',
+                  fontSize: compact ? '0.76rem' : '0.82rem',
+                  padding: compact ? '4px 6px' : undefined,
+                  whiteSpace: 'nowrap'
+                }}>
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -136,9 +154,10 @@ export function DataTable<T extends { id?: string | number }>({
                       <td
                         key={cIdx}
                         style={{
-                          fontSize: '0.85rem',
+                          fontSize: compact ? '0.78rem' : '0.85rem',
+                          padding: compact ? '4px 6px' : undefined,
                           whiteSpace: isDesc ? 'nowrap' : undefined,
-                          minWidth: isDesc ? '240px' : undefined
+                          minWidth: isDesc ? '200px' : undefined
                         }}
                       >
                         {isDesc && typeof val === 'string' ? (
@@ -156,7 +175,10 @@ export function DataTable<T extends { id?: string | number }>({
                     );
                   })}
                   {actions && (
-                    <td className="text-end" style={{ whiteSpace: 'nowrap' }}>
+                    <td className="text-end" style={{
+                      whiteSpace: 'nowrap',
+                      padding: compact ? '4px 6px' : undefined
+                    }}>
                       <div className="d-flex justify-content-end gap-1">
                         {actions(row)}
                       </div>
@@ -201,7 +223,7 @@ export const Modal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  size?: 'sm' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   children: React.ReactNode;
   footer?: React.ReactNode;
 }> = ({ isOpen, onClose, title, size, children, footer }) => {
@@ -217,7 +239,7 @@ export const Modal: React.FC<{
       }}
     >
       <div
-        className={`modal-dialog modal-dialog-centered modal-dialog-scrollable ${size ? `modal-${size}` : ''} mx-auto my-2 my-sm-4`}
+        className={`modal-dialog modal-dialog-centered modal-dialog-scrollable ${size && size !== 'md' ? `modal-${size}` : ''} mx-auto my-2 my-sm-4`}
         style={{
           maxWidth: size === 'xl' ? 1140 : size === 'lg' ? 800 : size === 'sm' ? 400 : 520,
           width: 'calc(100% - 1rem)'

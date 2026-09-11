@@ -1,18 +1,282 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Bill } from '../types';
+import { getPrintSettings, PrintAndBillSettings } from './printSettings';
 
 export interface InvoicePrintOptions {
   download?: boolean;
   autoPrint?: boolean;
   fileName?: string;
+  customSettings?: PrintAndBillSettings;
 }
 
 /**
- * Generates a clean, professional PDF Tax Invoice for Bhatigal Bhanu Restaurant.
- * Optionally triggers file download or auto-print.
+ * Generates an exact 80mm Thermal Receipt POS Slip in PDF format.
+ * Matches the printed thermal receipt layout 100% (branding, dashed dividers,
+ * metadata rows, itemized rates & totals, GST breakdown, solid total border, and footer).
  */
-export function generateInvoicePdf(bill: Bill, options: InvoicePrintOptions = { download: true }): jsPDF {
+export function generateThermalReceiptPdf(
+  bill: Bill,
+  settings: PrintAndBillSettings,
+  options: InvoicePrintOptions = { download: true }
+): jsPDF {
+  const slipWidth = 80; // Standard 80mm roll width
+  const itemCount = (bill.items || []).length;
+  
+  // Calculate dynamic height so receipt is continuous without broken page breaks
+  let estimatedHeight = 90 + itemCount * 7.5;
+  if (settings.showGstin) estimatedHeight += 6;
+  if (settings.showCustomer && bill.customerName) estimatedHeight += 4;
+  if (settings.showTaxBreakdown) estimatedHeight += 8;
+  if (settings.showServiceCharge && bill.serviceCharge > 0) estimatedHeight += 4;
+  if (bill.discountAmount > 0) estimatedHeight += 4;
+  if (bill.roundOff !== 0) estimatedHeight += 4;
+  if (bill.paidAmount > 0 || bill.status === 'PAID') estimatedHeight += 6;
+  if (settings.showFooterNote) estimatedHeight += 12;
+  const pageHeight = Math.max(125, estimatedHeight);
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [slipWidth, pageHeight]
+  });
+
+  const marginX = 4;
+  const rightX = slipWidth - marginX;
+  const centerX = slipWidth / 2;
+  let currentY = 7;
+
+  // 1. Restaurant Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(184, 115, 29); // Bhatigal Amber #b8731d
+  doc.text((settings.restaurantName || 'BHATIGAL BHANU').toUpperCase(), centerX, currentY, { align: 'center' });
+
+  currentY += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(70, 70, 70);
+  doc.text(settings.tagline || 'Traditional Kathiyawadi Dining', centerX, currentY, { align: 'center' });
+
+  currentY += 3.8;
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 100, 100);
+  doc.text(settings.address || 'Kothariya Ring Road, Rajkot - 360022', centerX, currentY, { align: 'center' });
+
+  if (settings.showGstin) {
+    currentY += 3.5;
+    const gstinText = `GSTIN: ${settings.gstin || '24AAAFB1234A1Z8'} | Ph: ${settings.phone || '+91 98790 12345'}`;
+    doc.text(gstinText, centerX, currentY, { align: 'center' });
+  }
+
+  // 2. Status Badge (PAID TAX INVOICE vs UNPAID INVOICE)
+  currentY += 4.5;
+  const isPaid = bill.status === 'PAID';
+  doc.setFillColor(isPaid ? 25 : 220, isPaid ? 135 : 53, isPaid ? 84 : 69);
+  doc.roundedRect(centerX - 18, currentY - 3, 36, 4.8, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.2);
+  doc.setTextColor(255, 255, 255);
+  doc.text(isPaid ? 'PAID TAX INVOICE' : 'UNPAID INVOICE', centerX, currentY + 0.5, { align: 'center' });
+
+  // Dashed divider line
+  currentY += 4;
+  doc.setDrawColor(140, 140, 140);
+  doc.setLineDashPattern([0.8, 0.8], 0);
+  doc.line(marginX, currentY, rightX, currentY);
+
+  // 3. Metadata Rows
+  currentY += 3.5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 30, 30);
+  doc.text('Bill No:', marginX, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${bill.billNumber}`, marginX + 12, currentY);
+
+  if (settings.showTable) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Table:', centerX + 2, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${bill.tableNumber || 'Dine-In'}`, centerX + 11, currentY);
+  }
+
+  currentY += 3.5;
+  const billDate = bill.createdAt ? new Date(bill.createdAt) : new Date();
+  const formattedDate = billDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formattedTime = billDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Date:', marginX, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${formattedDate}`, marginX + 12, currentY);
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Time:', centerX + 2, currentY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${formattedTime}`, centerX + 11, currentY);
+
+  if (settings.showCustomer && bill.customerName) {
+    currentY += 3.5;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Guest:', marginX, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${bill.customerName}`, marginX + 12, currentY);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Status:', centerX + 2, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${bill.status}`, centerX + 12, currentY);
+  }
+
+  // Dashed divider line
+  currentY += 3;
+  doc.line(marginX, currentY, rightX, currentY);
+
+  // 4. Items List (Matches thermal printer slip format)
+  currentY += 3.5;
+  (bill.items || []).forEach((item) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(20, 20, 20);
+    // Truncate item name if too long
+    const itemText = item.itemName.length > 25 ? item.itemName.substring(0, 23) + '..' : item.itemName;
+    doc.text(itemText, marginX, currentY);
+
+    doc.text(`₹${Number(item.totalPrice).toFixed(2)}`, rightX, currentY, { align: 'right' });
+
+    currentY += 3.2;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(110, 110, 110);
+    doc.text(`${item.quantity}  ×  ₹${Number(item.unitPrice).toFixed(2)}`, marginX, currentY);
+    currentY += 3.5;
+  });
+
+  // Dashed divider line
+  doc.line(marginX, currentY, rightX, currentY);
+  currentY += 3.5;
+
+  // 5. Financial Summary Rows
+  const drawSlipRow = (label: string, value: string, bold = false, textColor = [40, 40, 40]) => {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+    doc.text(label, marginX, currentY);
+    doc.text(value, rightX, currentY, { align: 'right' });
+    currentY += 3.3;
+  };
+
+  drawSlipRow('Subtotal:', `₹${Number(bill.subtotal).toFixed(2)}`);
+
+  if (bill.discountAmount > 0) {
+    drawSlipRow('Discount:', `-₹${Number(bill.discountAmount).toFixed(2)}`, false, [220, 53, 69]);
+  }
+
+  if (settings.showTaxBreakdown) {
+    const halfTax = (bill.taxAmount || 0) / 2;
+    drawSlipRow('CGST (2.5%):', `₹${halfTax.toFixed(2)}`);
+    drawSlipRow('SGST (2.5%):', `₹${halfTax.toFixed(2)}`);
+  }
+
+  if (settings.showServiceCharge && bill.serviceCharge > 0) {
+    drawSlipRow('Service Charge:', `₹${Number(bill.serviceCharge).toFixed(2)}`);
+  }
+
+  if (bill.roundOff !== 0) {
+    drawSlipRow('Round Off:', `${bill.roundOff > 0 ? '+' : ''}₹${Number(bill.roundOff).toFixed(2)}`);
+  }
+
+  // Solid Double Line for Grand Total
+  currentY += 0.5;
+  doc.setLineDashPattern([], 0); // Solid line
+  doc.setDrawColor(20, 20, 20);
+  doc.setLineWidth(0.4);
+  doc.line(marginX, currentY, rightX, currentY);
+  currentY += 4.2;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(10, 10, 10);
+  doc.text('GRAND TOTAL:', marginX, currentY);
+  doc.text(`₹${Number(bill.totalPayable).toFixed(2)}`, rightX, currentY, { align: 'right' });
+
+  currentY += 2;
+  doc.line(marginX, currentY, rightX, currentY);
+  currentY += 3.5;
+
+  if (bill.status === 'PAID') {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(25, 135, 84);
+    doc.text('Amount Paid:', marginX, currentY);
+    doc.text(`₹${Number(bill.paidAmount || bill.totalPayable).toFixed(2)}`, rightX, currentY, { align: 'right' });
+    currentY += 3.5;
+  } else if (bill.balanceAmount > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(220, 53, 69);
+    doc.text('Balance Due:', marginX, currentY);
+    doc.text(`₹${Number(bill.balanceAmount).toFixed(2)}`, rightX, currentY, { align: 'right' });
+    currentY += 3.5;
+  }
+
+  // Dashed divider line
+  doc.setDrawColor(140, 140, 140);
+  doc.setLineDashPattern([0.8, 0.8], 0);
+  doc.line(marginX, currentY, rightX, currentY);
+
+  // 6. Footer Thank You Note
+  if (settings.showFooterNote) {
+    currentY += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    doc.setTextColor(90, 90, 90);
+    doc.text(settings.customFooterText || 'Thank you for dining with us!', centerX, currentY, { align: 'center' });
+    currentY += 3.2;
+    doc.text('Please Visit Again 🙏', centerX, currentY, { align: 'center' });
+  }
+
+  // Handle Download / AutoPrint
+  if (options.download !== false) {
+    const fileName = options.fileName || `${bill.billNumber || 'INVOICE'}_Receipt.pdf`;
+    doc.save(fileName);
+  }
+
+  if (options.autoPrint) {
+    doc.autoPrint();
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    printFrame.src = blobUrl;
+    document.body.appendChild(printFrame);
+    printFrame.onload = () => {
+      try {
+        printFrame.contentWindow?.focus();
+        printFrame.contentWindow?.print();
+      } catch (e) {
+        window.open(blobUrl, '_blank');
+      }
+    };
+  }
+
+  return doc;
+}
+
+/**
+ * Standard Full-page A4 Tax Invoice PDF
+ */
+export function generateA4InvoicePdf(
+  bill: Bill,
+  settings: PrintAndBillSettings,
+  options: InvoicePrintOptions = { download: true }
+): jsPDF {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -26,21 +290,23 @@ export function generateInvoicePdf(bill: Bill, options: InvoicePrintOptions = { 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(212, 139, 40); // Bhatigal Bhanu Gold
-  doc.text('BHATIGAL BHANU', pageWidth / 2, currentY, { align: 'center' });
+  doc.text(settings.restaurantName || 'BHATIGAL BHANU', pageWidth / 2, currentY, { align: 'center' });
 
   currentY += 6;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
-  doc.text('Traditional Kathiyawadi & Gujarati Dining Experience', pageWidth / 2, currentY, { align: 'center' });
+  doc.text(settings.tagline || 'Traditional Kathiyawadi & Gujarati Dining Experience', pageWidth / 2, currentY, { align: 'center' });
 
   currentY += 5;
   doc.setFontSize(8.5);
   doc.setTextColor(100, 100, 100);
-  doc.text('Kothariya Ring Road, Rajkot, Gujarat - 360022', pageWidth / 2, currentY, { align: 'center' });
+  doc.text(settings.address || 'Kothariya Ring Road, Rajkot, Gujarat - 360022', pageWidth / 2, currentY, { align: 'center' });
 
-  currentY += 4.5;
-  doc.text('GSTIN: 24AAAFB1234A1Z8 | FSSAI: 10724026000123 | Phone: +91 98790 12345', pageWidth / 2, currentY, { align: 'center' });
+  if (settings.showGstin) {
+    currentY += 4.5;
+    doc.text(`GSTIN: ${settings.gstin || '24AAAFB1234A1Z8'} | FSSAI: ${settings.fssai || '10724026000123'} | Phone: ${settings.phone || '+91 98790 12345'}`, pageWidth / 2, currentY, { align: 'center' });
+  }
 
   currentY += 6;
   doc.setDrawColor(212, 139, 40);
@@ -72,15 +338,19 @@ export function generateInvoicePdf(bill: Bill, options: InvoicePrintOptions = { 
   doc.setFont('helvetica', 'normal');
   doc.text(`${bill.billNumber}`, 36, currentY);
 
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Table No:`, 14, currentY + 5);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${bill.tableNumber || 'Dine-In / Counter'}`, 36, currentY + 5);
+  if (settings.showTable) {
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Table No:`, 14, currentY + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${bill.tableNumber || 'Dine-In / Counter'}`, 36, currentY + 5);
+  }
 
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Customer:`, 14, currentY + 10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${bill.customerName || 'Walk-in Guest'}`, 36, currentY + 10);
+  if (settings.showCustomer) {
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Customer:`, 14, currentY + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${bill.customerName || 'Walk-in Guest'}`, 36, currentY + 10);
+  }
 
   // Right column
   doc.setFont('helvetica', 'bold');
@@ -94,13 +364,13 @@ export function generateInvoicePdf(bill: Bill, options: InvoicePrintOptions = { 
   doc.text(`${formattedTime}`, pageWidth - 45, currentY + 5);
 
   doc.setFont('helvetica', 'bold');
-  doc.text(`Payment:`, pageWidth - 65, currentY + 10);
+  doc.text(`Status:`, pageWidth - 65, currentY + 10);
   doc.setFont('helvetica', 'bold');
   if (bill.status === 'PAID') {
     doc.setTextColor(25, 135, 84); // Green
     doc.text('PAID (SETTLED)', pageWidth - 45, currentY + 10);
   } else if (bill.status === 'PARTIALLY_PAID') {
-    doc.setTextColor(255, 193, 7); // Yellow/Orange
+    doc.setTextColor(255, 193, 7); // Yellow
     doc.text('PARTIALLY PAID', pageWidth - 45, currentY + 10);
   } else {
     doc.setTextColor(220, 53, 69); // Red
@@ -168,11 +438,13 @@ export function generateInvoicePdf(bill: Bill, options: InvoicePrintOptions = { 
     drawRow('Discount:', `-₹${Number(bill.discountAmount).toFixed(2)}`, false, true);
   }
 
-  const halfTax = (bill.taxAmount || 0) / 2;
-  drawRow('CGST (2.5%):', `₹${halfTax.toFixed(2)}`);
-  drawRow('SGST (2.5%):', `₹${halfTax.toFixed(2)}`);
+  if (settings.showTaxBreakdown) {
+    const halfTax = (bill.taxAmount || 0) / 2;
+    drawRow('CGST (2.5%):', `₹${halfTax.toFixed(2)}`);
+    drawRow('SGST (2.5%):', `₹${halfTax.toFixed(2)}`);
+  }
 
-  if (bill.serviceCharge > 0) {
+  if (settings.showServiceCharge && bill.serviceCharge > 0) {
     drawRow('Service Charge:', `₹${Number(bill.serviceCharge).toFixed(2)}`);
   }
 
@@ -204,51 +476,41 @@ export function generateInvoicePdf(bill: Bill, options: InvoicePrintOptions = { 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
-  doc.text('Thank you for dining with Bhatigal Bhanu! Please visit again.', pageWidth / 2, footerY + 5, { align: 'center' });
+  doc.text(settings.customFooterText || 'Thank you for dining with Bhatigal Bhanu! Please visit again.', pageWidth / 2, footerY + 5, { align: 'center' });
   doc.text('This is a computer-generated tax invoice and does not require a physical signature.', pageWidth / 2, footerY + 9, { align: 'center' });
 
-  // Options Handling
   if (options.download !== false) {
     const fileName = options.fileName || `${bill.billNumber || 'INVOICE'}.pdf`;
     doc.save(fileName);
-  }
-
-  if (options.autoPrint) {
-    doc.autoPrint();
-    const pdfBlob = doc.output('blob');
-    const blobUrl = URL.createObjectURL(pdfBlob);
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    printFrame.src = blobUrl;
-    document.body.appendChild(printFrame);
-    printFrame.onload = () => {
-      try {
-        printFrame.contentWindow?.focus();
-        printFrame.contentWindow?.print();
-      } catch (e) {
-        window.open(blobUrl, '_blank');
-      }
-    };
   }
 
   return doc;
 }
 
 /**
- * Universal Native Receipt Printer:
- * Formats an 80mm thermal receipt / standard voucher and triggers window.print() immediately.
- * Works seamlessly with USB Thermal POS Slip Printers (Epson, TVS, etc.) & standard desktop printers.
+ * Universal PDF Generator:
+ * Generates an exact 80mm Thermal Receipt PDF by default (matching print format 1:1),
+ * or standard A4 if preferred in settings.
  */
-export function printInvoiceReceipt(bill: Bill): void {
+export function generateInvoicePdf(bill: Bill, options: InvoicePrintOptions = { download: true }): jsPDF {
+  const settings = options.customSettings || getPrintSettings();
+  if (settings.printReceiptFormat === 'A4') {
+    return generateA4InvoicePdf(bill, settings, options);
+  }
+  return generateThermalReceiptPdf(bill, settings, options);
+}
+
+/**
+ * Universal Native Receipt Printer:
+ * Formats an 80mm thermal receipt and triggers window.print() immediately.
+ * Injects point-to-point customizable settings (branding, GSTIN, table, taxes, copies).
+ */
+export function printInvoiceReceipt(bill: Bill, customSettings?: PrintAndBillSettings): void {
+  const settings = customSettings || getPrintSettings();
   const printWindow = window.open('', '_blank', 'width=450,height=650,location=no,toolbar=no');
   if (!printWindow) {
     // If popup blocked, fallback to PDF auto-print
-    generateInvoicePdf(bill, { autoPrint: true, download: false });
+    generateInvoicePdf(bill, { autoPrint: true, download: false, customSettings: settings });
     return;
   }
 
@@ -256,17 +518,119 @@ export function printInvoiceReceipt(bill: Bill): void {
   const formattedDate = billDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const formattedTime = billDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  const itemsHtml = (bill.items || []).map(it => `
-    <tr>
-      <td style="padding: 4px 0; text-align: left;">
-        <div style="font-weight: 600;">${it.itemName}</div>
-        <small style="color: #666;">${it.quantity} x ₹${Number(it.unitPrice).toFixed(2)}</small>
-      </td>
-      <td style="padding: 4px 0; text-align: right; vertical-align: top; font-weight: 600;">
-        ₹${Number(it.totalPrice).toFixed(2)}
-      </td>
-    </tr>
-  `).join('');
+  const renderSingleReceipt = (copyLabel?: string) => `
+    <div class="receipt">
+      ${copyLabel ? `<div class="copy-badge text-center">--- ${copyLabel} ---</div>` : ''}
+      <div class="text-center">
+        <h1 class="brand-title">${settings.restaurantName || 'BHATIGAL BHANU'}</h1>
+        <p class="brand-sub">${settings.tagline || 'Traditional Kathiyawadi Dining'}</p>
+        <p style="font-size: 10px; color: #666; margin: 0;">${settings.address || 'Kothariya Ring Road, Rajkot - 360022'}</p>
+        ${settings.showGstin ? `<p style="font-size: 10px; color: #666; margin: 0;">GSTIN: ${settings.gstin || '24AAAFB1234A1Z8'} | ${settings.phone || '+91 98790 12345'}</p>` : ''}
+        <div>
+          <span class="${bill.status === 'PAID' ? 'paid-tag' : 'unpaid-tag'}">
+            ${bill.status === 'PAID' ? 'PAID TAX INVOICE' : 'UNPAID INVOICE'}
+          </span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="meta-row">
+        <span><strong>Bill No:</strong> ${bill.billNumber}</span>
+        ${settings.showTable ? `<span><strong>Table:</strong> ${bill.tableNumber || 'Dine-In'}</span>` : ''}
+      </div>
+      <div class="meta-row">
+        <span><strong>Date:</strong> ${formattedDate}</span>
+        <span><strong>Time:</strong> ${formattedTime}</span>
+      </div>
+      ${settings.showCustomer && bill.customerName ? `
+        <div class="meta-row">
+          <span><strong>Guest:</strong> ${bill.customerName}</span>
+          <span><strong>Status:</strong> ${bill.status}</span>
+        </div>
+      ` : ''}
+
+      <div class="divider"></div>
+
+      <table class="items">
+        ${(bill.items || []).map(it => `
+          <tr>
+            <td style="padding: 3px 0; text-align: left;">
+              <div style="font-weight: 600;">${it.itemName}</div>
+              <small style="color: #666;">${it.quantity} x ₹${Number(it.unitPrice).toFixed(2)}</small>
+            </td>
+            <td style="padding: 3px 0; text-align: right; vertical-align: top; font-weight: 600;">
+              ₹${Number(it.totalPrice).toFixed(2)}
+            </td>
+          </tr>
+        `).join('')}
+      </table>
+
+      <div class="divider"></div>
+
+      <div class="total-row">
+        <span>Subtotal:</span>
+        <span>₹${Number(bill.subtotal).toFixed(2)}</span>
+      </div>
+      ${bill.discountAmount > 0 ? `
+        <div class="total-row" style="color: #dc3545;">
+          <span>Discount:</span>
+          <span>-₹${Number(bill.discountAmount).toFixed(2)}</span>
+        </div>
+      ` : ''}
+      ${settings.showTaxBreakdown ? `
+        <div class="total-row">
+          <span>CGST (2.5%):</span>
+          <span>₹${((bill.taxAmount || 0) / 2).toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+          <span>SGST (2.5%):</span>
+          <span>₹${((bill.taxAmount || 0) / 2).toFixed(2)}</span>
+        </div>
+      ` : ''}
+      ${settings.showServiceCharge && bill.serviceCharge > 0 ? `
+        <div class="total-row">
+          <span>Service Charge:</span>
+          <span>₹${Number(bill.serviceCharge).toFixed(2)}</span>
+        </div>
+      ` : ''}
+      ${bill.roundOff !== 0 ? `
+        <div class="total-row">
+          <span>Round Off:</span>
+          <span>${bill.roundOff > 0 ? '+' : ''}₹${Number(bill.roundOff).toFixed(2)}</span>
+        </div>
+      ` : ''}
+
+      <div class="total-row grand-total">
+        <span>GRAND TOTAL:</span>
+        <span>₹${Number(bill.totalPayable).toFixed(2)}</span>
+      </div>
+
+      ${bill.status === 'PAID' ? `
+        <div class="total-row" style="margin-top: 4px; font-weight: 600; color: #198754;">
+          <span>Amount Paid:</span>
+          <span>₹${Number(bill.paidAmount || bill.totalPayable).toFixed(2)}</span>
+        </div>
+      ` : ''}
+
+      <div class="divider"></div>
+
+      ${settings.showFooterNote ? `
+        <div class="text-center" style="font-size: 11px; color: #555; margin-top: 8px;">
+          <p style="margin: 2px 0;">${settings.customFooterText || 'Thank you for dining with us!'}</p>
+          <p style="margin: 2px 0; font-size: 9.5px;">Please Visit Again 🙏</p>
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  let fullBodyHtml = renderSingleReceipt(settings.copiesCount === 2 ? 'CUSTOMER COPY' : undefined);
+  if (settings.copiesCount === 2) {
+    fullBodyHtml += `
+      <div style="page-break-before: always; margin-top: 20px;"></div>
+      ${renderSingleReceipt('MERCHANT / KITCHEN COPY')}
+    `;
+  }
 
   const html = `
     <!DOCTYPE html>
@@ -282,7 +646,7 @@ export function printInvoiceReceipt(bill: Bill): void {
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             margin: 0;
-            padding: 12px;
+            padding: 10px;
             color: #111;
             font-size: 13px;
             line-height: 1.35;
@@ -305,9 +669,16 @@ export function printInvoiceReceipt(bill: Bill): void {
             color: #555;
             margin: 2px 0;
           }
+          .copy-badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #777;
+            margin-bottom: 6px;
+          }
           .divider {
-            border-top: 1px dashed #444;
-            margin: 8px 0;
+            border-top: 1px dashed #555;
+            margin: 7px 0;
           }
           .meta-row {
             display: flex;
@@ -318,13 +689,13 @@ export function printInvoiceReceipt(bill: Bill): void {
           table.items {
             width: 100%;
             border-collapse: collapse;
-            margin: 8px 0;
+            margin: 6px 0;
           }
           .total-row {
             display: flex;
             justify-content: space-between;
             font-size: 12px;
-            margin: 3px 0;
+            margin: 2.5px 0;
           }
           .grand-total {
             font-size: 16px;
@@ -357,92 +728,7 @@ export function printInvoiceReceipt(bill: Bill): void {
         </style>
       </head>
       <body>
-        <div class="receipt">
-          <div class="text-center">
-            <h1 class="brand-title">BHATIGAL BHANU</h1>
-            <p class="brand-sub">Traditional Kathiyawadi Dining</p>
-            <p style="font-size: 10px; color: #666; margin: 0;">Kothariya Ring Road, Rajkot - 360022</p>
-            <p style="font-size: 10px; color: #666; margin: 0;">GSTIN: 24AAAFB1234A1Z8 | +91 98790 12345</p>
-            <div>
-              <span class="${bill.status === 'PAID' ? 'paid-tag' : 'unpaid-tag'}">
-                ${bill.status === 'PAID' ? 'PAID TAX INVOICE' : 'UNPAID INVOICE'}
-              </span>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="meta-row">
-            <span><strong>Bill No:</strong> ${bill.billNumber}</span>
-            <span><strong>Table:</strong> ${bill.tableNumber || 'Dine-In'}</span>
-          </div>
-          <div class="meta-row">
-            <span><strong>Date:</strong> ${formattedDate}</span>
-            <span><strong>Time:</strong> ${formattedTime}</span>
-          </div>
-          <div class="meta-row">
-            <span><strong>Guest:</strong> ${bill.customerName || 'Walk-in'}</span>
-            <span><strong>Status:</strong> ${bill.status}</span>
-          </div>
-
-          <div class="divider"></div>
-
-          <table class="items">
-            ${itemsHtml}
-          </table>
-
-          <div class="divider"></div>
-
-          <div class="total-row">
-            <span>Subtotal:</span>
-            <span>₹${Number(bill.subtotal).toFixed(2)}</span>
-          </div>
-          ${bill.discountAmount > 0 ? `
-            <div class="total-row" style="color: #dc3545;">
-              <span>Discount:</span>
-              <span>-₹${Number(bill.discountAmount).toFixed(2)}</span>
-            </div>
-          ` : ''}
-          <div class="total-row">
-            <span>CGST (2.5%):</span>
-            <span>₹${((bill.taxAmount || 0) / 2).toFixed(2)}</span>
-          </div>
-          <div class="total-row">
-            <span>SGST (2.5%):</span>
-            <span>₹${((bill.taxAmount || 0) / 2).toFixed(2)}</span>
-          </div>
-          ${bill.serviceCharge > 0 ? `
-            <div class="total-row">
-              <span>Service Charge:</span>
-              <span>₹${Number(bill.serviceCharge).toFixed(2)}</span>
-            </div>
-          ` : ''}
-          ${bill.roundOff !== 0 ? `
-            <div class="total-row">
-              <span>Round Off:</span>
-              <span>${bill.roundOff > 0 ? '+' : ''}₹${Number(bill.roundOff).toFixed(2)}</span>
-            </div>
-          ` : ''}
-
-          <div class="total-row grand-total">
-            <span>GRAND TOTAL:</span>
-            <span>₹${Number(bill.totalPayable).toFixed(2)}</span>
-          </div>
-
-          ${bill.status === 'PAID' ? `
-            <div class="total-row" style="margin-top: 4px; font-weight: 600; color: #198754;">
-              <span>Amount Paid:</span>
-              <span>₹${Number(bill.paidAmount || bill.totalPayable).toFixed(2)}</span>
-            </div>
-          ` : ''}
-
-          <div class="divider"></div>
-
-          <div class="text-center" style="font-size: 11px; color: #555; margin-top: 10px;">
-            <p style="margin: 2px 0;">Thank you for dining with us!</p>
-            <p style="margin: 2px 0; font-size: 9.5px;">Please Visit Again</p>
-          </div>
-        </div>
+        ${fullBodyHtml}
 
         <script>
           window.onload = function() {
