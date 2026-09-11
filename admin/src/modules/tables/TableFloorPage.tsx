@@ -735,7 +735,7 @@ export const TableFloorPage: React.FC = () => {
                   onClick={() => {
                     const b = tableBill;
                     setTableBill(null);
-                    navigate(`/payments?billId=${b.id}&amount=${b.totalPayable}`);
+                    navigate(`/billing?payBillId=${b.id}&amount=${b.totalPayable}`);
                   }}
                 >
                   <CreditCard size={16} /> Pay ₹{tableBill.totalPayable}
