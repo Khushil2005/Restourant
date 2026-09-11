@@ -62,10 +62,10 @@ const formatDisplayDate = (dateStr: string): string => {
 };
 
 interface BillingPageProps {
-  defaultTab?: 'unpaid' | 'paid' | 'all' | 'invoices' | 'payments';
+  defaultTab?: 'payments' | 'invoices' | 'unpaid' | 'paid' | 'all' | string;
 }
 
-export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab }) => {
+export const BillingPage: React.FC<BillingPageProps> = () => {
   const { can } = usePermission();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -87,9 +87,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab }) => {
   const [customFilterType, setCustomFilterType] = useState<'SINGLE' | 'RANGE'>('SINGLE');
 
   // Simple 3 Workflow Tabs: 'UNPAID' (બાકી) | 'PAID' (ચૂકવાયેલ) | 'ALL' (બધા)
-  const [activeTab, setActiveTab] = useState<'UNPAID' | 'PAID' | 'ALL'>(
-    searchParams.get('tab') === 'payments' || defaultTab === 'payments' || defaultTab === 'paid' ? 'PAID' : 'UNPAID'
-  );
+  const [activeTab, setActiveTab] = useState<'UNPAID' | 'PAID' | 'ALL'>('UNPAID');
 
   // Data lists
   const [bills, setBills] = useState<Bill[]>([]);
@@ -1285,6 +1283,14 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab }) => {
               }}
             >
               <div className="text-center">
+                {settings.showLogo && (
+                  <img
+                    src="/logo.jpg"
+                    alt="Logo"
+                    className="rounded-circle mx-auto d-block mb-1.5 shadow-sm border border-warning"
+                    style={{ width: 52, height: 52, objectFit: 'contain' }}
+                  />
+                )}
                 <h5 className="fw-bold mb-0" style={{ color: '#b8731d', letterSpacing: '0.5px' }}>
                   {settings.restaurantName || 'BHATIGAL BHANU'}
                 </h5>

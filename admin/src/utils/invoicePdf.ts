@@ -522,6 +522,7 @@ export function printInvoiceReceipt(bill: Bill, customSettings?: PrintAndBillSet
     <div class="receipt">
       ${copyLabel ? `<div class="copy-badge text-center">--- ${copyLabel} ---</div>` : ''}
       <div class="text-center">
+        ${settings.showLogo ? `<img src="/logo.jpg" style="width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 4px auto; display: block; object-fit: contain;" />` : ''}
         <h1 class="brand-title">${settings.restaurantName || 'BHATIGAL BHANU'}</h1>
         <p class="brand-sub">${settings.tagline || 'Traditional Kathiyawadi Dining'}</p>
         <p style="font-size: 10px; color: #666; margin: 0;">${settings.address || 'Kothariya Ring Road, Rajkot - 360022'}</p>
