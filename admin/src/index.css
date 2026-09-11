@@ -68,11 +68,75 @@ body {
 .btn-outline-primary {
   color: var(--brand-maroon) !important;
   border-color: var(--brand-maroon) !important;
+  transition: all 0.15s ease-in-out;
 }
 
-.btn-outline-primary:hover {
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
   background-color: var(--brand-maroon) !important;
   color: #FFFFFF !important;
+  border-color: var(--brand-maroon) !important;
+}
+
+/* Fix text hiding on hover when bg-white is used with outline buttons */
+.btn-outline-secondary.bg-white,
+.btn-outline-secondary {
+  color: #374151 !important;
+  background-color: #ffffff;
+  border-color: #d1d5db !important;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-outline-secondary.bg-white:hover,
+.btn-outline-secondary.bg-white:focus,
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+  color: var(--brand-maroon) !important;
+  background-color: #fdf2f4 !important;
+  border-color: var(--brand-maroon) !important;
+}
+
+.btn-outline-secondary.active,
+.btn-outline-secondary:active {
+  color: #ffffff !important;
+  background-color: var(--brand-maroon) !important;
+  border-color: var(--brand-maroon) !important;
+}
+
+/* Specific Day Filter Button & Badge System matching exact branding */
+.day-filter-btn {
+  background-color: #ffffff !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+
+.day-filter-btn:hover,
+.day-filter-btn:focus {
+  background-color: #fdf2f4 !important;
+  color: var(--brand-maroon) !important;
+  border-color: var(--brand-maroon) !important;
+}
+
+.day-filter-btn.active {
+  background-color: var(--brand-maroon) !important;
+  color: #ffffff !important;
+  border-color: var(--brand-maroon) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.day-filter-badge {
+  background-color: #fde8ec !important;
+  color: var(--brand-maroon) !important;
+  border: 1px solid #f5c2cb !important;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Brand Gold Accents */
