@@ -18,8 +18,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal,
-  Check
+  SlidersHorizontal
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
@@ -30,7 +29,7 @@ import {
   PrintAndBillSettings
 } from '../../utils/printSettings';
 
-// Helper: Dates for "New Day New List"
+// Date helpers for Day-Wise List ("New Day New List")
 const getLocalDateString = (d: Date = new Date()): string => {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -49,28 +48,30 @@ const formatDisplayDate = (dateStr: string): string => {
   const todayStr = getLocalDateString(new Date());
   const yestStr = getYesterdayDateString();
   if (dateStr === todayStr) {
-    return `આજે (${new Date().toLocaleDateString('gu-IN', { day: 'numeric', month: 'short' })})`;
+    return `Today (${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
   }
   if (dateStr === yestStr) {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    return `ગઈકાલે (${d.toLocaleDateString('gu-IN', { day: 'numeric', month: 'short' })})`;
+    return `Yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
   }
   const [y, m, day] = dateStr.split('-').map(Number);
   const d = new Date(y, m - 1, day);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+type RegisterFilter = 'ALL' | 'UNPAID' | 'CASH' | 'UPI' | 'CARD' | 'PAID';
+
 interface BillingPageProps {
-  defaultTab?: 'payments' | 'invoices' | 'unpaid' | 'paid' | 'all' | string;
+  defaultTab?: 'invoices' | 'payments';
 }
 
-export const BillingPage: React.FC<BillingPageProps> = () => {
+export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices' }) => {
   const { can } = usePermission();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Print & Bill Settings (Managed centrally in Store Settings)
+  // Print & Bill Settings (managed centrally in Store Settings)
   const [settings, setSettings] = useState<PrintAndBillSettings>(getPrintSettings());
 
   useEffect(() => {
@@ -79,34 +80,41 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  // Day filter states
+  // Day-wise & Custom Date Filter States ("New Day New List")
   const [dateFilterMode, setDateFilterMode] = useState<'TODAY' | 'YESTERDAY' | 'CUSTOM' | 'ALL'>('TODAY');
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [customStartDate, setCustomStartDate] = useState<string>(getLocalDateString());
   const [customEndDate, setCustomEndDate] = useState<string>(getLocalDateString());
   const [customFilterType, setCustomFilterType] = useState<'SINGLE' | 'RANGE'>('SINGLE');
 
-  // Simple 3 Workflow Tabs: 'UNPAID' (બાકી) | 'PAID' (ચૂકવાયેલ) | 'ALL' (બધા)
-  const [activeTab, setActiveTab] = useState<'UNPAID' | 'PAID' | 'ALL'>('UNPAID');
+  // Primary View Mode: 'UNIFIED' (Combined Bills & Payments) vs 'RECEIPTS' (Raw Payment Audit Log)
+  const [viewMode, setViewMode] = useState<'UNIFIED' | 'RECEIPTS'>(
+    searchParams.get('tab') === 'payments' || defaultTab === 'payments' ? 'RECEIPTS' : 'UNIFIED'
+  );
+
+  // Unified Register Filter: 'ALL' | 'UNPAID' | 'CASH' | 'UPI' | 'CARD' | 'PAID'
+  const [registerFilter, setRegisterFilter] = useState<RegisterFilter>('ALL');
 
   // Data lists
   const [bills, setBills] = useState<Bill[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Bill View Modal & Just Settled Alert
+  // Bill View & Thermal Slip Modal
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [justSettledBillId, setJustSettledBillId] = useState<string | null>(null);
   const dismissedBillIdRef = useRef<string | null>(null);
 
-  // In-Place Payment Modal
+  // In-Place Payment Modal State
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [payingBill, setPayingBill] = useState<Bill | null>(null);
   const [payAmount, setPayAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CARD' | 'SPLIT'>('CASH');
   const [referenceNumber, setReferenceNumber] = useState<string>('');
-  const [tenderedCash, setTenderedCash] = useState<number>(0);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Cash Tendered calculator
+  const [tenderedCash, setTenderedCash] = useState<number>(0);
 
   // Split amounts
   const [splitCash, setSplitCash] = useState<number>(0);
@@ -117,7 +125,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
   const [splitBillItem, setSplitBillItem] = useState<Bill | null>(null);
   const [splitCount, setSplitCount] = useState<number>(2);
 
-  // Quick Bill Active Table Modal
+  // Quick Bill for Active Table Modal
   const [isBillTableModalOpen, setIsBillTableModalOpen] = useState(false);
   const [activeTables, setActiveTables] = useState<any[]>([]);
   const [generatingForOrderId, setGeneratingForOrderId] = useState<string | null>(null);
@@ -133,7 +141,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
       if (res?.success) {
         setBills(res.data);
 
-        // Check query param for billId
+        // Check if query parameter requests opening bill preview
         const qBillId = searchParams.get('billId');
         if (qBillId && dismissedBillIdRef.current !== qBillId) {
           const found = res.data.find((b: Bill) => b.id === qBillId);
@@ -143,7 +151,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
           }
         }
 
-        // Check query param for payBillId
+        // Check if query parameter requests opening payment settlement directly
         const qPayBillId = searchParams.get('payBillId');
         if (qPayBillId && !isPayModalOpen) {
           const target = res.data.find((b: Bill) => b.id === qPayBillId);
@@ -159,7 +167,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     }
   };
 
-  // Load Payments
+  // Load Payments History
   const loadPayments = async () => {
     try {
       const res: any = await apiClient.get('/payments');
@@ -171,11 +179,13 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     }
   };
 
+  // Initial Load
   useEffect(() => {
     loadBills(false, true);
     loadPayments();
   }, []);
 
+  // Real-time Auto-Refresh every 4 seconds
   useAutoRefresh(
     () => {
       loadBills(false, true);
@@ -188,7 +198,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     }
   );
 
-  // Map billId -> Payment
+  // Map billId -> Payment (Fast 1:1 lookup for Unified Register)
   const paymentsByBillId = useMemo(() => {
     const map = new Map<string, Payment>();
     payments.forEach((p) => {
@@ -199,7 +209,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     return map;
   }, [payments]);
 
-  // Day navigation
+  // Day navigation handlers
   const handlePrevDay = () => {
     const [y, m, d] = selectedDate.split('-').map(Number);
     const prev = new Date(y, m - 1, d - 1);
@@ -238,7 +248,11 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     setDateFilterMode(val === todayStr ? 'TODAY' : val === yestStr ? 'YESTERDAY' : 'CUSTOM');
   };
 
-  // Day Filtered Bills
+  const handleSetAllTime = () => {
+    setDateFilterMode('ALL');
+  };
+
+  // 1. Day / Custom Filtered Bills ("New Day New List")
   const dayBills = useMemo(() => {
     if (dateFilterMode === 'ALL') return bills;
     if (dateFilterMode === 'TODAY') {
@@ -249,6 +263,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
       const yest = getYesterdayDateString();
       return bills.filter((b) => b.createdAt && getLocalDateString(new Date(b.createdAt)) === yest);
     }
+    // CUSTOM MODE:
     if (customFilterType === 'RANGE') {
       return bills.filter((b) => {
         if (!b.createdAt) return false;
@@ -263,7 +278,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     });
   }, [bills, dateFilterMode, selectedDate, customStartDate, customEndDate, customFilterType]);
 
-  // Filtered Payments
+  // 2. Day / Custom Filtered Payments
   const dayPayments = useMemo(() => {
     if (dateFilterMode === 'ALL') return payments;
     if (dateFilterMode === 'TODAY') {
@@ -274,6 +289,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
       const yest = getYesterdayDateString();
       return payments.filter((p) => p.createdAt && getLocalDateString(new Date(p.createdAt)) === yest);
     }
+    // CUSTOM MODE:
     if (customFilterType === 'RANGE') {
       return payments.filter((p) => {
         if (!p.createdAt) return false;
@@ -288,27 +304,101 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     });
   }, [payments, dateFilterMode, selectedDate, customStartDate, customEndDate, customFilterType]);
 
-  // Unpaid & Paid lists
-  const unpaidBills = useMemo(() => {
-    return dayBills.filter((b) => b.status === 'UNPAID' || b.status === 'PARTIALLY_PAID');
-  }, [dayBills]);
+  const getActiveFilterLabel = () => {
+    if (dateFilterMode === 'ALL') return 'All Time (તમામ દિવસો)';
+    if (dateFilterMode === 'TODAY') return `Today (${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+    if (dateFilterMode === 'YESTERDAY') {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return `Yesterday (${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+    }
+    if (customFilterType === 'RANGE') {
+      return `${customStartDate} થી ${customEndDate}`;
+    }
+    return formatDisplayDate(selectedDate);
+  };
 
-  const paidBills = useMemo(() => {
-    return dayBills.filter((b) => b.status === 'PAID');
-  }, [dayBills]);
+  // 3. Unified Register Filtered Bills
+  const filteredUnifiedBills = useMemo(() => {
+    return dayBills.filter((bill) => {
+      if (registerFilter === 'UNPAID') {
+        return bill.status === 'UNPAID' || bill.status === 'PARTIALLY_PAID';
+      }
+      if (registerFilter === 'PAID') {
+        return bill.status === 'PAID';
+      }
+      if (registerFilter === 'CASH') {
+        const p = paymentsByBillId.get(bill.id);
+        return bill.status === 'PAID' && (p?.paymentMethod === 'CASH' || !p?.paymentMethod);
+      }
+      if (registerFilter === 'UPI') {
+        const p = paymentsByBillId.get(bill.id);
+        return bill.status === 'PAID' && p?.paymentMethod === 'UPI';
+      }
+      if (registerFilter === 'CARD') {
+        const p = paymentsByBillId.get(bill.id);
+        return bill.status === 'PAID' && p?.paymentMethod === 'CARD';
+      }
+      return true; // 'ALL'
+    });
+  }, [dayBills, registerFilter, paymentsByBillId]);
 
-  // 3 Core Metric Totals
+  // Counts for each unified filter pill
+  const filterCounts = useMemo(() => {
+    let unpaid = 0;
+    let paid = 0;
+    let cash = 0;
+    let upi = 0;
+    let card = 0;
+    dayBills.forEach((b) => {
+      if (b.status === 'UNPAID' || b.status === 'PARTIALLY_PAID') {
+        unpaid++;
+      } else if (b.status === 'PAID') {
+        paid++;
+        const p = paymentsByBillId.get(b.id);
+        const method = p?.paymentMethod || 'CASH';
+        if (method === 'CASH') cash++;
+        else if (method === 'UPI') upi++;
+        else if (method === 'CARD') card++;
+      }
+    });
+    return { all: dayBills.length, unpaid, paid, cash, upi, card };
+  }, [dayBills, paymentsByBillId]);
+
+  // Consolidated Top Metric Totals (Consolidated: ZERO redundant sub-strips needed!)
+  const totalBillsCount = dayBills.length;
   const totalBillsValue = useMemo(() => {
     return dayBills.reduce((acc, b) => acc + (b.totalPayable || 0), 0);
   }, [dayBills]);
 
+  const invoicesGst = useMemo(() => {
+    return dayBills.reduce((acc, b) => acc + (b.taxAmount || 0), 0);
+  }, [dayBills]);
+
+  const unpaidBillsCount = useMemo(() => {
+    return dayBills.filter((b) => b.status === 'UNPAID' || b.status === 'PARTIALLY_PAID').length;
+  }, [dayBills]);
+
   const totalPendingAmount = useMemo(() => {
-    return unpaidBills.reduce((acc, b) => acc + (b.balanceAmount !== undefined ? b.balanceAmount : b.totalPayable || 0), 0);
-  }, [unpaidBills]);
+    return dayBills
+      .filter((b) => b.status !== 'PAID')
+      .reduce((acc, b) => acc + (b.balanceAmount !== undefined ? b.balanceAmount : b.totalPayable || 0), 0);
+  }, [dayBills]);
+
+  const paidBillsCount = useMemo(() => {
+    return dayBills.filter((b) => b.status === 'PAID').length;
+  }, [dayBills]);
 
   const totalRevenue = useMemo(() => {
-    return paidBills.reduce((acc, b) => acc + (b.paidAmount || b.totalPayable || 0), 0);
-  }, [paidBills]);
+    return dayBills
+      .filter((b) => b.status === 'PAID')
+      .reduce((acc, b) => acc + (b.paidAmount || b.totalPayable || 0), 0);
+  }, [dayBills]);
+
+  const totalPaymentsCount = dayPayments.length;
+  const totalCollectedAmount = useMemo(() => {
+    return dayPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
+  }, [dayPayments]);
 
   const cashPaymentsTotal = useMemo(() => {
     return dayPayments.filter((p) => p.paymentMethod === 'CASH').reduce((acc, p) => acc + (p.amount || 0), 0);
@@ -322,7 +412,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     return dayPayments.filter((p) => p.paymentMethod === 'CARD').reduce((acc, p) => acc + (p.amount || 0), 0);
   }, [dayPayments]);
 
-  // Open Payment modal
+  // Open in-place payment dialog
   const openPaymentModal = (bill: Bill) => {
     const dueAmount = bill.balanceAmount !== undefined ? bill.balanceAmount : bill.totalPayable;
     setPayingBill(bill);
@@ -336,7 +426,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     setIsPayModalOpen(true);
   };
 
-  // Close Bill modal
+  // Handle Close Bill View Modal
   const handleCloseBillModal = () => {
     setSelectedBill(null);
     setJustSettledBillId(null);
@@ -347,7 +437,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     }
   };
 
-  // Process payment
+  // Handle Payment Settlement Process
   const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payingBill) return;
@@ -358,7 +448,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
       if (paymentMethod === 'SPLIT') {
         const totalSplit = splitCash + splitUpi + splitCard;
         if (totalSplit !== payAmount) {
-          alert(`સ્પ્લિટ રકમનો સરવાળો (₹${totalSplit}) બિલ રકમ (₹${payAmount}) જેટલો જ હોવો જોઈએ.`);
+          alert(`Split totals (₹${totalSplit}) must equal exact bill amount (₹${payAmount}).`);
           setIsProcessingPayment(false);
           return;
         }
@@ -380,6 +470,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
       if (res?.success) {
         setIsPayModalOpen(false);
 
+        // Fetch refreshed bill
         let settledBill: Bill = { ...payingBill, status: 'PAID', paidAmount: payAmount, balanceAmount: 0 };
         try {
           const bRes: any = await apiClient.get(`/billing/${payingBill.id}`);
@@ -388,49 +479,55 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
           }
         } catch (_) {}
 
+        // 1. Check Auto-Print on Payment Setting
         if (settings.autoPrintOnPayment) {
           printInvoiceReceipt(settledBill, settings);
         }
 
+        // 2. Check Auto-Download PDF on Payment Setting
         if (settings.autoDownloadPdfOnPayment) {
           generateInvoicePdf(settledBill, { download: true, customSettings: settings });
         }
 
+        // 3. Audio Chime Confirmation
         if (settings.playPaymentSound) {
           playPaymentChime();
         }
 
+        // 4. Directly show the 80mm Realistic Slip with Success Banner (Eliminates redundant popup modal!)
         setJustSettledBillId(settledBill.id);
         setSelectedBill(settledBill);
 
+        // 5. Refresh lists
         loadBills(false, true);
         loadPayments();
 
+        // Clear query parameters if any
         if (searchParams.get('payBillId')) {
           navigate('/billing', { replace: true });
         }
       }
     } catch (err: any) {
-      alert(err.message || 'પેમેન્ટ સ્વીકારવામાં ભૂલ આવી.');
+      alert(err.message || 'Payment processing failed.');
     } finally {
       setIsProcessingPayment(false);
     }
   };
 
-  // Split bill
+  // Handle Splitting Bill
   const handleSplitBill = async () => {
     if (!splitBillItem) return;
     try {
       await apiClient.post(`/billing/${splitBillItem.id}/split`, { splitCount });
-      alert(`બિલ સફળતાપૂર્વક ${splitCount} સરખા ભાગમાં વહેંચાઈ ગયું છે.`);
+      alert(`Bill split into ${splitCount} equal invoices.`);
       setSplitBillItem(null);
       loadBills(false, true);
     } catch (err: any) {
-      alert(err.message || 'બિલ સ્પ્લિટ કરવામાં સમસ્યા આવી.');
+      alert(err.message || 'Failed to split bill.');
     }
   };
 
-  // Load Occupied Tables
+  // Load Occupied Tables with Active Orders
   const loadActiveTables = async () => {
     try {
       const res: any = await apiClient.get('/tables/floor-layout', { forceFresh: true });
@@ -440,7 +537,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
     } catch (_) {}
   };
 
-  // Generate Bill for table
+  // Generate Bill for an Active Table Order
   const handleGenerateBillForOrder = async (orderId: string) => {
     setGeneratingForOrderId(orderId);
     try {
@@ -451,134 +548,190 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
         setSelectedBill(res.data);
       }
     } catch (err: any) {
-      alert(err.message || 'ટેબલનું બિલ બનાવવામાં સમસ્યા આવી.');
+      alert(err.message || 'Failed to generate bill for table.');
     } finally {
       setGeneratingForOrderId(null);
     }
   };
 
-  const changeReturn = Math.max(0, tenderedCash - payAmount);
-
-  // Active filter label
-  const getFilterText = () => {
-    if (dateFilterMode === 'ALL') return 'બધા દિવસો (All Time)';
-    if (dateFilterMode === 'TODAY') return 'આજનું કાઉન્ટર (Today)';
-    if (dateFilterMode === 'YESTERDAY') return 'ગઈકાલનું કાઉન્ટર (Yesterday)';
-    if (customFilterType === 'RANGE') return `${customStartDate} થી ${customEndDate}`;
-    return formatDisplayDate(selectedDate);
+  // Download PDF from payment history
+  const handleDownloadPaymentPdf = async (billId: string) => {
+    try {
+      const res: any = await apiClient.get(`/billing/${billId}`);
+      if (res?.success && res.data) {
+        generateInvoicePdf(res.data, { download: true, customSettings: settings });
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to download invoice PDF.');
+    }
   };
 
+  // Print Receipt from payment history
+  const handlePrintPaymentReceipt = async (billId: string) => {
+    try {
+      const res: any = await apiClient.get(`/billing/${billId}`);
+      if (res?.success && res.data) {
+        printInvoiceReceipt(res.data, settings);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to print receipt.');
+    }
+  };
+
+  const changeReturn = Math.max(0, tenderedCash - payAmount);
+
   return (
-    <div className="d-flex flex-column gap-3 p-1 p-md-2" style={{ fontSize: '0.88rem' }}>
-      {/* 1. TOP FRIENDLY COUNTER BAR */}
-      <div className="card shadow-sm border-0 bg-white">
+    <div className="d-flex flex-column gap-3 p-1 p-md-2" style={{ fontSize: '0.85rem' }}>
+      {/* Top Header Bar */}
+      <div className="card shadow-sm border-0 mb-1">
         <div className="card-body p-3 px-sm-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
           <div className="d-flex align-items-center gap-2.5">
-            <div className="bg-primary-subtle text-primary p-2.5 rounded-3 d-flex align-items-center justify-content-center shadow-sm" style={{ width: 42, height: 42 }}>
-              <Receipt size={24} />
+            <div className="bg-primary-subtle text-primary p-2 rounded-2 d-flex align-items-center justify-content-center shadow-sm" style={{ width: 36, height: 36 }}>
+              <Receipt size={20} />
             </div>
             <div>
               <div className="d-flex align-items-center gap-2 flex-wrap">
-                <h5 className="fw-bold mb-0 text-dark">બિલિંગ & પેમેન્ટ્સ કાઉન્ટર</h5>
-                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '0.75rem' }}>
-                  {getFilterText()}
+                <h6 className="fw-bold mb-0 text-dark">Billing & Payments Register</h6>
+                <span className="badge bg-light text-secondary border px-1.5 py-0.5" style={{ fontSize: '0.7rem' }}>
+                  Unified POS & Settlements
+                </span>
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style={{ fontSize: '0.7rem' }}>
+                  {dateFilterMode === 'ALL' ? 'All Time' : formatDisplayDate(selectedDate)}
                 </span>
               </div>
-              <div className="text-secondary small mt-0.5" style={{ fontSize: '0.78rem' }}>
-                ટેબલના બાકી રૂપિયા જમા કરો, બિલ બનાવો અને 80mm થર્મલ સ્લિપ પ્રિન્ટ કરો
+              <div className="text-muted small mt-0.5" style={{ fontSize: '0.72rem' }}>
+                Single-window tax invoices, instant settlement, receipts & 80mm slip printing
               </div>
             </div>
           </div>
 
           <div className="d-flex align-items-center gap-2 w-100 w-sm-auto justify-content-end">
+            {/* Quick Bill Active Table */}
             {can('billing.create') && (
               <button
-                className="btn btn-primary py-2 px-3.5 d-flex align-items-center justify-content-center gap-2 shadow-sm fw-bold w-100 w-sm-auto"
-                style={{ fontSize: '0.85rem' }}
+                className="btn btn-primary btn-sm py-1.5 px-3 d-flex align-items-center justify-content-center gap-1.5 shadow-sm fw-bold w-100 w-sm-auto"
+                style={{ fontSize: '0.8rem' }}
                 onClick={() => {
                   loadActiveTables();
                   setIsBillTableModalOpen(true);
                 }}
               >
-                <Plus size={18} /> + ટેબલનું નવું બિલ બનાવો
+                <Plus size={15} /> Bill Active Table
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* 2. THREE BIG, CLEAR, SIMPLE METRIC CARDS */}
-      <div className="row g-2 g-md-3">
-        {/* Card 1: Total Billing */}
-        <div className="col-12 col-md-4">
-          <div className="card shadow-sm border-0 h-100 bg-white border-start border-primary border-4">
-            <div className="card-body p-3 d-flex flex-column justify-content-between">
+      {/* 4 CONSOLIDATED SUMMARY METRIC CARDS (Zero duplicate strips needed!) */}
+      <div className="row g-2 g-md-3 mb-1">
+        {/* Card 1: Total Billing / Orders */}
+        <div className="col-6 col-lg-3">
+          <div className="card shadow-sm border-0 h-100 bg-white">
+            <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
               <div className="d-flex align-items-center justify-content-between mb-1">
-                <span className="text-muted fw-bold small" style={{ fontSize: '0.82rem' }}>
-                  🔵 આજના કુલ બિલ (Total Billing)
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
+                  Total Billing (કુલ બિલિંગ)
                 </span>
-                <div className="p-1.5 rounded-circle bg-primary-subtle text-primary">
-                  <Receipt size={18} />
+                <div className="p-1.5 rounded-2 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Receipt size={16} />
                 </div>
               </div>
               <div>
-                <div className="fs-3 fw-bold text-dark mb-0.5">
+                <div className="fs-5 fs-sm-4 fw-bold text-dark mb-0.5">
                   ₹{totalBillsValue.toLocaleString()}
                 </div>
-                <div className="d-flex align-items-center gap-2 text-muted small" style={{ fontSize: '0.75rem' }}>
-                  <span className="badge bg-primary text-white">{dayBills.length} બિલો</span>
-                  <span>(કુલ વેચાણ)</span>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                  <span className="badge bg-primary text-white" style={{ fontSize: '0.68rem' }}>
+                    {totalBillsCount} Bills
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+                    Tax: ₹{invoicesGst.toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Pending to Collect (Prominent RED) */}
-        <div className="col-12 col-md-4">
-          <div className="card shadow-sm border-0 h-100 bg-white border-start border-danger border-4">
-            <div className="card-body p-3 d-flex flex-column justify-content-between">
+        {/* Card 2: Pending Receivables */}
+        <div className="col-6 col-lg-3">
+          <div className="card shadow-sm border-0 h-100 bg-white">
+            <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
               <div className="d-flex align-items-center justify-content-between mb-1">
-                <span className="text-danger fw-bold small" style={{ fontSize: '0.82rem' }}>
-                  🔴 બાકી લેવાના પૈસા (Pending to Collect)
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
+                  Pending Due (બાકી બિલ)
                 </span>
-                <div className="p-1.5 rounded-circle bg-danger-subtle text-danger">
-                  <Clock size={18} />
+                <div className="p-1.5 rounded-2 bg-danger-subtle text-danger d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Clock size={16} />
                 </div>
               </div>
               <div>
-                <div className="fs-3 fw-bold text-danger mb-0.5">
+                <div className="fs-5 fs-sm-4 fw-bold text-danger mb-0.5">
                   ₹{totalPendingAmount.toLocaleString()}
                 </div>
-                <div className="d-flex align-items-center gap-2 text-muted small" style={{ fontSize: '0.75rem' }}>
-                  <span className="badge bg-danger text-white">{unpaidBills.length} ટેબલ બાકી</span>
-                  <span>(ગ્રાહક પાસેથી લેવાના)</span>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                  <span className="badge bg-danger text-white" style={{ fontSize: '0.68rem' }}>
+                    {unpaidBillsCount} Unpaid Bills
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+                    Awaiting cash/UPI
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Total Received (Prominent GREEN) */}
-        <div className="col-12 col-md-4">
-          <div className="card shadow-sm border-0 h-100 bg-white border-start border-success border-4">
-            <div className="card-body p-3 d-flex flex-column justify-content-between">
+        {/* Card 3: Settled Revenue */}
+        <div className="col-6 col-lg-3">
+          <div className="card shadow-sm border-0 h-100 bg-white">
+            <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
               <div className="d-flex align-items-center justify-content-between mb-1">
-                <span className="text-success fw-bold small" style={{ fontSize: '0.82rem' }}>
-                  🟢 જમા થયેલ રકમ (Total Received)
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
+                  Settled Revenue (જમા આવક)
                 </span>
-                <div className="p-1.5 rounded-circle bg-success-subtle text-success">
-                  <CheckCircle2 size={18} />
+                <div className="p-1.5 rounded-2 bg-success-subtle text-success d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <CheckCircle2 size={16} />
                 </div>
               </div>
               <div>
-                <div className="fs-3 fw-bold text-success mb-0.5">
+                <div className="fs-5 fs-sm-4 fw-bold text-success mb-0.5">
                   ₹{totalRevenue.toLocaleString()}
                 </div>
-                <div className="d-flex align-items-center gap-2 flex-wrap text-muted small" style={{ fontSize: '0.75rem' }}>
-                  <span className="badge bg-success text-white">{paidBills.length} બિલ ક્લિયર</span>
-                  <span className="text-dark fw-medium">💵 રોકડ: ₹{cashPaymentsTotal}</span>
-                  <span className="text-dark fw-medium">📱 UPI: ₹{upiPaymentsTotal}</span>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                  <span className="badge bg-success text-white" style={{ fontSize: '0.68rem' }}>
+                    {paidBillsCount} Paid Bills
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+                    100% Cleared
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Collections & Modes */}
+        <div className="col-6 col-lg-3">
+          <div className="card shadow-sm border-0 h-100 bg-white">
+            <div className="card-body p-2.5 p-sm-3 d-flex flex-column justify-content-between">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-secondary fw-semibold small" style={{ fontSize: '0.78rem' }}>
+                  Collections (કુલ વસૂલાત)
+                </span>
+                <div className="p-1.5 rounded-2 bg-warning-subtle text-warning-emphasis d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                  <Banknote size={16} />
+                </div>
+              </div>
+              <div>
+                <div className="fs-5 fs-sm-4 fw-bold text-dark mb-0.5">
+                  ₹{totalCollectedAmount.toLocaleString()}
+                </div>
+                <div className="d-flex align-items-center gap-1.5 flex-wrap" style={{ fontSize: '0.68rem' }}>
+                  <span className="text-success fw-medium">💵 ₹{cashPaymentsTotal.toLocaleString()}</span>
+                  <span className="text-primary fw-medium">📱 ₹{upiPaymentsTotal.toLocaleString()}</span>
+                  <span className="text-warning-emphasis fw-medium">💳 ₹{cardPaymentsTotal.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -586,144 +739,194 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
         </div>
       </div>
 
-      {/* 3. SIMPLE DATE FILTER BAR */}
-      <div className="card shadow-sm border-0 bg-white">
-        <div className="card-body p-2.5 px-3">
-          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-            {/* Quick Pills */}
-            <div className="d-flex align-items-center gap-1.5 flex-wrap">
-              <span className="text-secondary small fw-bold me-1">
-                <Calendar size={15} className="me-1 text-primary" /> તારીખ:
+      {/* Day Wise Filter & Single Date Controller (Zero Duplicate Inputs!) */}
+      <div className="card shadow-sm border-0 mb-2">
+        <div className="card-body p-3 px-sm-4">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            {/* Quick Date Pills */}
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span className="text-muted small fw-semibold d-none d-sm-inline me-1" style={{ fontSize: '0.8rem' }}>
+                <Calendar size={15} className="me-1.5 text-primary" />
+                Day Filter:
               </span>
               <button
                 type="button"
-                className={`btn btn-sm py-1 px-3 ${dateFilterMode === 'TODAY' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
-                style={{ fontSize: '0.82rem', borderRadius: 6 }}
+                className={`btn btn-sm py-1.5 px-3 ${dateFilterMode === 'TODAY' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
+                style={{ fontSize: '0.8rem', borderRadius: 6 }}
                 onClick={handleSetToday}
               >
-                આજે (Today)
+                Today (આજે)
               </button>
               <button
                 type="button"
-                className={`btn btn-sm py-1 px-3 ${dateFilterMode === 'YESTERDAY' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
-                style={{ fontSize: '0.82rem', borderRadius: 6 }}
+                className={`btn btn-sm py-1.5 px-3 ${dateFilterMode === 'YESTERDAY' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
+                style={{ fontSize: '0.8rem', borderRadius: 6 }}
                 onClick={handleSetYesterday}
               >
-                ગઈકાલે (Yesterday)
+                Yesterday (ગઈકાલે)
               </button>
               <button
                 type="button"
-                className={`btn btn-sm py-1 px-3 ${dateFilterMode === 'CUSTOM' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
-                style={{ fontSize: '0.82rem', borderRadius: 6 }}
+                className={`btn btn-sm py-1.5 px-3 ${dateFilterMode === 'CUSTOM' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
+                style={{ fontSize: '0.8rem', borderRadius: 6 }}
                 onClick={() => setDateFilterMode('CUSTOM')}
               >
                 <SlidersHorizontal size={13} className="me-1" />
-                તારીખ પસંદ કરો (Custom Date)
+                Custom Date (કસ્ટમ તારીખ)
               </button>
               <button
                 type="button"
-                className={`btn btn-sm py-1 px-3 ${dateFilterMode === 'ALL' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
-                style={{ fontSize: '0.82rem', borderRadius: 6 }}
-                onClick={() => setDateFilterMode('ALL')}
+                className={`btn btn-sm py-1.5 px-3 ${dateFilterMode === 'ALL' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'}`}
+                style={{ fontSize: '0.8rem', borderRadius: 6 }}
+                onClick={handleSetAllTime}
               >
-                બધા દિવસો (All Time)
+                All Time (તમામ દિવસો)
               </button>
             </div>
 
-            {/* Stepper only when NOT custom */}
-            {dateFilterMode !== 'CUSTOM' && dateFilterMode !== 'ALL' && (
-              <div className="d-flex align-items-center gap-1.5 ms-auto">
+            {/* When NOT in Custom mode: Show single stepper and active badge */}
+            {dateFilterMode !== 'CUSTOM' ? (
+              <div className="d-flex align-items-center gap-2 ms-auto flex-wrap">
                 <button
                   type="button"
-                  className="btn btn-outline-secondary btn-sm p-1 d-flex align-items-center justify-content-center"
-                  style={{ width: 30, height: 30 }}
+                  className="btn btn-outline-secondary btn-sm p-1.5 d-flex align-items-center justify-content-center shadow-sm"
+                  style={{ width: 32, height: 32 }}
                   onClick={handlePrevDay}
-                  title="ગત દિવસ"
+                  title="Previous Day"
+                  disabled={dateFilterMode === 'ALL'}
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className="small fw-bold text-dark px-2 bg-light border rounded py-1">
-                  {formatDisplayDate(selectedDate)}
-                </span>
+
+                <div className="d-flex align-items-center gap-1.5 bg-light border rounded px-2.5 py-1 shadow-sm">
+                  <span className="text-secondary small fw-bold">Date:</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm border-0 bg-transparent p-0 fw-bold text-dark"
+                    style={{ width: 135, fontSize: '0.82rem', boxShadow: 'none' }}
+                    value={selectedDate}
+                    onChange={(e) => handleSetCustomDate(e.target.value)}
+                    disabled={dateFilterMode === 'ALL'}
+                  />
+                </div>
+
                 <button
                   type="button"
-                  className="btn btn-outline-secondary btn-sm p-1 d-flex align-items-center justify-content-center"
-                  style={{ width: 30, height: 30 }}
+                  className="btn btn-outline-secondary btn-sm p-1.5 d-flex align-items-center justify-content-center shadow-sm"
+                  style={{ width: 32, height: 32 }}
                   onClick={handleNextDay}
-                  title="આગામી દિવસ"
+                  title="Next Day"
+                  disabled={dateFilterMode === 'ALL'}
                 >
                   <ChevronRight size={16} />
                 </button>
+
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle py-1.5 px-2.5 fw-semibold" style={{ fontSize: '0.75rem' }}>
+                  {getActiveFilterLabel()}
+                </span>
+              </div>
+            ) : (
+              <div className="ms-auto">
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle py-1.5 px-2.5 fw-semibold" style={{ fontSize: '0.75rem' }}>
+                  {getActiveFilterLabel()}
+                </span>
               </div>
             )}
           </div>
 
-          {/* Simple Custom Date Picker Panel */}
+          {/* Dedicated Custom Date Panel (Only renders inputs when Custom Date is selected - No duplicate inputs!) */}
           {dateFilterMode === 'CUSTOM' && (
-            <div className="mt-2.5 pt-2.5 border-top bg-light p-2.5 rounded border">
-              <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div className="mt-3 pt-3 border-top bg-light p-3 rounded-3 border">
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <div className="d-flex align-items-center gap-2 flex-wrap">
-                  <span className="small fw-bold text-dark">તારીખ સિલેક્શન:</span>
-                  <div className="btn-group btn-group-sm">
+                  <span className="fw-bold text-dark small">
+                    <SlidersHorizontal size={14} className="me-1 text-primary" />
+                    કસ્ટમ તારીખ ફિલ્ટર:
+                  </span>
+                  <div className="btn-group btn-group-sm shadow-sm">
                     <button
                       type="button"
-                      className={`btn ${customFilterType === 'SINGLE' ? 'btn-primary fw-bold' : 'btn-outline-secondary bg-white'}`}
+                      className={`btn py-1 px-3 ${customFilterType === 'SINGLE' ? 'btn-primary fw-bold' : 'btn-outline-secondary bg-white'}`}
                       onClick={() => setCustomFilterType('SINGLE')}
                     >
-                      એક તારીખ (Single Date)
+                      Single Day (ચોક્કસ તારીખ)
                     </button>
                     <button
                       type="button"
-                      className={`btn ${customFilterType === 'RANGE' ? 'btn-primary fw-bold' : 'btn-outline-secondary bg-white'}`}
+                      className={`btn py-1 px-3 ${customFilterType === 'RANGE' ? 'btn-primary fw-bold' : 'btn-outline-secondary bg-white'}`}
                       onClick={() => setCustomFilterType('RANGE')}
                     >
-                      તારીખ ગાળો (From - To)
+                      Date Range (તારીખ ગાળો - From/To)
                     </button>
                   </div>
                 </div>
 
                 {customFilterType === 'SINGLE' ? (
                   <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm p-1.5 d-flex align-items-center justify-content-center shadow-sm"
+                      style={{ width: 32, height: 32 }}
+                      onClick={handlePrevDay}
+                      title="Previous Day"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    <label className="form-label mb-0 small fw-bold text-secondary">તારીખ:</label>
                     <input
                       type="date"
-                      className="form-control form-control-sm fw-bold bg-white"
-                      style={{ width: 160 }}
+                      className="form-control form-control-sm fw-bold text-dark shadow-sm bg-white"
+                      style={{ width: 155, fontSize: '0.85rem' }}
                       value={selectedDate}
                       onChange={(e) => handleSetCustomDate(e.target.value)}
                     />
+
                     <button
                       type="button"
-                      className="btn btn-outline-primary btn-sm py-1"
+                      className="btn btn-outline-secondary btn-sm p-1.5 d-flex align-items-center justify-content-center shadow-sm"
+                      style={{ width: 32, height: 32 }}
+                      onClick={handleNextDay}
+                      title="Next Day"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm py-1 px-2.5 fw-medium"
                       onClick={handleSetToday}
                     >
-                      આજની તારીખ
+                      Reset to Today
                     </button>
                   </div>
                 ) : (
                   <div className="d-flex align-items-center gap-2 flex-wrap">
-                    <div className="d-flex align-items-center gap-1">
-                      <span className="small text-muted fw-bold">From:</span>
+                    <div className="d-flex align-items-center gap-1.5">
+                      <label className="form-label mb-0 small fw-bold text-secondary">From:</label>
                       <input
                         type="date"
-                        className="form-control form-control-sm fw-bold bg-white"
-                        style={{ width: 140 }}
+                        className="form-control form-control-sm fw-bold text-dark shadow-sm bg-white"
+                        style={{ width: 140, fontSize: '0.85rem' }}
                         value={customStartDate}
                         onChange={(e) => setCustomStartDate(e.target.value)}
                       />
                     </div>
-                    <div className="d-flex align-items-center gap-1">
-                      <span className="small text-muted fw-bold">To:</span>
+                    <div className="d-flex align-items-center gap-1.5">
+                      <label className="form-label mb-0 small fw-bold text-secondary">To:</label>
                       <input
                         type="date"
-                        className="form-control form-control-sm fw-bold bg-white"
-                        style={{ width: 140 }}
+                        className="form-control form-control-sm fw-bold text-dark shadow-sm bg-white"
+                        style={{ width: 140, fontSize: '0.85rem' }}
                         value={customEndDate}
                         onChange={(e) => setCustomEndDate(e.target.value)}
                       />
                     </div>
+                    {/* Quick Range Presets */}
                     <button
                       type="button"
-                      className="btn btn-outline-secondary btn-sm py-1 bg-white"
+                      className="btn btn-outline-secondary btn-sm py-1 px-2 bg-white"
+                      style={{ fontSize: '0.75rem' }}
                       onClick={() => {
                         const d = new Date();
                         d.setDate(d.getDate() - 7);
@@ -731,7 +934,20 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                         setCustomEndDate(getLocalDateString());
                       }}
                     >
-                      છેલ્લા ૭ દિવસ
+                      Last 7 Days
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm py-1 px-2 bg-white"
+                      style={{ fontSize: '0.75rem' }}
+                      onClick={() => {
+                        const d = new Date();
+                        const firstDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+                        setCustomStartDate(firstDay);
+                        setCustomEndDate(getLocalDateString());
+                      }}
+                    >
+                      This Month
                     </button>
                   </div>
                 )}
@@ -741,313 +957,256 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
         </div>
       </div>
 
-      {/* 4. THREE WORKFLOW-CENTRIC TABS */}
-      <div className="d-flex align-items-center gap-2 border-bottom pb-2 pt-1">
-        {/* TAB 1: UNPAID (બાકી બિલ) */}
-        <button
-          type="button"
-          className={`btn py-2 px-3 d-flex align-items-center gap-2 ${
-            activeTab === 'UNPAID' ? 'btn-danger fw-bold shadow-sm' : 'btn-outline-secondary bg-white'
-          }`}
-          style={{ fontSize: '0.85rem', borderRadius: 8 }}
-          onClick={() => setActiveTab('UNPAID')}
-        >
-          <Clock size={16} />
-          🔴 બાકી બિલો (પૈસા લેવાના છે)
-          <span className={`badge ${activeTab === 'UNPAID' ? 'bg-white text-danger' : 'bg-danger text-white'}`}>
-            {unpaidBills.length}
-          </span>
-        </button>
+      {/* COMBINED REGISTRATION BAR: Unified Register vs Receipts Log Switch & Smart Filters */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 py-1 mb-2">
+        {/* Primary View Switch */}
+        <div className="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            className={`btn btn-sm py-1.5 px-3 d-flex align-items-center gap-2 ${
+              viewMode === 'UNIFIED' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'
+            }`}
+            style={{ fontSize: '0.82rem', borderRadius: 6 }}
+            onClick={() => setViewMode('UNIFIED')}
+          >
+            <Receipt size={15} />
+            Unified Register (બિલ & પેમેન્ટ્સ)
+            <span className={`badge ${viewMode === 'UNIFIED' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
+              {dayBills.length}
+            </span>
+          </button>
 
-        {/* TAB 2: PAID (ચૂકવાયેલ બિલો) */}
-        <button
-          type="button"
-          className={`btn py-2 px-3 d-flex align-items-center gap-2 ${
-            activeTab === 'PAID' ? 'btn-success fw-bold shadow-sm' : 'btn-outline-secondary bg-white'
-          }`}
-          style={{ fontSize: '0.85rem', borderRadius: 8 }}
-          onClick={() => setActiveTab('PAID')}
-        >
-          <CheckCircle2 size={16} />
-          🟢 ચૂકવાયેલ બિલો (ક્લિયર હિસાબ)
-          <span className={`badge ${activeTab === 'PAID' ? 'bg-white text-success' : 'bg-success text-white'}`}>
-            {paidBills.length}
-          </span>
-        </button>
+          <button
+            type="button"
+            className={`btn btn-sm py-1.5 px-3 d-flex align-items-center gap-2 ${
+              viewMode === 'RECEIPTS' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'
+            }`}
+            style={{ fontSize: '0.82rem', borderRadius: 6 }}
+            onClick={() => setViewMode('RECEIPTS')}
+          >
+            <CreditCard size={15} />
+            Receipts Log (રસીદ લોગ)
+            <span className={`badge ${viewMode === 'RECEIPTS' ? 'bg-light text-primary' : 'bg-secondary'}`} style={{ fontSize: '0.72rem' }}>
+              {dayPayments.length}
+            </span>
+          </button>
+        </div>
 
-        {/* TAB 3: ALL (બધા બિલો) */}
-        <button
-          type="button"
-          className={`btn py-2 px-3 d-flex align-items-center gap-2 ${
-            activeTab === 'ALL' ? 'btn-dark fw-bold shadow-sm' : 'btn-outline-secondary bg-white'
-          }`}
-          style={{ fontSize: '0.85rem', borderRadius: 8 }}
-          onClick={() => setActiveTab('ALL')}
-        >
-          <Receipt size={16} />
-          📋 બધા બિલો ({dayBills.length})
-        </button>
+        {/* Smart Quick Filter Pills (for Unified Register) */}
+        {viewMode === 'UNIFIED' && (
+          <div className="btn-group shadow-sm flex-wrap" style={{ height: 32 }}>
+            <button
+              className={`btn py-1 px-2.5 ${registerFilter === 'ALL' ? 'btn-dark fw-bold' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.78rem' }}
+              onClick={() => setRegisterFilter('ALL')}
+            >
+              All ({filterCounts.all})
+            </button>
+            <button
+              className={`btn py-1 px-2.5 ${registerFilter === 'UNPAID' ? 'btn-danger fw-bold' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.78rem' }}
+              onClick={() => setRegisterFilter('UNPAID')}
+            >
+              Pending ({filterCounts.unpaid})
+            </button>
+            <button
+              className={`btn py-1 px-2.5 ${registerFilter === 'CASH' ? 'btn-success fw-bold' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.78rem' }}
+              onClick={() => setRegisterFilter('CASH')}
+            >
+              Cash ({filterCounts.cash})
+            </button>
+            <button
+              className={`btn py-1 px-2.5 ${registerFilter === 'UPI' ? 'btn-primary fw-bold' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.78rem' }}
+              onClick={() => setRegisterFilter('UPI')}
+            >
+              UPI ({filterCounts.upi})
+            </button>
+            <button
+              className={`btn py-1 px-2.5 ${registerFilter === 'CARD' ? 'btn-warning-emphasis fw-bold' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.78rem' }}
+              onClick={() => setRegisterFilter('CARD')}
+            >
+              Card ({filterCounts.card})
+            </button>
+            <button
+              className={`btn py-1 px-2.5 ${registerFilter === 'PAID' ? 'btn-success fw-bold' : 'btn-outline-secondary bg-white'}`}
+              style={{ fontSize: '0.78rem' }}
+              onClick={() => setRegisterFilter('PAID')}
+            >
+              All Settled ({filterCounts.paid})
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* TAB 1 CONTENT: UNPAID BILLS (સરળ બાકી બિલ લિસ્ટ) */}
-      {activeTab === 'UNPAID' && (
-        <>
-          {unpaidBills.length === 0 ? (
-            <div className="card shadow-sm border-0 bg-white text-center py-5">
-              <div className="card-body">
-                <CheckCircle2 size={48} className="text-success mb-2" />
-                <h5 className="fw-bold text-success mb-1">શાબાશ! કોઈ પણ બિલ બાકી નથી 🎉</h5>
-                <p className="text-muted small mb-0">આજના તમામ ટેબલોનો હિસાબ પૂર્ણ રીતે ચૂકવાઈ ગયો છે.</p>
-              </div>
-            </div>
-          ) : (
-            <DataTable<Bill>
-              compact={false}
-              columns={[
-                {
-                  header: 'ટેબલ નં. (Table)',
-                  accessor: (row) => (
-                    <span className="badge bg-light text-dark border px-2 py-1 fs-6 fw-bold">
-                      {row.tableNumber || 'Takeaway'}
-                    </span>
-                  ),
-                  width: 110
-                },
-                {
-                  header: 'બિલ નં. (Bill #)',
-                  accessor: (row) => <span className="fw-bold text-dark">{row.billNumber}</span>,
-                  width: 130
-                },
-                {
-                  header: 'ગ્રાહક (Customer)',
-                  accessor: (row) => (
-                    <span className="text-truncate d-inline-block" style={{ maxWidth: 120 }}>
-                      {row.customerName || 'Walk-in'}
-                    </span>
-                  ),
-                  width: 120
-                },
-                {
-                  header: 'કુલ બિલ (Total Bill)',
-                  accessor: (row) => `₹${row.totalPayable}`,
-                  width: 100
-                },
-                {
-                  header: 'બાકી રકમ (Due Amount)',
-                  accessor: (row) => (
-                    <span className="fs-6 fw-bold text-danger">
-                      ₹{row.balanceAmount !== undefined ? row.balanceAmount : row.totalPayable}
-                    </span>
-                  ),
-                  width: 120
-                },
-                {
-                  header: 'સમય (Time)',
-                  accessor: (row) => new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  width: 90
-                }
-              ]}
-              data={unpaidBills}
-              searchPlaceholder="ટેબલ નં. કે બિલ નં. થી શોધો..."
-              actions={(row) => (
-                <div className="d-flex align-items-center gap-1.5 flex-nowrap">
-                  {/* BIG PROMINENT PAY BUTTON */}
-                  {can('payment.create') && (
-                    <button
-                      className="btn btn-success btn-sm py-1.5 px-3 d-flex align-items-center gap-1 fw-bold shadow-sm"
-                      style={{ fontSize: '0.8rem' }}
-                      onClick={() => openPaymentModal(row)}
-                      title="પૈસા જમા કરો"
-                    >
-                      <CreditCard size={14} /> ₹ પૈસા જમા કરો
-                    </button>
-                  )}
-
-                  {/* View Slip */}
-                  <button
-                    className="btn btn-outline-primary btn-sm py-1.5 px-2 d-flex align-items-center gap-1"
-                    style={{ fontSize: '0.78rem' }}
-                    onClick={() => setSelectedBill(row)}
-                    title="બિલ સ્લિપ જુઓ"
-                  >
-                    <Eye size={14} /> બિલ જુઓ
-                  </button>
-                </div>
-              )}
-            />
-          )}
-        </>
-      )}
-
-      {/* TAB 2 CONTENT: PAID BILLS (સરળ ચૂકવાયેલ બિલ લિસ્ટ) */}
-      {activeTab === 'PAID' && (
+      {/* VIEW 1: UNIFIED BILLING & PAYMENT REGISTER (One master ledger without duplication!) */}
+      {viewMode === 'UNIFIED' && (
         <DataTable<Bill>
-          compact={false}
+          compact={true}
           columns={[
             {
-              header: 'ટેબલ નં. (Table)',
-              accessor: (row) => (
-                <span className="badge bg-light text-dark border px-2 py-1 fs-6 fw-bold">
-                  {row.tableNumber || 'Takeaway'}
-                </span>
-              ),
-              width: 110
-            },
-            {
-              header: 'બિલ નં. (Bill #)',
-              accessor: (row) => <span className="fw-bold text-dark">{row.billNumber}</span>,
-              width: 130
-            },
-            {
-              header: 'ગ્રાહક (Customer)',
-              accessor: (row) => row.customerName || 'Walk-in',
-              width: 120
-            },
-            {
-              header: 'ચૂકવેલ રકમ (Paid Amount)',
-              accessor: (row) => (
-                <span className="fs-6 fw-bold text-success">
-                  ₹{row.paidAmount || row.totalPayable}
-                </span>
-              ),
-              width: 120
-            },
-            {
-              header: 'પેમેન્ટ મોડ (Payment Mode)',
+              header: 'Bill & Receipt #',
               accessor: (row) => {
                 const payment = paymentsByBillId.get(row.id);
-                const method = payment?.paymentMethod || 'CASH';
                 return (
-                  <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1.5 px-2 py-1" style={{ fontSize: '0.78rem' }}>
-                    {method === 'CASH' && <><Banknote size={14} className="text-success" /> રોકડ (Cash)</>}
-                    {method === 'UPI' && <><QrCode size={14} className="text-primary" /> UPI / QR</>}
-                    {method === 'CARD' && <><CreditCard size={14} className="text-warning" /> કાર્ડ (Card)</>}
-                    {method === 'SPLIT' && <><Scissors size={14} className="text-secondary" /> સ્પ્લિટ</>}
-                  </span>
+                  <div>
+                    <span className="fw-bold text-dark d-block">{row.billNumber}</span>
+                    {payment?.paymentNumber && (
+                      <span className="text-muted d-block" style={{ fontSize: '0.68rem' }}>
+                        Rcpt: {payment.paymentNumber}
+                      </span>
+                    )}
+                  </div>
                 );
               },
-              width: 130
+              width: 120
             },
             {
-              header: 'સમય (Time)',
-              accessor: (row) => new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              width: 90
-            }
-          ]}
-          data={paidBills}
-          searchPlaceholder="ચૂકવાયેલ બિલો શોધો..."
-          actions={(row) => (
-            <div className="d-flex align-items-center gap-1.5 flex-nowrap">
-              {/* DIRECT PRINT BUTTON */}
-              <button
-                className="btn btn-primary btn-sm py-1.5 px-2.5 d-flex align-items-center gap-1 shadow-sm fw-bold"
-                style={{ fontSize: '0.78rem' }}
-                onClick={() => printInvoiceReceipt(row, settings)}
-                title="80mm પ્રિન્ટ સ્લિપ કાઢો"
-              >
-                <Printer size={14} /> 🖨️ સ્લિપ પ્રિન્ટ
-              </button>
-
-              {/* View Slip */}
-              <button
-                className="btn btn-outline-secondary btn-sm py-1.5 px-2 d-flex align-items-center gap-1"
-                style={{ fontSize: '0.78rem' }}
-                onClick={() => setSelectedBill(row)}
-                title="બિલ જુઓ"
-              >
-                <Eye size={14} /> જુઓ
-              </button>
-
-              {/* PDF */}
-              <button
-                className="btn btn-outline-danger btn-sm py-1.5 px-2 d-flex align-items-center gap-1"
-                style={{ fontSize: '0.78rem' }}
-                onClick={() => generateInvoicePdf(row, { download: true, customSettings: settings })}
-                title="PDF ડાઉનલોડ કરો"
-              >
-                <Download size={14} /> PDF
-              </button>
-            </div>
-          )}
-        />
-      )}
-
-      {/* TAB 3 CONTENT: ALL BILLS (બધા બિલો) */}
-      {activeTab === 'ALL' && (
-        <DataTable<Bill>
-          compact={false}
-          columns={[
-            {
-              header: 'ટેબલ નં. (Table)',
+              header: 'Table / Type',
               accessor: (row) => (
-                <span className="badge bg-light text-dark border px-2 py-1 fs-6 fw-bold">
+                <span className="badge bg-light text-dark border px-1.5 py-0.5" style={{ fontSize: '0.72rem' }}>
                   {row.tableNumber || 'Takeaway'}
                 </span>
               ),
-              width: 100
+              width: 80
             },
             {
-              header: 'બિલ નં. (Bill #)',
-              accessor: (row) => <span className="fw-bold text-dark">{row.billNumber}</span>,
-              width: 130
-            },
-            {
-              header: 'ગ્રાહક (Customer)',
-              accessor: (row) => row.customerName || 'Walk-in',
+              header: 'Guest / Customer',
+              accessor: (row) => (
+                <span className="text-truncate d-inline-block" style={{ maxWidth: 120 }}>
+                  {row.customerName || 'Walk-in'}
+                </span>
+              ),
               width: 110
             },
             {
-              header: 'કુલ રકમ (Total)',
-              accessor: (row) => <span className="fw-bold text-dark">₹{row.totalPayable}</span>,
+              header: 'Subtotal',
+              accessor: (row) => `₹${row.subtotal}`,
+              width: 75
+            },
+            {
+              header: 'GST (5%)',
+              accessor: (row) => `₹${row.taxAmount}`,
+              width: 75
+            },
+            {
+              header: 'Total Payable',
+              accessor: (row) => (
+                <span className="fw-bold text-dark">₹{row.totalPayable}</span>
+              ),
               width: 90
             },
             {
-              header: 'સ્થિતિ (Status)',
+              header: 'Status & Mode',
               accessor: (row) => {
+                const payment = paymentsByBillId.get(row.id);
                 if (row.status === 'PAID') {
-                  return <span className="badge bg-success px-2 py-1">✓ ચૂકવેલ (PAID)</span>;
+                  const method = payment?.paymentMethod || 'CASH';
+                  return (
+                    <div className="d-flex flex-column gap-0.5">
+                      <div className="d-flex align-items-center gap-1">
+                        <span className="badge bg-success d-inline-flex align-items-center gap-0.5 px-1.5 py-0.5" style={{ fontSize: '0.68rem' }}>
+                          <CheckCircle2 size={10} /> PAID
+                        </span>
+                        <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-1.5 py-0.5" style={{ fontSize: '0.68rem' }}>
+                          {method === 'CASH' && <Banknote size={10} className="text-success" />}
+                          {method === 'UPI' && <QrCode size={10} className="text-primary" />}
+                          {method === 'CARD' && <CreditCard size={10} className="text-warning" />}
+                          {method === 'SPLIT' && <Scissors size={10} className="text-secondary" />}
+                          {method}
+                        </span>
+                      </div>
+                      {payment?.referenceNumber && (
+                        <span className="text-muted text-truncate" style={{ fontSize: '0.65rem', maxWidth: 100 }}>
+                          Ref: {payment.referenceNumber}
+                        </span>
+                      )}
+                    </div>
+                  );
                 }
-                return <span className="badge bg-danger px-2 py-1">⏳ બાકી (UNPAID)</span>;
+                if (row.status === 'PARTIALLY_PAID') {
+                  return (
+                    <div>
+                      <span className="badge bg-warning text-dark px-1.5 py-0.5" style={{ fontSize: '0.68rem' }}>PARTIAL</span>
+                      <span className="text-danger d-block small" style={{ fontSize: '0.68rem' }}>
+                        Due: ₹{row.balanceAmount}
+                      </span>
+                    </div>
+                  );
+                }
+                return (
+                  <div>
+                    <span className="badge bg-danger d-inline-flex align-items-center gap-0.5 px-1.5 py-0.5" style={{ fontSize: '0.68rem' }}>
+                      <Clock size={10} /> UNPAID
+                    </span>
+                    <span className="text-danger d-block fw-semibold" style={{ fontSize: '0.68rem' }}>
+                      Due: ₹{row.totalPayable}
+                    </span>
+                  </div>
+                );
               },
-              width: 110
+              width: 125
             },
             {
-              header: 'સમય (Time)',
-              accessor: (row) => new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              width: 90
+              header: 'Date & Time',
+              accessor: (row) => new Date(row.createdAt).toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              width: 105
             }
           ]}
-          data={dayBills}
-          searchPlaceholder="બધા બિલો શોધો..."
+          data={filteredUnifiedBills}
+          searchPlaceholder="Search by Bill #, Table, Guest, Status..."
           actions={(row) => {
             const isPaid = row.status === 'PAID';
             return (
-              <div className="d-flex align-items-center gap-1.5 flex-nowrap">
+              <div className="d-flex align-items-center gap-1 flex-nowrap">
+                {/* 1. PAY BUTTON (Shown prominently for unpaid bills) */}
                 {!isPaid && can('payment.create') && (
                   <button
-                    className="btn btn-success btn-sm py-1.5 px-2.5 d-flex align-items-center gap-1 fw-bold shadow-sm"
-                    style={{ fontSize: '0.78rem' }}
+                    className="btn btn-success btn-sm py-0.5 px-2 d-flex align-items-center gap-1 fw-bold shadow-sm"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => openPaymentModal(row)}
+                    title="Settle Payment"
                   >
-                    <CreditCard size={13} /> પૈસા જમા કરો
+                    <CreditCard size={12} /> Pay
                   </button>
                 )}
 
+                {/* 2. SLIP / VIEW BUTTON (Opens full 80mm preview with Print, PDF & Split options) */}
                 <button
-                  className="btn btn-outline-primary btn-sm py-1.5 px-2 d-flex align-items-center gap-1"
-                  style={{ fontSize: '0.78rem' }}
+                  className="btn btn-outline-primary btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                  style={{ fontSize: '0.72rem' }}
                   onClick={() => setSelectedBill(row)}
+                  title="View Receipt Slip"
                 >
-                  <Eye size={13} /> સ્લિપ જુઓ
+                  <Eye size={12} /> Slip
                 </button>
 
+                {/* 3. DIRECT PRINT BUTTON */}
+                <button
+                  className="btn btn-outline-secondary btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                  style={{ fontSize: '0.72rem' }}
+                  onClick={() => printInvoiceReceipt(row, settings)}
+                  title="Print 80mm Thermal Receipt"
+                >
+                  <Printer size={12} /> Print
+                </button>
+
+                {/* 4. DIRECT PDF BUTTON (For Paid bills) */}
                 {isPaid && (
                   <button
-                    className="btn btn-outline-secondary btn-sm py-1.5 px-2 d-flex align-items-center gap-1"
-                    style={{ fontSize: '0.78rem' }}
-                    onClick={() => printInvoiceReceipt(row, settings)}
+                    className="btn btn-outline-danger btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                    style={{ fontSize: '0.72rem' }}
+                    onClick={() => generateInvoicePdf(row, { download: true, customSettings: settings })}
+                    title="Download PDF"
                   >
-                    <Printer size={13} /> પ્રિન્ટ
+                    <Download size={12} /> PDF
                   </button>
                 )}
               </div>
@@ -1056,90 +1215,153 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
         />
       )}
 
+      {/* VIEW 2: RECEIPTS AUDIT LOG (Dedicated log for pure payment records) */}
+      {viewMode === 'RECEIPTS' && (
+        <DataTable<Payment>
+          compact={true}
+          columns={[
+            {
+              header: 'Payment #',
+              accessor: (row) => <span className="fw-bold text-dark">{row.paymentNumber}</span>,
+              width: 120
+            },
+            {
+              header: 'Method',
+              accessor: (row) => (
+                <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-1.5 py-0.5" style={{ fontSize: '0.72rem' }}>
+                  {row.paymentMethod === 'CASH' && <Banknote size={12} className="text-success" />}
+                  {row.paymentMethod === 'UPI' && <QrCode size={12} className="text-primary" />}
+                  {row.paymentMethod === 'CARD' && <CreditCard size={12} className="text-warning" />}
+                  {row.paymentMethod}
+                </span>
+              ),
+              width: 95
+            },
+            {
+              header: 'Settled Amount',
+              accessor: (row) => (
+                <span className="fw-bold text-success">₹{row.amount.toLocaleString()}</span>
+              ),
+              width: 95
+            },
+            {
+              header: 'Reference / UTR',
+              accessor: (row) => row.referenceNumber || '-',
+              width: 120
+            },
+            {
+              header: 'Date & Time',
+              accessor: (row) => new Date(row.createdAt).toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              width: 110
+            },
+            {
+              header: 'Status',
+              accessor: () => (
+                <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5" style={{ fontSize: '0.7rem' }}>
+                  Settled
+                </span>
+              ),
+              width: 80
+            }
+          ]}
+          data={dayPayments}
+          searchPlaceholder="Search payments by UTR, number..."
+          actions={(row) => (
+            <div className="d-flex align-items-center gap-1">
+              {row.billId && (
+                <>
+                  <button
+                    className="btn btn-outline-danger btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                    style={{ fontSize: '0.72rem' }}
+                    onClick={() => handleDownloadPaymentPdf(row.billId)}
+                    title="Download PDF"
+                  >
+                    <Download size={12} /> PDF
+                  </button>
+                  <button
+                    className="btn btn-outline-secondary btn-sm py-0.5 px-1.5 d-flex align-items-center gap-0.5"
+                    style={{ fontSize: '0.72rem' }}
+                    onClick={() => handlePrintPaymentReceipt(row.billId)}
+                    title="Print Receipt"
+                  >
+                    <Printer size={12} /> Print
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        />
+      )}
+
       {/* ======================================================== */}
-      {/* SIMPLE, LARGE, INTUITIVE PAYMENT MODAL (પૈસા જમા કરવાની બારી) */}
+      {/* IN-PLACE RECORD PAYMENT SETTLEMENT MODAL (Compact)      */}
       {/* ======================================================== */}
       <Modal
         isOpen={isPayModalOpen}
         onClose={() => setIsPayModalOpen(false)}
-        title="પૈસા જમા કરો (Collect Payment)"
+        title="Collect & Settle Bill Payment"
         size="md"
       >
         {payingBill && (
-          <form onSubmit={handleProcessPayment} className="d-flex flex-column gap-3">
-            {/* Top Table & Bill Banner */}
-            <div className="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-center">
+          <form onSubmit={handleProcessPayment} className="d-flex flex-column gap-2.5">
+            {/* Bill Summary Card */}
+            <div className="p-2.5 bg-primary-subtle text-primary-emphasis rounded border border-primary-subtle d-flex justify-content-between align-items-center">
               <div>
-                <span className="badge bg-primary text-white fs-6 px-2.5 py-1 mb-1">
-                  ટેબલ: {payingBill.tableNumber || 'Takeaway'}
+                <span className="fw-bold fs-6 d-block text-dark">Invoice: {payingBill.billNumber}</span>
+                <span className="small text-secondary" style={{ fontSize: '0.75rem' }}>
+                  Table: <strong>{payingBill.tableNumber || 'Takeaway'}</strong> | Guest: <strong>{payingBill.customerName || 'Walk-in'}</strong>
                 </span>
-                <div className="text-secondary small">
-                  બિલ નં: <strong>{payingBill.billNumber}</strong> • ગ્રાહક: <strong>{payingBill.customerName || 'Walk-in'}</strong>
-                </div>
               </div>
               <div className="text-end">
-                <span className="small text-muted d-block fw-bold">કુલ લેવાની રકમ</span>
-                <span className="fs-2 fw-bold text-success">₹{payAmount}</span>
+                <span className="small text-muted d-block" style={{ fontSize: '0.72rem' }}>Due Amount</span>
+                <span className="fs-4 fw-bold text-success">₹{payAmount}</span>
               </div>
             </div>
 
-            {/* Payment Mode Selection */}
+            {/* Payment Method Selector */}
             <div>
-              <label className="form-label small fw-bold text-dark mb-1.5">પેમેન્ટ કઈ રીતે આવ્યું? (Payment Mode):</label>
-              <div className="row g-2">
-                <div className="col-4">
+              <label className="form-label small fw-bold text-secondary mb-1" style={{ fontSize: '0.75rem' }}>Payment Mode</label>
+              <div className="btn-group w-100 shadow-sm" style={{ height: 32 }}>
+                {(['CASH', 'UPI', 'CARD', 'SPLIT'] as const).map((m) => (
                   <button
+                    key={m}
                     type="button"
-                    className={`btn w-100 py-2.5 d-flex flex-column align-items-center justify-content-center gap-1 border-2 ${
-                      paymentMethod === 'CASH' ? 'btn-success fw-bold shadow-sm' : 'btn-outline-secondary bg-white'
+                    className={`btn py-0 px-2 ${
+                      paymentMethod === m ? 'btn-primary fw-bold' : 'btn-outline-secondary'
                     }`}
+                    style={{ fontSize: '0.75rem' }}
                     onClick={() => {
-                      setPaymentMethod('CASH');
-                      setTenderedCash(payAmount);
+                      setPaymentMethod(m);
+                      if (m === 'CASH') {
+                        setTenderedCash(payAmount);
+                      }
                     }}
                   >
-                    <Banknote size={22} />
-                    <span>💵 રોકડ (Cash)</span>
+                    {m === 'CASH' && <Banknote size={13} className="me-1" />}
+                    {m === 'UPI' && <QrCode size={13} className="me-1" />}
+                    {m === 'CARD' && <CreditCard size={13} className="me-1" />}
+                    {m}
                   </button>
-                </div>
-                <div className="col-4">
-                  <button
-                    type="button"
-                    className={`btn w-100 py-2.5 d-flex flex-column align-items-center justify-content-center gap-1 border-2 ${
-                      paymentMethod === 'UPI' ? 'btn-primary fw-bold shadow-sm' : 'btn-outline-secondary bg-white'
-                    }`}
-                    onClick={() => setPaymentMethod('UPI')}
-                  >
-                    <QrCode size={22} />
-                    <span>📱 UPI / QR</span>
-                  </button>
-                </div>
-                <div className="col-4">
-                  <button
-                    type="button"
-                    className={`btn w-100 py-2.5 d-flex flex-column align-items-center justify-content-center gap-1 border-2 ${
-                      paymentMethod === 'CARD' ? 'btn-warning-emphasis fw-bold shadow-sm' : 'btn-outline-secondary bg-white'
-                    }`}
-                    onClick={() => setPaymentMethod('CARD')}
-                  >
-                    <CreditCard size={22} />
-                    <span>💳 કાર્ડ (Card)</span>
-                  </button>
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* Cash Calculator */}
+            {/* CASH TENDER CALCULATOR (Compact) */}
             {paymentMethod === 'CASH' && (
-              <div className="p-3 bg-light rounded-3 border">
-                <label className="form-label fw-bold text-dark mb-1">
-                  ગ્રાહકે આપેલી નોટ / રોકડ (Tendered Cash):
+              <div className="p-2.5 bg-light rounded border">
+                <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '0.75rem' }}>
+                  Tendered Cash (ગ્રાહકે આપેલ રોકડ)
                 </label>
-                <div className="input-group input-group-lg mb-2">
+                <div className="input-group input-group-sm mb-1.5">
                   <span className="input-group-text fw-bold">₹</span>
                   <input
                     type="number"
-                    className="form-control fw-bold text-dark fs-4"
+                    className="form-control fw-bold text-dark"
                     value={tenderedCash}
                     onChange={(e) => setTenderedCash(Number(e.target.value))}
                     min={payAmount}
@@ -1148,95 +1370,153 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                 </div>
 
                 {/* Quick Add Buttons */}
-                <div className="d-flex flex-wrap gap-1.5 mb-2.5">
+                <div className="d-flex flex-wrap gap-1 mb-1.5">
                   <button
                     type="button"
-                    className="btn btn-outline-secondary btn-sm py-1 px-2.5"
+                    className="btn btn-outline-secondary btn-sm py-0 px-1.5"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => setTenderedCash(payAmount)}
                   >
-                    પૂરેપૂરા (Exact ₹{payAmount})
+                    Exact (₹{payAmount})
                   </button>
                   <button
                     type="button"
-                    className="btn btn-outline-secondary btn-sm py-1 px-2.5"
+                    className="btn btn-outline-secondary btn-sm py-0 px-1.5"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => setTenderedCash((prev) => prev + 100)}
                   >
                     +₹100
                   </button>
                   <button
                     type="button"
-                    className="btn btn-outline-secondary btn-sm py-1 px-2.5"
+                    className="btn btn-outline-secondary btn-sm py-0 px-1.5"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => setTenderedCash((prev) => prev + 200)}
                   >
                     +₹200
                   </button>
                   <button
                     type="button"
-                    className="btn btn-outline-secondary btn-sm py-1 px-2.5"
+                    className="btn btn-outline-secondary btn-sm py-0 px-1.5"
+                    style={{ fontSize: '0.72rem' }}
                     onClick={() => setTenderedCash((prev) => prev + 500)}
                   >
                     +₹500
                   </button>
+                  {payAmount % 500 !== 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm py-0 px-1.5"
+                      style={{ fontSize: '0.72rem' }}
+                      onClick={() => setTenderedCash(Math.ceil(payAmount / 500) * 500)}
+                    >
+                      Round ₹{Math.ceil(payAmount / 500) * 500}
+                    </button>
+                  )}
                 </div>
 
-                {/* Big Return Change Display */}
-                <div className="d-flex justify-content-between align-items-center pt-2 border-top">
-                  <span className="fw-bold text-dark fs-6">ગ્રાહકને પરત આપવાના રૂપિયા (Change):</span>
-                  <span className="fs-3 fw-bold text-success">₹{changeReturn}</span>
+                {/* Change Return */}
+                <div className="d-flex justify-content-between align-items-center pt-1.5 border-top">
+                  <span className="fw-bold text-secondary" style={{ fontSize: '0.78rem' }}>Change to Return (પરત કરવાના):</span>
+                  <span className="fs-5 fw-bold text-success">₹{changeReturn}</span>
                 </div>
               </div>
             )}
 
-            {/* UPI Reference */}
+            {/* UPI REFERENCE INPUT */}
             {paymentMethod === 'UPI' && (
-              <div className="p-3 bg-light rounded-3 border">
-                <label className="form-label small fw-bold mb-1">UPI UTR / ટ્રાન્ઝેક્શન નંબર (ઓપ્શનલ):</label>
+              <div className="p-2.5 bg-light rounded border">
+                <label className="form-label small fw-bold mb-1" style={{ fontSize: '0.75rem' }}>UPI Reference / UTR Number</label>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="દા.ત. 423456789012"
+                  className="form-control form-control-sm"
+                  placeholder="e.g. 423456789012"
                   value={referenceNumber}
                   onChange={(e) => setReferenceNumber(e.target.value)}
                 />
               </div>
             )}
 
-            {/* Card Auth Code */}
+            {/* CARD AUTH CODE */}
             {paymentMethod === 'CARD' && (
-              <div className="p-3 bg-light rounded-3 border">
-                <label className="form-label small fw-bold mb-1">કાર્ડ મશીન Approval / Auth Code (ઓપ્શનલ):</label>
+              <div className="p-2.5 bg-light rounded border">
+                <label className="form-label small fw-bold mb-1" style={{ fontSize: '0.75rem' }}>Card Auth / Approval Code</label>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="દા.ત. AUTH-88219"
+                  className="form-control form-control-sm"
+                  placeholder="e.g. AUTH-88219"
                   value={referenceNumber}
                   onChange={(e) => setReferenceNumber(e.target.value)}
                 />
               </div>
             )}
 
-            {/* Submit Button */}
-            <div className="d-flex justify-content-end gap-2 pt-2 border-top">
+            {/* SPLIT TENDER INPUTS */}
+            {paymentMethod === 'SPLIT' && (
+              <div className="d-flex flex-column gap-1.5 p-2.5 bg-light rounded border">
+                <label className="form-label small fw-bold mb-0.5" style={{ fontSize: '0.75rem' }}>Multi-Tender Split</label>
+                <div className="row g-1.5">
+                  <div className="col-4">
+                    <label className="form-label text-secondary mb-0.5" style={{ fontSize: '0.7rem' }}>Cash (₹)</label>
+                    <input
+                      type="number"
+                      className="form-control form-control-sm"
+                      value={splitCash}
+                      onChange={(e) => setSplitCash(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="col-4">
+                    <label className="form-label text-secondary mb-0.5" style={{ fontSize: '0.7rem' }}>UPI (₹)</label>
+                    <input
+                      type="number"
+                      className="form-control form-control-sm"
+                      value={splitUpi}
+                      onChange={(e) => setSplitUpi(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="col-4">
+                    <label className="form-label text-secondary mb-0.5" style={{ fontSize: '0.7rem' }}>Card (₹)</label>
+                    <input
+                      type="number"
+                      className="form-control form-control-sm"
+                      value={splitCard}
+                      onChange={(e) => setSplitCard(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <div className="d-flex justify-content-between pt-1 border-top" style={{ fontSize: '0.75rem' }}>
+                  <span>Total Split: ₹{splitCash + splitUpi + splitCard}</span>
+                  <span className={splitCash + splitUpi + splitCard === payAmount ? 'text-success fw-bold' : 'text-danger fw-bold'}>
+                    Target: ₹{payAmount}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Submit Actions */}
+            <div className="d-flex justify-content-end gap-1.5 pt-2 border-top">
               <button
                 type="button"
-                className="btn btn-secondary py-2 px-3"
+                className="btn btn-secondary btn-sm py-1 px-2.5"
+                style={{ fontSize: '0.78rem' }}
                 onClick={() => setIsPayModalOpen(false)}
                 disabled={isProcessingPayment}
               >
-                રદ કરો (Cancel)
+                Cancel
               </button>
               <button
                 type="submit"
-                className="btn btn-success btn-lg fw-bold px-4 py-2 d-flex align-items-center gap-2 shadow-sm"
+                className="btn btn-success btn-sm fw-bold px-3 py-1 d-flex align-items-center gap-1 shadow-sm"
+                style={{ fontSize: '0.78rem' }}
                 disabled={isProcessingPayment}
               >
                 {isProcessingPayment ? (
                   <>
-                    <span className="spinner-border spinner-border-sm" role="status" /> પ્રોસેસિંગ...
+                    <span className="spinner-border spinner-border-sm" role="status" /> Processing...
                   </>
                 ) : (
                   <>
-                    <Check size={20} /> ✓ ₹{payAmount} જમા કરો & સ્લિપ કાઢો
+                    <CheckCircle2 size={14} /> Settle ₹{payAmount}
                   </>
                 )}
               </button>
@@ -1246,31 +1526,32 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
       </Modal>
 
       {/* ======================================================== */}
-      {/* 80MM REALISTIC THERMAL SLIP PREVIEW MODAL                */}
+      {/* 80MM REALISTIC THERMAL SLIP PREVIEW & SETTLEMENT MODAL   */}
+      {/* (Unified: Shows post-payment alert + full thermal slip)   */}
       {/* ======================================================== */}
       <Modal
         isOpen={!!selectedBill}
         onClose={handleCloseBillModal}
-        title={`બિલ સ્લિપ (Invoice Slip): ${selectedBill?.billNumber}`}
+        title={`Tax Invoice & Slip: ${selectedBill?.billNumber}`}
         size="md"
       >
         {selectedBill && (
           <div className="d-flex flex-column align-items-center">
-            {/* Payment success alert banner */}
+            {/* Instant Payment Success Alert Banner (Shown right after settling) */}
             {justSettledBillId === selectedBill.id && (
               <div
                 className="alert alert-success py-2 px-3 mb-2.5 d-flex align-items-center justify-content-between shadow-sm w-100"
                 style={{ maxWidth: 340 }}
               >
                 <div className="d-flex align-items-center gap-2">
-                  <CheckCircle2 size={20} className="text-success flex-shrink-0" />
-                  <span className="fw-bold small">પેમેન્ટ સફળતાપૂર્વક જમા થઈ ગયું છે!</span>
+                  <CheckCircle2 size={18} className="text-success flex-shrink-0" />
+                  <span className="small fw-bold">Payment Settled Successfully!</span>
                 </div>
                 <span className="badge bg-success text-white">PAID</span>
               </div>
             )}
 
-            {/* 80mm Realistic Thermal Receipt */}
+            {/* 80mm Realistic Thermal Receipt Container */}
             <div
               className="bg-white p-3 border rounded shadow-sm"
               style={{
@@ -1282,6 +1563,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                 color: '#222'
               }}
             >
+              {/* Slip Header */}
               <div className="text-center">
                 {settings.showLogo && (
                   <img
@@ -1317,26 +1599,29 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                 </div>
               </div>
 
+              {/* Dashed divider */}
               <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
 
+              {/* Meta Rows */}
               <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
-                <span><strong>બિલ નં:</strong> {selectedBill.billNumber}</span>
-                {settings.showTable && <span><strong>ટેબલ:</strong> {selectedBill.tableNumber || 'Dine-In'}</span>}
+                <span><strong>Bill No:</strong> {selectedBill.billNumber}</span>
+                {settings.showTable && <span><strong>Table:</strong> {selectedBill.tableNumber || 'Dine-In'}</span>}
               </div>
               <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
-                <span><strong>તારીખ:</strong> {new Date(selectedBill.createdAt).toLocaleDateString('en-IN')}</span>
-                <span><strong>સમય:</strong> {new Date(selectedBill.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span><strong>Date:</strong> {new Date(selectedBill.createdAt).toLocaleDateString('en-IN')}</span>
+                <span><strong>Time:</strong> {new Date(selectedBill.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               {settings.showCustomer && selectedBill.customerName && (
                 <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
-                  <span><strong>ગ્રાહક:</strong> {selectedBill.customerName}</span>
-                  <span><strong>સ્થિતિ:</strong> {selectedBill.status}</span>
+                  <span><strong>Guest:</strong> {selectedBill.customerName}</span>
+                  <span><strong>Status:</strong> {selectedBill.status}</span>
                 </div>
               )}
 
+              {/* Dashed divider */}
               <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
 
-              {/* Items */}
+              {/* Items List */}
               <div className="d-flex flex-column gap-1">
                 {(selectedBill.items || []).map((item, idx) => (
                   <div key={idx} className="d-flex justify-content-between align-items-start">
@@ -1353,17 +1638,18 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                 ))}
               </div>
 
+              {/* Dashed divider */}
               <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
 
               {/* Subtotal & Taxes */}
               <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
-                <span>સબ-ટોટલ:</span>
+                <span>Subtotal:</span>
                 <span>₹{Number(selectedBill.subtotal).toFixed(2)}</span>
               </div>
 
               {selectedBill.discountAmount > 0 && (
                 <div className="d-flex justify-content-between text-danger" style={{ fontSize: '0.72rem' }}>
-                  <span>ડિસ્કાઉન્ટ:</span>
+                  <span>Discount:</span>
                   <span>-₹{Number(selectedBill.discountAmount).toFixed(2)}</span>
                 </div>
               )}
@@ -1381,42 +1667,53 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                 </>
               )}
 
+              {settings.showServiceCharge && selectedBill.serviceCharge > 0 && (
+                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                  <span>Service Charge:</span>
+                  <span>₹{Number(selectedBill.serviceCharge).toFixed(2)}</span>
+                </div>
+              )}
+
               {selectedBill.roundOff !== 0 && (
                 <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
-                  <span>રાઉન્ડ ઓફ:</span>
+                  <span>Round Off:</span>
                   <span>{selectedBill.roundOff > 0 ? '+' : ''}₹{Number(selectedBill.roundOff).toFixed(2)}</span>
                 </div>
               )}
 
+              {/* Solid border Grand Total */}
               <div className="my-1.5 py-1 border-top border-bottom border-dark d-flex justify-content-between align-items-center">
-                <span className="fw-bold fs-6">કુલ રકમ (GRAND TOTAL):</span>
+                <span className="fw-bold fs-6">GRAND TOTAL:</span>
                 <span className="fw-bold fs-6">₹{Number(selectedBill.totalPayable).toFixed(2)}</span>
               </div>
 
               {selectedBill.status === 'PAID' ? (
                 <div className="d-flex justify-content-between text-success fw-bold" style={{ fontSize: '0.72rem' }}>
-                  <span>ચૂકવેલ રકમ:</span>
+                  <span>Amount Paid:</span>
                   <span>₹{Number(selectedBill.paidAmount || selectedBill.totalPayable).toFixed(2)}</span>
                 </div>
               ) : selectedBill.balanceAmount > 0 ? (
                 <div className="d-flex justify-content-between text-danger fw-bold" style={{ fontSize: '0.72rem' }}>
-                  <span>બાકી રકમ:</span>
+                  <span>Balance Due:</span>
                   <span>₹{Number(selectedBill.balanceAmount).toFixed(2)}</span>
                 </div>
               ) : null}
 
+              {/* Dashed divider */}
               <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
 
+              {/* Footer Note */}
               {settings.showFooterNote && (
                 <div className="text-center text-muted mt-1" style={{ fontSize: '0.68rem' }}>
                   <p className="mb-0">{settings.customFooterText || 'Thank you for dining with us!'}</p>
-                  <p className="mb-0">ફરી પધારશો 🙏</p>
+                  <p className="mb-0">Please Visit Again 🙏</p>
                 </div>
               )}
             </div>
 
-            {/* Actions */}
+            {/* Action Buttons */}
             <div className="d-flex flex-wrap justify-content-end align-items-center gap-1.5 w-100 mt-2.5 pt-2 border-top">
+              {/* Split Bill Button (cleanly located in Slip view!) */}
               {selectedBill.status === 'UNPAID' && can('billing.split') && (
                 <button
                   type="button"
@@ -1427,8 +1724,9 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                     setSelectedBill(null);
                     setSplitBillItem(b);
                   }}
+                  title="Split into multiple checks"
                 >
-                  <Scissors size={13} /> સ્પ્લિટ બિલ
+                  <Scissors size={13} /> Split Bill
                 </button>
               )}
 
@@ -1437,31 +1735,32 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                 className="btn btn-outline-danger btn-sm py-1 px-2.5 d-flex align-items-center gap-1"
                 style={{ fontSize: '0.75rem' }}
                 onClick={() => generateInvoicePdf(selectedBill, { download: true, customSettings: settings })}
+                title="Download PDF"
               >
-                <Download size={13} /> PDF
+                <Download size={13} /> Download PDF
               </button>
 
               <button
                 type="button"
-                className="btn btn-primary btn-sm py-1.5 px-3 d-flex align-items-center gap-1.5 shadow-sm fw-bold"
-                style={{ fontSize: '0.78rem' }}
+                className="btn btn-primary btn-sm py-1 px-2.5 d-flex align-items-center gap-1 shadow-sm"
+                style={{ fontSize: '0.75rem' }}
                 onClick={() => printInvoiceReceipt(selectedBill, settings)}
               >
-                <Printer size={14} /> 🖨️ સ્લિપ પ્રિન્ટ
+                <Printer size={13} /> Print Slip
               </button>
 
               {selectedBill.status !== 'PAID' && can('payment.create') ? (
                 <button
                   type="button"
-                  className="btn btn-success btn-sm py-1.5 px-3 d-flex align-items-center gap-1.5 shadow-sm fw-bold"
-                  style={{ fontSize: '0.78rem' }}
+                  className="btn btn-success btn-sm py-1 px-3 d-flex align-items-center gap-1 shadow-sm fw-bold"
+                  style={{ fontSize: '0.75rem' }}
                   onClick={() => {
                     const b = selectedBill;
                     setSelectedBill(null);
                     openPaymentModal(b);
                   }}
                 >
-                  <CreditCard size={14} /> ₹ પૈસા જમા કરો
+                  <CreditCard size={13} /> Pay ₹{selectedBill.totalPayable}
                 </button>
               ) : (
                 <button
@@ -1470,7 +1769,7 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                   style={{ fontSize: '0.75rem' }}
                   onClick={handleCloseBillModal}
                 >
-                  પૂર્ણ (Done)
+                  Done
                 </button>
               )}
             </div>
@@ -1479,20 +1778,20 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
       </Modal>
 
       {/* ======================================================== */}
-      {/* SPLIT BILL MODAL                                         */}
+      {/* SPLIT BILL MODAL (Compact)                               */}
       {/* ======================================================== */}
       <Modal
         isOpen={!!splitBillItem}
         onClose={() => setSplitBillItem(null)}
-        title={`સ્પ્લિટ બિલ: ${splitBillItem?.billNumber}`}
+        title={`Split Invoice: ${splitBillItem?.billNumber}`}
         size="sm"
       >
         <div className="d-flex flex-column gap-2.5">
-          <p className="small text-secondary mb-0" style={{ fontSize: '0.78rem' }}>
-            કુલ રકમ ₹{splitBillItem?.totalPayable} ને સરખા ભાગમાં વહેંચો:
+          <p className="small text-secondary mb-0" style={{ fontSize: '0.75rem' }}>
+            Split Total ₹{splitBillItem?.totalPayable} into equal checks:
           </p>
           <div>
-            <label className="form-label small fw-bold mb-1">કેટલા ભાગ કરવા છે? (Split Count)</label>
+            <label className="form-label small fw-bold mb-1" style={{ fontSize: '0.75rem' }}>Number of Checks (Split Count)</label>
             <input
               type="number"
               min="2"
@@ -1502,41 +1801,41 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
               onChange={(e) => setSplitCount(Number(e.target.value))}
             />
           </div>
-          <div className="p-2 bg-light rounded text-center" style={{ fontSize: '0.82rem' }}>
-            દરેક ગ્રાહકના ભાગે આવશે:{' '}
+          <div className="p-2 bg-light rounded text-center" style={{ fontSize: '0.78rem' }}>
+            Each customer pays approx:{' '}
             <strong className="text-dark fs-6">
               ₹{splitBillItem ? Math.floor(splitBillItem.totalPayable / splitCount) : 0}
             </strong>
           </div>
           <div className="d-flex justify-content-end gap-1.5 pt-2 border-top">
-            <button className="btn btn-secondary btn-sm py-1 px-2.5" onClick={() => setSplitBillItem(null)}>
-              રદ કરો
+            <button className="btn btn-secondary btn-sm py-1 px-2.5" style={{ fontSize: '0.75rem' }} onClick={() => setSplitBillItem(null)}>
+              Cancel
             </button>
-            <button className="btn btn-primary btn-sm py-1 px-2.5 fw-bold" onClick={handleSplitBill}>
-              સ્પ્લિટ કરો
+            <button className="btn btn-primary btn-sm py-1 px-2.5 fw-bold" style={{ fontSize: '0.75rem' }} onClick={handleSplitBill}>
+              Split Now
             </button>
           </div>
         </div>
       </Modal>
 
       {/* ======================================================== */}
-      {/* BILL ACTIVE TABLE MODAL (ટેબલનું નવું બિલ બનાવો)          */}
+      {/* BILL ACTIVE TABLE MODAL (Compact)                        */}
       {/* ======================================================== */}
       <Modal
         isOpen={isBillTableModalOpen}
         onClose={() => setIsBillTableModalOpen(false)}
-        title="ઓક્યુપાઇડ ટેબલનું બિલ બનાવો (Generate Bill)"
+        title="Generate Bill for Active Table"
         size="md"
       >
         <div className="d-flex flex-column gap-2">
-          <p className="text-secondary mb-1" style={{ fontSize: '0.78rem' }}>
-            જે ટેબલનું બિલ બનાવવું હોય તે ટેબલ પસંદ કરો:
+          <p className="text-secondary mb-1" style={{ fontSize: '0.75rem' }}>
+            Select an occupied table to generate its Tax Invoice:
           </p>
 
           {activeTables.length === 0 ? (
             <div className="text-center py-4 text-muted">
-              <Receipt size={36} className="mb-1 text-secondary opacity-50" />
-              <div className="fw-semibold small">હાલમાં કોઈ ઓર્ડર બિલિંગ માટે પેન્ડિંગ નથી</div>
+              <Receipt size={32} className="mb-1 text-secondary opacity-50" />
+              <div className="fw-semibold small">No active orders pending bill generation</div>
             </div>
           ) : (
             <div className="row g-2">
@@ -1546,35 +1845,35 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
                 return (
                   <div key={tbl.id} className="col-sm-6">
                     <div className="card border shadow-sm h-100">
-                      <div className="card-body p-3 d-flex flex-column justify-content-between">
+                      <div className="card-body p-2.5 d-flex flex-column justify-content-between">
                         <div>
                           <div className="d-flex justify-content-between align-items-center mb-1">
-                            <span className="fw-bold fs-5 text-dark">{tbl.tableNumber}</span>
-                            <span className="badge bg-warning text-dark" style={{ fontSize: '0.7rem' }}>
-                              ઓક્યુપાઇડ
+                            <span className="fw-bold fs-6 text-dark">{tbl.tableNumber}</span>
+                            <span className="badge bg-warning text-dark" style={{ fontSize: '0.68rem' }}>
+                              {order?.status || 'OCCUPIED'}
                             </span>
                           </div>
-                          <div className="text-muted mb-1 small">
-                            ઓર્ડર #{order?.orderNumber || tbl.currentOrderId} • {order?.items?.length || 0} વાનગીઓ
+                          <div className="text-muted mb-1" style={{ fontSize: '0.72rem' }}>
+                            Order #{order?.orderNumber || tbl.currentOrderId} • {order?.items?.length || 0} items
                           </div>
-                          <div className="fw-bold text-dark fs-5 mb-2">
-                            ₹{order?.totalAmount || 0} <span className="text-muted fw-normal small">+ 5% GST</span>
+                          <div className="fw-bold text-dark fs-6 mb-2">
+                            ₹{order?.totalAmount || 0} <span className="text-muted fw-normal" style={{ fontSize: '0.7rem' }}>+ 5% GST</span>
                           </div>
                         </div>
 
                         <button
-                          className="btn btn-primary btn-sm py-1.5 w-100 d-flex align-items-center justify-content-center gap-1 shadow-sm fw-bold"
-                          style={{ fontSize: '0.82rem' }}
+                          className="btn btn-primary btn-sm py-1 w-100 d-flex align-items-center justify-content-center gap-1 shadow-sm fw-bold"
+                          style={{ fontSize: '0.75rem' }}
                           onClick={() => handleGenerateBillForOrder(order.id)}
                           disabled={isGenerating}
                         >
                           {isGenerating ? (
                             <>
-                              <span className="spinner-border spinner-border-sm" role="status" /> બિલ બની રહ્યું છે...
+                              <span className="spinner-border spinner-border-sm" role="status" /> Generating...
                             </>
                           ) : (
                             <>
-                              <Receipt size={14} /> ટેબલ બિલ બનાવો
+                              <Receipt size={13} /> Bill Table
                             </>
                           )}
                         </button>
@@ -1587,8 +1886,8 @@ export const BillingPage: React.FC<BillingPageProps> = () => {
           )}
 
           <div className="d-flex justify-content-end pt-2 border-top">
-            <button className="btn btn-secondary btn-sm py-1 px-3" onClick={() => setIsBillTableModalOpen(false)}>
-              બંધ કરો
+            <button className="btn btn-secondary btn-sm py-1 px-2.5" style={{ fontSize: '0.75rem' }} onClick={() => setIsBillTableModalOpen(false)}>
+              Close
             </button>
           </div>
         </div>
