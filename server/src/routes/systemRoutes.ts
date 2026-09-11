@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { NotificationService, AuditService, SystemControlService } from '../services/systemControlService';
+import { DatabaseToolService } from '../services/databaseToolService';
 import { authenticate, AuthenticatedRequest } from '../middleware/authMiddleware';
 import { authorize } from '../middleware/permissionMiddleware';
 import { ApiResponse } from '../utils/apiResponse';
@@ -135,3 +136,147 @@ systemRouter.post('/database/reseed', authenticate, authorize('system.control.vi
     return ApiResponse.error(res, err.message, 500);
   }
 });
+
+// --- ADVANCED DATABASE MANAGEMENT & CRUD STUDIO ---
+
+// 1. Get all collections metadata and record counts
+systemRouter.get('/database/collections', authenticate, authorize('system.control.view'), async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const list = await DatabaseToolService.getCollectionList();
+    return ApiResponse.success(res, list, 'Collection list retrieved successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+// 2. Query paginated records with search and date range
+systemRouter.get('/database/query', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { collection, page, limit, search, startDate, endDate } = req.query;
+    if (!collection) return ApiResponse.error(res, 'Collection key is required.', 400);
+
+    const result = await DatabaseToolService.queryCollection(String(collection), {
+      page: Number(page) || 1,
+      limit: Number(limit) || 20,
+      search: search ? String(search) : undefined,
+      startDate: startDate ? String(startDate) : undefined,
+      endDate: endDate ? String(endDate) : undefined
+    });
+    return ApiResponse.success(res, result, 'Records retrieved successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+// 3. Direct Record Creation
+systemRouter.post('/database/record', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { collection, data } = req.body;
+    if (!collection || !data) return ApiResponse.error(res, 'Collection and data are required.', 400);
+
+    const created = await DatabaseToolService.createRecord(collection, data, {
+      userId: req.user!.userId,
+      username: req.user!.username
+    });
+    return ApiResponse.success(res, created, 'Record created successfully.', 201);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+// 4. Direct Record Update
+systemRouter.put('/database/record/:id', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { collection, data } = req.body;
+    const { id } = req.params;
+    if (!collection || !data) return ApiResponse.error(res, 'Collection and data are required.', 400);
+
+    const updated = await DatabaseToolService.updateRecord(collection, id, data, {
+      userId: req.user!.userId,
+      username: req.user!.username
+    });
+    return ApiResponse.success(res, updated, 'Record updated successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+// 5. Direct Record Deletion
+systemRouter.delete('/database/record/:id', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { collection } = req.query;
+    const { id } = req.params;
+    if (!collection) return ApiResponse.error(res, 'Collection is required.', 400);
+
+    const deleted = await DatabaseToolService.deleteRecord(String(collection), id, {
+      userId: req.user!.userId,
+      username: req.user!.username
+    });
+    return ApiResponse.success(res, deleted, 'Record deleted successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+// 6. Date-Filtered Data Export
+systemRouter.post('/database/export', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { collections, startDate, endDate } = req.body;
+    const result = await DatabaseToolService.exportData({ collections, startDate, endDate });
+    return ApiResponse.success(res, result, 'Data exported successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+// 7. Data Import
+systemRouter.post('/database/import', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { collection, records, mode } = req.body;
+    if (!collection || !records) return ApiResponse.error(res, 'Collection and records are required.', 400);
+
+    const result = await DatabaseToolService.importData(collection, records, mode, {
+      userId: req.user!.userId,
+      username: req.user!.username
+    });
+    return ApiResponse.success(res, result, 'Data imported successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+// 8. Date-Wise Preview Count
+systemRouter.post('/database/date-preview', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { startDate, endDate } = req.body;
+    if (!startDate) return ApiResponse.error(res, 'Start date is required.', 400);
+
+    const result = await DatabaseToolService.previewDateData(startDate, endDate);
+    return ApiResponse.success(res, result, 'Date records preview generated.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+// 9. Permanent Date-Wise Data Purge
+systemRouter.post('/database/date-purge', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { startDate, endDate, collections, confirmationPhrase } = req.body;
+    if (!startDate) return ApiResponse.error(res, 'Start date is required.', 400);
+    if (!confirmationPhrase) return ApiResponse.error(res, 'Confirmation phrase is required.', 400);
+
+    const result = await DatabaseToolService.purgeDateData({
+      startDate,
+      endDate,
+      collections,
+      confirmationPhrase
+    }, {
+      userId: req.user!.userId,
+      username: req.user!.username
+    });
+    return ApiResponse.success(res, result, result.message);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
