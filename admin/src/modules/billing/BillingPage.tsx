@@ -3,7 +3,7 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
 import { Bill } from '../../types';
-import { Receipt, CreditCard, Percent, Scissors, Printer, Eye, Download } from 'lucide-react';
+import { Receipt, CreditCard, Percent, Scissors, Printer, Eye, Download, Plus } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { generateInvoicePdf, printInvoiceReceipt } from '../../utils/invoicePdf';
@@ -26,6 +26,11 @@ export const BillingPage: React.FC = () => {
   // Split Bill Modal
   const [splitBillItem, setSplitBillItem] = useState<Bill | null>(null);
   const [splitCount, setSplitCount] = useState<number>(2);
+
+  // Quick Bill for Active Table Modal
+  const [isBillTableModalOpen, setIsBillTableModalOpen] = useState(false);
+  const [activeTables, setActiveTables] = useState<any[]>([]);
+  const [generatingForOrderId, setGeneratingForOrderId] = useState<string | null>(null);
 
   const loadBills = async (showSpinner = false, forceFresh = false) => {
     if (showSpinner || bills.length === 0) {
@@ -96,6 +101,31 @@ export const BillingPage: React.FC = () => {
     }
   };
 
+  const loadActiveTables = async () => {
+    try {
+      const res: any = await apiClient.get('/tables/floor-layout', { forceFresh: true });
+      if (res?.success && Array.isArray(res.data)) {
+        setActiveTables(res.data.filter((t: any) => t.status === 'OCCUPIED' && t.activeOrder));
+      }
+    } catch (_) {}
+  };
+
+  const handleGenerateBillForOrder = async (orderId: string) => {
+    setGeneratingForOrderId(orderId);
+    try {
+      const res: any = await apiClient.post('/billing/generate', { orderId });
+      setIsBillTableModalOpen(false);
+      await loadBills(false, true);
+      if (res?.data) {
+        setSelectedBill(res.data);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to generate bill for table.');
+    } finally {
+      setGeneratingForOrderId(null);
+    }
+  };
+
   return (
     <div className="d-flex flex-column gap-4">
       {/* Header */}
@@ -104,6 +134,17 @@ export const BillingPage: React.FC = () => {
           <h4 className="fw-bold mb-1 text-dark">Customer Billing & Invoices</h4>
           <p className="text-muted small mb-0">Generate restaurant invoices, split tabs, apply discounts, and print receipts</p>
         </div>
+        {can('billing.create') && (
+          <button
+            className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm"
+            onClick={() => {
+              loadActiveTables();
+              setIsBillTableModalOpen(true);
+            }}
+          >
+            <Plus size={16} /> Bill Active Table
+          </button>
+        )}
       </div>
 
       {/* Bills Table */}
@@ -364,6 +405,59 @@ export const BillingPage: React.FC = () => {
             <button className="btn btn-secondary btn-sm" onClick={() => setSplitBillItem(null)}>Cancel</button>
             <button className="btn btn-primary btn-sm" onClick={handleSplitBill}>
               Confirm Split
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* QUICK BILL ACTIVE TABLE MODAL */}
+      <Modal
+        isOpen={isBillTableModalOpen}
+        onClose={() => setIsBillTableModalOpen(false)}
+        title="Generate Bill for Active Table"
+      >
+        <div className="d-flex flex-column gap-3">
+          <p className="small text-muted mb-0">
+            Select an occupied table with an active dining order to generate an official tax invoice.
+          </p>
+
+          {activeTables.length === 0 ? (
+            <div className="text-center py-4 text-muted border rounded bg-light">
+              <Receipt size={32} className="text-secondary mb-2 opacity-50" />
+              <p className="small mb-0">No occupied tables currently waiting for bill.</p>
+            </div>
+          ) : (
+            <div className="list-group">
+              {activeTables.map((t: any) => (
+                <div key={t.id} className="list-group-item d-flex justify-content-between align-items-center p-3">
+                  <div>
+                    <div className="fw-bold fs-6 text-dark d-flex align-items-center gap-2">
+                      <span>Table {t.tableNumber}</span>
+                      <span className="badge bg-primary-subtle text-primary font-monospace" style={{ fontSize: '0.72rem' }}>
+                        {t.activeOrder?.orderNumber}
+                      </span>
+                    </div>
+                    <div className="small text-muted mt-1">
+                      <span>{t.activeOrder?.itemCount || 0} items</span> • <span>Subtotal: ₹{t.activeOrder?.netAmount || 0}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    className="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm"
+                    disabled={generatingForOrderId === t.activeOrder?.id}
+                    onClick={() => handleGenerateBillForOrder(t.activeOrder?.id)}
+                  >
+                    <Receipt size={14} />
+                    {generatingForOrderId === t.activeOrder?.id ? 'Generating...' : 'Create Invoice'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="d-flex justify-content-end pt-2 border-top">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setIsBillTableModalOpen(false)}>
+              Close
             </button>
           </div>
         </div>

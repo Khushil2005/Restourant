@@ -4,7 +4,7 @@ import { usePermission } from '../../context/PermissionContext';
 import { useSocket } from '../../context/SocketContext';
 import { Modal } from '../../components/PermissionGate';
 import { DiningTable, FloorZone } from '../../types';
-import { Grid, Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
+import { Grid, Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { appCache } from '../../api/cache';
@@ -159,17 +159,15 @@ export const TableFloorPage: React.FC = () => {
 
   const handleDeleteZone = async (zone: { id?: string; code: string; name: string }) => {
     const zoneObj = floorZones.find(z => z.code === zone.code || z.id === zone.id);
-    const targetId = zoneObj?.id || zone.id;
+    const targetId = zoneObj?.id || zone.id || zone.code;
 
     if (!window.confirm(`Are you sure you want to delete Floor Zone "${zone.name}"? Any assigned tables will safely be reassigned to the default active zone.`)) {
       return;
     }
 
-    setDeletingZoneId(targetId || zone.code);
+    setDeletingZoneId(targetId);
     try {
-      if (targetId) {
-        await apiClient.delete(`/masters/floor-zones/${targetId}`);
-      }
+      await apiClient.delete(`/masters/floor-zones/${encodeURIComponent(targetId)}`);
 
       if (selectedZone === zone.code) {
         setSelectedZone('ALL');
@@ -182,17 +180,17 @@ export const TableFloorPage: React.FC = () => {
     }
   };
 
-  // Build active zone list mapping
+  // Build active zone list mapping for quick label lookup
   const zoneCodeMap = new Map<string, { code: string; name: string; color: string }>();
   floorZones.forEach(z => {
     zoneCodeMap.set(z.code, { code: z.code, name: z.name, color: z.color || '#0d6efd' });
   });
-  tables.forEach(t => {
-    if (!zoneCodeMap.has(t.floorZone)) {
-      zoneCodeMap.set(t.floorZone, { code: t.floorZone, name: t.floorZone.replace('_', ' '), color: '#6c757d' });
-    }
-  });
-  const activeZoneList = Array.from(zoneCodeMap.values());
+  // Tabs strictly mirror actual saved floor zones in database (prevent phantom resurrected tabs)
+  const activeZoneList = floorZones.map(z => ({
+    code: z.code,
+    name: z.name,
+    color: z.color || '#0d6efd'
+  }));
 
   const filteredTables = selectedZone === 'ALL'
     ? tables
@@ -371,6 +369,23 @@ export const TableFloorPage: React.FC = () => {
                         >
                           <ShoppingBag size={13} /> View
                         </button>
+                        {table.activeOrder && can('billing.create') && (
+                          <button
+                            className="btn btn-primary btn-sm d-flex align-items-center justify-content-center gap-1 py-1 px-2"
+                            style={{ fontSize: '0.75rem' }}
+                            onClick={async () => {
+                              try {
+                                const res: any = await apiClient.post('/billing/generate', { orderId: table.activeOrder?.id });
+                                navigate(`/billing?billId=${res?.data?.id || ''}`);
+                              } catch (err: any) {
+                                alert(err.message || 'Failed to generate bill.');
+                              }
+                            }}
+                            title="Generate Tax Invoice for Table"
+                          >
+                            <Receipt size={13} /> Bill
+                          </button>
+                        )}
                         {can('tables.transfer') && (
                           <button
                             className="btn btn-outline-secondary btn-sm p-1 px-1.5"
@@ -544,10 +559,10 @@ export const TableFloorPage: React.FC = () => {
                     <button
                       className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 py-1 px-2"
                       onClick={() => handleDeleteZone(zone)}
-                      disabled={deletingZoneId === zone.id}
+                      disabled={deletingZoneId === (zone.id || zone.code) || deletingZoneId === zone.code}
                       title={`Delete ${zone.name}`}
                     >
-                      <Trash2 size={13} /> {deletingZoneId === zone.id ? 'Deleting...' : 'Delete'}
+                      <Trash2 size={13} /> {deletingZoneId === (zone.id || zone.code) || deletingZoneId === zone.code ? 'Deleting...' : 'Delete'}
                     </button>
                   )}
                 </div>

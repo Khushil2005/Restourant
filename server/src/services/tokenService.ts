@@ -96,6 +96,16 @@ export class TokenService {
   static async completeToken(id: string) {
     const token = await QueueToken.findOneAndUpdate(
       { id },
+      { $set: { status: 'COMPLETED' } },
+      { new: true }
+    );
+    if (token) SocketEvents.emitTokenUpdated(token);
+    return token;
+  }
+
+  static async cancelToken(id: string) {
+    const token = await QueueToken.findOneAndUpdate(
+      { id },
       { $set: { status: 'CANCELLED' } },
       { new: true }
     );

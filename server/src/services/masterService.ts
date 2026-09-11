@@ -394,7 +394,8 @@ export class MasterService {
   }
 
   static async updateFloorZone(id: string, data: any, userId?: string, username?: string) {
-    const query = mongoose.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const query = isObjectId ? { $or: [{ id }, { code: id }, { _id: id }] } : { $or: [{ id }, { code: id }] };
     const old = await FloorZone.findOne(query);
     if (!old) {
       throw new Error('Floor Zone not found.');
@@ -412,7 +413,7 @@ export class MasterService {
       }
       updateData.code = code;
       // Also update any tables with old code to new code!
-      await DiningTable.updateMany({ floorZone: old.code }, { $set: { floorZone: code } });
+      await DiningTable.updateMany({ floorZone: { $in: [old.code, old.id] } }, { $set: { floorZone: code } });
     }
 
     if (data.displayOrder !== undefined) {
@@ -438,22 +439,39 @@ export class MasterService {
   }
 
   static async deleteFloorZone(id: string, userId?: string, username?: string) {
-    const query = mongoose.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const query = isObjectId ? { $or: [{ id }, { code: id }, { _id: id }] } : { $or: [{ id }, { code: id }] };
     const old = await FloorZone.findOne(query);
     if (!old) {
       throw new Error('Floor Zone not found.');
     }
 
     // Automatically reassign any assigned tables to an active fallback zone so tables are never blocked or orphaned
-    const fallbackZone = await FloorZone.findOne({ code: { $ne: old.code }, isActive: true }).sort({ displayOrder: 1 });
+    const fallbackZone = await FloorZone.findOne({
+      $and: [
+        { code: { $ne: old.code } },
+        { id: { $ne: old.id } },
+        { isActive: true }
+      ]
+    }).sort({ displayOrder: 1 });
     const fallbackCode = fallbackZone ? fallbackZone.code : 'MAIN_HALL';
 
     await DiningTable.updateMany(
-      { floorZone: old.code },
+      { floorZone: { $in: [old.code, old.id] } },
       { $set: { floorZone: fallbackCode } }
     );
 
-    await FloorZone.deleteOne(query);
+    const deleteFilter: any = {
+      $or: [
+        { id: old.id },
+        { code: old.code }
+      ]
+    };
+    if (old._id) {
+      deleteFilter.$or.push({ _id: old._id });
+    }
+    await FloorZone.deleteMany(deleteFilter);
+
     await createAuditLog({
       userId,
       username,
@@ -464,7 +482,7 @@ export class MasterService {
       oldValue: old
     });
 
-    SocketEvents.emitMasterUpdated('floor-zones', 'DELETE', { id });
+    SocketEvents.emitMasterUpdated('floor-zones', 'DELETE', { id: old.id, code: old.code });
     SocketEvents.emitTableUpdated({ floorZoneChanged: true });
 
     return { success: true };

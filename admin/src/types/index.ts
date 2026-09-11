@@ -156,7 +156,7 @@ export interface QueueToken {
   customerName: string;
   customerPhone: string;
   partySize: number;
-  status: 'WAITING' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'SEATED' | 'CANCELLED';
+  status: 'WAITING' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'SEATED' | 'CANCELLED' | 'COMPLETED';
   tableId?: string;
   estimatedWaitMinutes: number;
   calledAt?: string;

@@ -194,29 +194,44 @@ export async function runDatabaseMigrationsAndSeeds(): Promise<void> {
   ];
   await MenuItem.bulkWrite(menuItems.map(m => ({ updateOne: { filter: { id: m.id }, update: { $set: m }, upsert: true } })) as any);
 
-  // 7b. Seed Standard Floor Zones
-  const defaultFloorZones = [
-    { id: 'zone_main_hall', code: 'MAIN_HALL', name: 'Main Dining Hall', description: 'Ground floor spacious main dining area', color: '#0d6efd', displayOrder: 1, isActive: true },
-    { id: 'zone_ac_hall', code: 'AC_HALL', name: 'AC Family Section', description: 'Cool air-conditioned family dining section', color: '#0dcaf0', displayOrder: 2, isActive: true },
-    { id: 'zone_rooftop', code: 'ROOFTOP', name: 'Rooftop Lounge', description: 'Open-air scenic rooftop and terrace dining', color: '#6f42c1', displayOrder: 3, isActive: true },
-    { id: 'zone_garden', code: 'GARDEN', name: 'Garden Patio', description: 'Fresh green outdoor garden patio dining', color: '#198754', displayOrder: 4, isActive: true },
-    { id: 'zone_vip', code: 'VIP', name: 'VIP Private Room', description: 'Exclusive private dining and party room', color: '#ffc107', displayOrder: 5, isActive: true }
-  ];
-  await FloorZone.bulkWrite(defaultFloorZones.map(z => ({ updateOne: { filter: { code: z.code }, update: { $set: z }, upsert: true } })) as any);
+  // 7b. Seed Standard Floor Zones (Guarded: only on clean initial setup)
+  const zonesSeeded = await SystemSetting.findOne({ key: 'floor_zones_seeded_v1' });
+  const existingZoneCount = await FloorZone.countDocuments();
+  if (!zonesSeeded && existingZoneCount === 0) {
+    const defaultFloorZones = [
+      { id: 'zone_main_hall', code: 'MAIN_HALL', name: 'Main Dining Hall', description: 'Ground floor spacious main dining area', color: '#0d6efd', displayOrder: 1, isActive: true },
+      { id: 'zone_ac_hall', code: 'AC_HALL', name: 'AC Family Section', description: 'Cool air-conditioned family dining section', color: '#0dcaf0', displayOrder: 2, isActive: true },
+      { id: 'zone_rooftop', code: 'ROOFTOP', name: 'Rooftop Lounge', description: 'Open-air scenic rooftop and terrace dining', color: '#6f42c1', displayOrder: 3, isActive: true },
+      { id: 'zone_garden', code: 'GARDEN', name: 'Garden Patio', description: 'Fresh green outdoor garden patio dining', color: '#198754', displayOrder: 4, isActive: true },
+      { id: 'zone_vip', code: 'VIP', name: 'VIP Private Room', description: 'Exclusive private dining and party room', color: '#ffc107', displayOrder: 5, isActive: true }
+    ];
+    await FloorZone.bulkWrite(defaultFloorZones.map(z => ({ updateOne: { filter: { code: z.code }, update: { $set: z }, upsert: true } })) as any);
+    await SystemSetting.create({ key: 'floor_zones_seeded_v1', value: 'true', category: 'SYSTEM', description: 'Initial floor zones seeded' });
+  } else if (!zonesSeeded) {
+    // If database already contains floor zones or user altered them, record flag so seeds never overwrite
+    await SystemSetting.create({ key: 'floor_zones_seeded_v1', value: 'true', category: 'SYSTEM', description: 'Floor zones initialized' });
+  }
 
-  // 8. Seed Tables (Previous Standard Table Numbers)
-  const tables = [
-    { id: 'tbl_t1', tableNumber: 'T-01', capacity: 2, floorZone: 'MAIN_HALL', status: 'AVAILABLE' },
-    { id: 'tbl_t2', tableNumber: 'T-02', capacity: 4, floorZone: 'MAIN_HALL', status: 'AVAILABLE' },
-    { id: 'tbl_t3', tableNumber: 'T-03', capacity: 4, floorZone: 'MAIN_HALL', status: 'AVAILABLE' },
-    { id: 'tbl_t4', tableNumber: 'T-04', capacity: 6, floorZone: 'MAIN_HALL', status: 'AVAILABLE' },
-    { id: 'tbl_ac1', tableNumber: 'AC-01', capacity: 4, floorZone: 'AC_HALL', status: 'AVAILABLE' },
-    { id: 'tbl_ac2', tableNumber: 'AC-02', capacity: 4, floorZone: 'AC_HALL', status: 'AVAILABLE' },
-    { id: 'tbl_roof1', tableNumber: 'ROOF-01', capacity: 4, floorZone: 'ROOFTOP', status: 'AVAILABLE' },
-    { id: 'tbl_roof2', tableNumber: 'ROOF-02', capacity: 6, floorZone: 'ROOFTOP', status: 'AVAILABLE' },
-    { id: 'tbl_vip1', tableNumber: 'VIP-01', capacity: 10, floorZone: 'VIP', status: 'AVAILABLE' }
-  ];
-  await DiningTable.bulkWrite(tables.map(tbl => ({ updateOne: { filter: { id: tbl.id }, update: { $set: tbl }, upsert: true } })) as any);
+  // 8. Seed Tables (Guarded: only on clean initial setup)
+  const tablesSeeded = await SystemSetting.findOne({ key: 'tables_seeded_v1' });
+  const existingTableCount = await DiningTable.countDocuments();
+  if (!tablesSeeded && existingTableCount === 0) {
+    const tables = [
+      { id: 'tbl_t1', tableNumber: 'T-01', capacity: 2, floorZone: 'MAIN_HALL', status: 'AVAILABLE' },
+      { id: 'tbl_t2', tableNumber: 'T-02', capacity: 4, floorZone: 'MAIN_HALL', status: 'AVAILABLE' },
+      { id: 'tbl_t3', tableNumber: 'T-03', capacity: 4, floorZone: 'MAIN_HALL', status: 'AVAILABLE' },
+      { id: 'tbl_t4', tableNumber: 'T-04', capacity: 6, floorZone: 'MAIN_HALL', status: 'AVAILABLE' },
+      { id: 'tbl_ac1', tableNumber: 'AC-01', capacity: 4, floorZone: 'AC_HALL', status: 'AVAILABLE' },
+      { id: 'tbl_ac2', tableNumber: 'AC-02', capacity: 4, floorZone: 'AC_HALL', status: 'AVAILABLE' },
+      { id: 'tbl_roof1', tableNumber: 'ROOF-01', capacity: 4, floorZone: 'ROOFTOP', status: 'AVAILABLE' },
+      { id: 'tbl_roof2', tableNumber: 'ROOF-02', capacity: 6, floorZone: 'ROOFTOP', status: 'AVAILABLE' },
+      { id: 'tbl_vip1', tableNumber: 'VIP-01', capacity: 10, floorZone: 'VIP', status: 'AVAILABLE' }
+    ];
+    await DiningTable.bulkWrite(tables.map(tbl => ({ updateOne: { filter: { id: tbl.id }, update: { $set: tbl }, upsert: true } })) as any);
+    await SystemSetting.create({ key: 'tables_seeded_v1', value: 'true', category: 'SYSTEM', description: 'Initial dining tables seeded' });
+  } else if (!tablesSeeded) {
+    await SystemSetting.create({ key: 'tables_seeded_v1', value: 'true', category: 'SYSTEM', description: 'Dining tables initialized' });
+  }
 
   // 9. Seed Inventory Items (Authentic Ingredients)
   const inventoryItems = [

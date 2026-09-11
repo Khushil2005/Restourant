@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { useSocket } from '../../context/SocketContext';
-import { QueueToken } from '../../types';
+import { QueueToken, DiningTable } from '../../types';
+import { Modal } from '../../components/PermissionGate';
 import { 
   Megaphone, 
   RotateCcw, 
@@ -40,6 +41,12 @@ export const TokenPage: React.FC = () => {
   const [guestName, setGuestName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
+  // Table Seating Modal State
+  const [seatingToken, setSeatingToken] = useState<QueueToken | null>(null);
+  const [tables, setTables] = useState<DiningTable[]>([]);
+  const [selectedTableId, setSelectedTableId] = useState<string>('');
+  const [seatingSubmitting, setSeatingSubmitting] = useState(false);
+
   // Update real-time clock every second
   useEffect(() => {
     const updateTime = () => {
@@ -58,16 +65,22 @@ export const TokenPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Load Queue Tokens
+  // Load Queue Tokens & Tables
   const loadQueue = async (showSpinner = false, forceFresh = false) => {
     if (showSpinner || tokens.length === 0) {
       setLoading(true);
     }
     try {
       const config = forceFresh ? { forceFresh: true } : undefined;
-      const res: any = await apiClient.get('/tokens/queue', config);
+      const [res, tRes]: any = await Promise.all([
+        apiClient.get('/tokens/queue', config),
+        apiClient.get('/masters/tables', config).catch(() => null)
+      ]);
       if (res.success) {
         setTokens(res.data || []);
+      }
+      if (tRes?.success && Array.isArray(tRes.data)) {
+        setTables(tRes.data);
       }
     } catch (err) {
       console.error('Failed to load queue tokens:', err);
@@ -149,21 +162,37 @@ export const TokenPage: React.FC = () => {
     }
   };
 
-  const handleSkip = async (id: string) => {
+  const handleCancelToken = async (id: string) => {
+    if (!window.confirm('Are you sure you want to cancel this token?')) return;
     try {
-      await apiClient.patch(`/tokens/${id}/skip`);
+      await apiClient.patch(`/tokens/${id}/cancel`);
       loadQueue();
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Failed to cancel token.');
     }
   };
 
-  const handleSeatDirect = async (id: string) => {
+  const handleOpenSeatModal = (token: QueueToken) => {
+    setSeatingToken(token);
+    const suitable = tables.find(t => t.status === 'AVAILABLE' && t.capacity >= token.partySize);
+    setSelectedTableId(suitable?.id || '');
+  };
+
+  const handleConfirmSeat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!seatingToken) return;
+    setSeatingSubmitting(true);
     try {
-      await apiClient.patch(`/tokens/${id}/seat`, {});
+      await apiClient.patch(`/tokens/${seatingToken.id}/seat`, {
+        tableId: selectedTableId || undefined
+      });
+      setSeatingToken(null);
+      setSelectedTableId('');
       loadQueue();
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'Failed to seat guest.');
+    } finally {
+      setSeatingSubmitting(false);
     }
   };
 
@@ -566,11 +595,11 @@ export const TokenPage: React.FC = () => {
                                 </button>
                               )}
 
-                              {token.status !== 'SEATED' && token.status !== 'CANCELLED' && (
+                              {token.status !== 'SEATED' && token.status !== 'CANCELLED' && token.status !== 'COMPLETED' && (
                                 <button
-                                  onClick={() => handleSeatDirect(token.id)}
+                                  onClick={() => handleOpenSeatModal(token)}
                                   className="btn btn-success btn-sm p-1 px-2 d-flex align-items-center gap-1 shadow-sm"
-                                  title="Mark Seated / Served"
+                                  title="Seat Guest at Dining Table"
                                 >
                                   <UserCheck size={13} /> Seat
                                 </button>
@@ -578,9 +607,9 @@ export const TokenPage: React.FC = () => {
 
                               {token.status === 'WAITING' && (
                                 <button
-                                  onClick={() => handleSkip(token.id)}
+                                  onClick={() => handleCancelToken(token.id)}
                                   className="btn btn-outline-secondary btn-sm p-1"
-                                  title="Skip / Cancel"
+                                  title="Cancel Token"
                                 >
                                   <X size={13} />
                                 </button>
@@ -597,6 +626,67 @@ export const TokenPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* SEAT GUEST MODAL */}
+      <Modal
+        isOpen={!!seatingToken}
+        onClose={() => setSeatingToken(null)}
+        title={`Seat Guest: ${seatingToken?.customerName} (${seatingToken?.tokenCode})`}
+      >
+        {seatingToken && (
+          <form onSubmit={handleConfirmSeat} className="d-flex flex-column gap-3">
+            <div className="p-3 bg-light rounded border">
+              <div className="d-flex justify-content-between mb-1">
+                <span className="text-secondary small">Party Size:</span>
+                <span className="fw-bold">{seatingToken.partySize} Persons</span>
+              </div>
+              <div className="d-flex justify-content-between">
+                <span className="text-secondary small">Contact:</span>
+                <span className="font-monospace">{seatingToken.customerPhone}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label small fw-bold">Select Dining Table</label>
+              <select
+                className="form-select form-select-sm"
+                value={selectedTableId}
+                onChange={e => setSelectedTableId(e.target.value)}
+              >
+                <option value="">-- No Specific Table (Direct Seat) --</option>
+                {tables.filter(t => t.status === 'AVAILABLE').map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.tableNumber} (Seats: {t.capacity} | Zone: {t.floorZone?.replace('_', ' ')})
+                  </option>
+                ))}
+              </select>
+              <div className="form-text small mt-1">
+                {tables.filter(t => t.status === 'AVAILABLE').length === 0
+                  ? 'No tables are currently marked AVAILABLE. You can proceed with Direct Seat or wait for a table to be cleaned.'
+                  : 'Assigning a table will automatically mark it OCCUPIED on the Dining Floor map.'}
+              </div>
+            </div>
+
+            <div className="d-flex justify-content-end gap-2 pt-3 border-top">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setSeatingToken(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm"
+                disabled={seatingSubmitting}
+              >
+                <UserCheck size={15} />
+                {seatingSubmitting ? 'Seating...' : 'Confirm Seating'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };

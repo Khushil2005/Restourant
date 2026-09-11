@@ -128,6 +128,24 @@ tokenRouter.patch('/:id/seat', authenticate, authorize('token.seat'), async (req
   }
 });
 
+tokenRouter.patch('/:id/complete', authenticate, authorize('token.seat'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const token = await TokenService.completeToken(req.params.id);
+    return ApiResponse.success(res, token, 'Token marked as completed.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
+tokenRouter.patch('/:id/cancel', authenticate, authorize('token.skip'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const token = await TokenService.cancelToken(req.params.id);
+    return ApiResponse.success(res, token, 'Token cancelled.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+
 export const tableRouter = Router();
 
 tableRouter.get('/floor-layout', authenticate, authorize('tables.view'), async (req: AuthenticatedRequest, res: Response) => {

@@ -7,7 +7,7 @@ export interface IQueueToken extends Document {
   customerName: string;
   customerPhone: string;
   partySize: number;
-  status: 'WAITING' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'SEATED' | 'CANCELLED';
+  status: 'WAITING' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'SEATED' | 'CANCELLED' | 'COMPLETED';
   tableId?: string;
   estimatedWaitMinutes: number;
   calledAt?: Date;
@@ -25,7 +25,7 @@ const QueueTokenSchema = new Schema<IQueueToken>({
   partySize: { type: Number, default: 2 },
   status: { 
     type: String, 
-    enum: ['WAITING', 'CALLED', 'RECALLED', 'SKIPPED', 'SEATED', 'CANCELLED'],
+    enum: ['WAITING', 'CALLED', 'RECALLED', 'SKIPPED', 'SEATED', 'CANCELLED', 'COMPLETED'],
     default: 'WAITING'
   },
   tableId: { type: String, ref: 'DiningTable' },
