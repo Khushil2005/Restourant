@@ -74,7 +74,6 @@ export class PaymentService {
       transactions,
       referenceNumber: data.referenceNumber,
       verifiedBy: userId,
-      isReconciled: false,
       notes: data.notes,
       createdBy: userId
     });
@@ -171,15 +170,6 @@ export class PaymentService {
     const payment = await Payment.findOneAndUpdate(
       { id },
       { $set: { verifiedBy: userId } },
-      { new: true }
-    );
-    return payment;
-  }
-
-  static async reconcilePayment(id: string, userId?: string, username?: string) {
-    const payment = await Payment.findOneAndUpdate(
-      { id },
-      { $set: { isReconciled: true, reconciledAt: new Date(), reconciledBy: userId } },
       { new: true }
     );
     return payment;

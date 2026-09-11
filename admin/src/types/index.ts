@@ -252,9 +252,8 @@ export interface Payment {
   billId: string;
   amount: number;
   paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'ONLINE' | 'SPLIT';
-  status: 'COMPLETED' | 'REFUNDED' | 'RECONCILED';
+  status: 'COMPLETED' | 'REFUNDED';
   referenceNumber?: string;
-  isReconciled: boolean;
   transactions?: Array<{
     method: string;
     amount: number;

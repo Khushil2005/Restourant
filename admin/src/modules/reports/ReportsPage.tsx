@@ -76,7 +76,7 @@ const REPORT_COLUMNS: Record<ReportType, ColumnDef[]> = {
     { key: 'method', label: 'Method', defaultVisible: true },
     { key: 'amount', label: 'Settled Amount (₹)', defaultVisible: true },
     { key: 'reference', label: 'Reference / UTR', defaultVisible: true },
-    { key: 'isReconciled', label: 'Reconciled', defaultVisible: true }
+    { key: 'status', label: 'Status', defaultVisible: true }
   ],
   inventory: [
     { key: 'code', label: 'Item Code', defaultVisible: true },

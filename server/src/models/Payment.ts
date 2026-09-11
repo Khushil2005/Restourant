@@ -25,13 +25,10 @@ export interface IPayment extends Document {
   orderId?: string;
   amount: number;
   paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'ONLINE' | 'SPLIT';
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'RECONCILED';
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
   transactions: IPaymentTransaction[];
   referenceNumber?: string;
   verifiedBy?: string;
-  isReconciled: boolean;
-  reconciledAt?: Date;
-  reconciledBy?: string;
   notes?: string;
   createdBy?: string;
   createdAt: Date;
@@ -47,15 +44,12 @@ const PaymentSchema = new Schema<IPayment>({
   paymentMethod: { type: String, enum: ['CASH', 'UPI', 'CARD', 'ONLINE', 'SPLIT'], required: true },
   status: { 
     type: String, 
-    enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED', 'RECONCILED'],
+    enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'],
     default: 'COMPLETED'
   },
   transactions: [PaymentTransactionSchema],
   referenceNumber: { type: String },
   verifiedBy: { type: String, ref: 'User' },
-  isReconciled: { type: Boolean, default: false },
-  reconciledAt: { type: Date },
-  reconciledBy: { type: String, ref: 'User' },
   notes: { type: String },
   createdBy: { type: String, ref: 'User' }
 }, { timestamps: true });

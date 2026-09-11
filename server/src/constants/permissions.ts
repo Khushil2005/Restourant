@@ -133,12 +133,11 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'payment.partial', module: 'Payment', submodule: 'Settlements', action: 'partial', name: 'Accept Partial Payment', description: 'Collect installment on bill' },
   { id: 'payment.split', module: 'Payment', submodule: 'Settlements', action: 'split', name: 'Process Split Payment', description: 'Collect mix of Cash, Card and UPI' },
   { id: 'payment.refund', module: 'Payment', submodule: 'Settlements', action: 'refund', name: 'Execute Refund', description: 'Refund funds to customer' },
-  { id: 'payment.reconcile', module: 'Payment', submodule: 'Settlements', action: 'reconcile', name: 'Reconcile Settlements', description: 'Match EDC/UPI totals with bank statements' },
   { id: 'payment.cash', module: 'Payment', submodule: 'Methods', action: 'cash', name: 'Process Cash Payment', description: 'Accept Cash Tender' },
   { id: 'payment.upi', module: 'Payment', submodule: 'Methods', action: 'upi', name: 'Process UPI Payment', description: 'Accept QR / UPI Tender' },
   { id: 'payment.card', module: 'Payment', submodule: 'Methods', action: 'card', name: 'Process Card Payment', description: 'Accept Debit/Credit Card Tender' },
   { id: 'payment.online', module: 'Payment', submodule: 'Methods', action: 'online', name: 'Process Online Payment', description: 'Accept Online Gateway Tender' },
-  { id: 'payment.report', module: 'Payment', submodule: 'Reports', action: 'report', name: 'View Payment Reports', description: 'Generate payment reconciliation summary' },
+  { id: 'payment.report', module: 'Payment', submodule: 'Reports', action: 'report', name: 'View Payment Reports', description: 'Generate payment settlement summary' },
   { id: 'payment.export', module: 'Payment', submodule: 'Reports', action: 'export', name: 'Export Payment Data', description: 'Export transactions to Excel' },
 
   // 10. INVENTORY / STOCK
@@ -223,7 +222,7 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'accounts.tax.edit', module: 'Accounts', submodule: 'Taxation', action: 'edit', name: 'Edit Tax Entry', description: 'Adjust tax calculation' },
 
   { id: 'accounts.dayclosing.view', module: 'Accounts', submodule: 'DayClosing', action: 'view', name: 'View Day Closing Register', description: 'Inspect daily shift & register closings' },
-  { id: 'accounts.dayclosing.execute', module: 'Accounts', submodule: 'DayClosing', action: 'execute', name: 'Execute Day Closing', description: 'Run end-of-day register reconciliation' },
+  { id: 'accounts.dayclosing.execute', module: 'Accounts', submodule: 'DayClosing', action: 'execute', name: 'Execute Day Closing', description: 'Run end-of-day register closing summary' },
   { id: 'accounts.dayclosing.approve', module: 'Accounts', submodule: 'DayClosing', action: 'approve', name: 'Approve Day Closing', description: 'Manager sign-off on day closing' },
   { id: 'accounts.dayclosing.reopen', module: 'Accounts', submodule: 'DayClosing', action: 'reopen', name: 'Reopen Day Closing', description: 'Emergency reopen of locked day closing' },
 
@@ -358,7 +357,7 @@ export const DEFAULT_ROLES = [
       'orders.view', 'orders.create', 'orders.edit', 'orders.item_add', 'orders.item_remove', 'orders.hold', 'orders.resume', 'orders.cancel', 'orders.send_kot', 'orders.print_kot', 'orders.request_bill', 'orders.complete',
       'kot.view', 'kot.accept', 'kot.prepare', 'kot.ready', 'kot.served', 'kot.reprint', 'kot.priority',
       'billing.view', 'billing.create', 'billing.edit', 'billing.print', 'billing.reprint', 'billing.cancel', 'billing.split', 'billing.merge', 'billing.apply_tax', 'billing.request_payment', 'billing.refund',
-      'payment.view', 'payment.create', 'payment.edit', 'payment.verify', 'payment.history', 'payment.partial', 'payment.split', 'payment.refund', 'payment.reconcile', 'payment.cash', 'payment.upi', 'payment.card', 'payment.online', 'payment.report', 'payment.export',
+      'payment.view', 'payment.create', 'payment.edit', 'payment.verify', 'payment.history', 'payment.partial', 'payment.split', 'payment.refund', 'payment.cash', 'payment.upi', 'payment.card', 'payment.online', 'payment.report', 'payment.export',
       'inventory.view', 'inventory.stock_in', 'inventory.stock_out', 'inventory.adjust', 'inventory.transfer', 'inventory.ledger', 'inventory.valuation',
       'inventory.recipe.view', 'inventory.recipe.cost',
       'purchase.view', 'purchase.create', 'purchase.approve', 'purchase.receive',
@@ -455,7 +454,7 @@ export const DEFAULT_ROLES = [
       'dashboard.view', 'dashboard.sales.view', 'dashboard.accounts.view', 'dashboard.payroll.view', 'dashboard.reports.view',
       'masters.customer.view', 'masters.supplier.view', 'masters.supplier.ledger',
       'billing.view', 'billing.print',
-      'payment.view', 'payment.verify', 'payment.history', 'payment.reconcile', 'payment.report', 'payment.export',
+      'payment.view', 'payment.verify', 'payment.history', 'payment.report', 'payment.export',
       'accounts.dashboard.view', 'accounts.chart.view', 'accounts.chart.create', 'accounts.chart.edit', 'accounts.chart.delete',
       'accounts.ledger.view', 'accounts.ledger.create', 'accounts.ledger.edit', 'accounts.ledger.export',
       'accounts.journal.view', 'accounts.journal.create', 'accounts.journal.edit', 'accounts.journal.delete', 'accounts.journal.approve',

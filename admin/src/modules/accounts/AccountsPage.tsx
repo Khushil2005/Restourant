@@ -298,11 +298,11 @@ export const AccountsPage: React.FC = () => {
       <Modal
         isOpen={isDayClosingModalOpen}
         onClose={() => setIsDayClosingModalOpen(false)}
-        title="Daily Register & Shift Closing Reconciliation"
+        title="Daily Register & Shift Closing Summary"
       >
         <form onSubmit={handleExecuteDayClosing} className="d-flex flex-column gap-3">
           <p className="small text-secondary mb-1">
-            Reconcile all POS orders, payment tender methods, and cash drawer balance for today:
+            Review all POS orders, payment tender methods, and cash drawer balance for today:
           </p>
           <div>
             <label className="form-label small fw-bold">Actual Physical Cash Counted in Drawer (₹)</label>

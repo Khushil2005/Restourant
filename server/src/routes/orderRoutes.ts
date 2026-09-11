@@ -195,15 +195,6 @@ paymentRouter.patch('/:id/verify', authenticate, authorize('payment.verify'), as
   }
 });
 
-paymentRouter.patch('/:id/reconcile', authenticate, authorize('payment.reconcile'), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const payment = await PaymentService.reconcilePayment(req.params.id, req.user!.userId, req.user!.username);
-    return ApiResponse.success(res, payment, 'Payment reconciled.');
-  } catch (err: any) {
-    return ApiResponse.error(res, err.message, 400);
-  }
-});
-
 paymentRouter.post('/:id/refund', authenticate, authorize('payment.refund'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const payment = await PaymentService.refundPayment(req.params.id, req.body.refundAmount, req.body.reason, req.user!.userId, req.user!.username);

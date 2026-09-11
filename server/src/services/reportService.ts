@@ -167,7 +167,7 @@ export class ReportService {
         method: p.paymentMethod,
         amount: p.amount,
         reference: p.referenceNumber || 'N/A',
-        isReconciled: p.isReconciled || false
+        status: p.status || 'COMPLETED'
       }))
     };
   }
