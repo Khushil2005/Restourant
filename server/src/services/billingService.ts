@@ -1,6 +1,5 @@
 import { Bill, IBillItem } from '../models/Billing';
 import { Order } from '../models/Order';
-import { DiscountRule } from '../models/Discount';
 import { SocketEvents } from '../sockets/socketManager';
 import { createAuditLog } from '../middleware/auditMiddleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -59,7 +58,7 @@ export class BillingService {
         if (order.tableNumber && !existingBill.tableNumber) existingBill.tableNumber = order.tableNumber;
         if (order.tableId && !existingBill.tableId) existingBill.tableId = order.tableId;
 
-        const discountAmount = options.discountAmount !== undefined ? options.discountAmount : existingBill.discountAmount;
+        const discountAmount = 0;
         const serviceCharge = options.serviceCharge !== undefined ? options.serviceCharge : (existingBill.serviceCharge || Math.round(existingBill.subtotal * 0.05));
         const rawTotal = existingBill.subtotal + existingBill.taxAmount + serviceCharge - discountAmount;
         existingBill.discountAmount = discountAmount;
@@ -89,7 +88,7 @@ export class BillingService {
     }));
 
     const subtotal = order.totalAmount;
-    let discountAmount = options.discountAmount || order.discountAmount || 0;
+    const discountAmount = 0;
     const taxAmount = order.taxAmount;
     const serviceCharge = options.serviceCharge || Math.round(subtotal * 0.05); // 5% service charge
     const rawTotal = subtotal + taxAmount + serviceCharge - discountAmount;
@@ -106,9 +105,7 @@ export class BillingService {
       customerName: order.customerName,
       items,
       subtotal,
-      discountRuleId: options.discountRuleId,
-      discountAmount,
-      discountApprovedBy: options.discountApprovedBy,
+      discountAmount: 0,
       taxAmount,
       serviceCharge,
       roundOff,
@@ -131,55 +128,6 @@ export class BillingService {
       action: 'GENERATE_BILL',
       recordId: id,
       newValue: bill
-    });
-
-    return bill;
-  }
-
-  static async applyDiscount(billId: string, ruleCode: string, approvedBy?: string, userId?: string, username?: string) {
-    const bill = await Bill.findOne({ id: billId });
-    if (!bill) throw { statusCode: 404, message: 'Bill not found.' };
-
-    const rule = await DiscountRule.findOne({ code: ruleCode, isActive: true });
-    if (!rule) throw { statusCode: 400, message: 'Invalid or inactive discount code.' };
-
-    if (bill.subtotal < rule.minOrderAmount) {
-      throw { statusCode: 400, message: `Minimum order amount of ₹${rule.minOrderAmount} required for this discount.` };
-    }
-
-    let discountAmount = 0;
-    if (rule.type === 'PERCENTAGE') {
-      discountAmount = (bill.subtotal * rule.value) / 100;
-      if (rule.maxDiscountAmount) {
-        discountAmount = Math.min(discountAmount, rule.maxDiscountAmount);
-      }
-    } else {
-      discountAmount = Math.min(rule.value, bill.subtotal);
-    }
-
-    if (rule.requiresApproval && !approvedBy) {
-      throw { statusCode: 403, message: 'This discount rule requires manager approval before application.' };
-    }
-
-    bill.discountRuleId = rule.id;
-    bill.discountAmount = discountAmount;
-    bill.discountApprovedBy = approvedBy;
-    
-    const rawTotal = bill.subtotal + bill.taxAmount + bill.serviceCharge - discountAmount;
-    bill.totalPayable = Math.round(rawTotal);
-    bill.roundOff = Number((bill.totalPayable - rawTotal).toFixed(2));
-    bill.balanceAmount = bill.totalPayable - bill.paidAmount;
-
-    await bill.save();
-
-    await createAuditLog({
-      userId,
-      username,
-      module: 'Discount',
-      submodule: 'Execution',
-      action: 'APPLY_DISCOUNT',
-      recordId: billId,
-      newValue: { discountCode: rule.code, discountAmount }
     });
 
     return bill;

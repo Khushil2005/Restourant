@@ -55,7 +55,7 @@ const BillSchema = new Schema<IBill>({
   customerName: { type: String },
   items: [BillItemSchema],
   subtotal: { type: Number, required: true, default: 0 },
-  discountRuleId: { type: String, ref: 'DiscountRule' },
+  discountRuleId: { type: String },
   discountAmount: { type: Number, default: 0 },
   discountApprovedBy: { type: String, ref: 'User' },
   taxAmount: { type: Number, default: 0 },

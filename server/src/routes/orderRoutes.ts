@@ -3,7 +3,6 @@ import { OrderService } from '../services/orderService';
 import { KOTService } from '../services/kotService';
 import { BillingService } from '../services/billingService';
 import { PaymentService } from '../services/paymentService';
-import { DiscountService } from '../services/discountService';
 import { authenticate, AuthenticatedRequest } from '../middleware/authMiddleware';
 import { authorize } from '../middleware/permissionMiddleware';
 import { ApiResponse } from '../utils/apiResponse';
@@ -158,15 +157,6 @@ billingRouter.post('/generate', authenticate, authorize('billing.create'), async
   }
 });
 
-billingRouter.post('/:id/apply-discount', authenticate, authorize('discount.apply'), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const bill = await BillingService.applyDiscount(req.params.id, req.body.discountCode, req.body.approvedBy, req.user!.userId, req.user!.username);
-    return ApiResponse.success(res, bill, 'Discount applied.');
-  } catch (err: any) {
-    return ApiResponse.error(res, err.message, err.statusCode || 400);
-  }
-});
-
 billingRouter.post('/:id/split', authenticate, authorize('billing.split'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const subBills = await BillingService.splitBill(req.params.id, Number(req.body.splitCount || 2));
@@ -220,43 +210,5 @@ paymentRouter.post('/:id/refund', authenticate, authorize('payment.refund'), asy
     return ApiResponse.success(res, payment, 'Payment refunded.');
   } catch (err: any) {
     return ApiResponse.error(res, err.message, 400);
-  }
-});
-
-export const discountRouter = Router();
-
-discountRouter.get('/', authenticate, authorize('discount.view'), async (req, res: Response) => {
-  try {
-    const rules = await DiscountService.getDiscountRules();
-    return ApiResponse.success(res, rules, 'Discount rules loaded.');
-  } catch (err: any) {
-    return ApiResponse.error(res, err.message, 500);
-  }
-});
-
-discountRouter.post('/', authenticate, authorize('discount.create'), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const rule = await DiscountService.createDiscountRule(req.body, req.user!.userId, req.user!.username);
-    return ApiResponse.success(res, rule, 'Discount rule created.', 201);
-  } catch (err: any) {
-    return ApiResponse.error(res, err.message, 400);
-  }
-});
-
-discountRouter.put('/:id', authenticate, authorize('discount.edit'), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const rule = await DiscountService.updateDiscountRule(req.params.id, req.body, req.user!.userId, req.user!.username);
-    return ApiResponse.success(res, rule, 'Discount rule updated.');
-  } catch (err: any) {
-    return ApiResponse.error(res, err.message, 400);
-  }
-});
-
-discountRouter.delete('/:id', authenticate, authorize('discount.delete'), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    await DiscountService.deleteDiscountRule(req.params.id, req.user!.userId, req.user!.username);
-    return ApiResponse.success(res, null, 'Discount rule deleted.');
-  } catch (err: any) {
-    return ApiResponse.error(res, err.message, 500);
   }
 });

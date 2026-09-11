@@ -3,7 +3,7 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
 import { Bill } from '../../types';
-import { Receipt, CreditCard, Percent, Scissors, Printer, Eye, Download, Plus } from 'lucide-react';
+import { Receipt, CreditCard, Scissors, Printer, Eye, Download, Plus } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { generateInvoicePdf, printInvoiceReceipt } from '../../utils/invoicePdf';
@@ -19,10 +19,6 @@ export const BillingPage: React.FC = () => {
   // Bill View & Print Modal
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const dismissedBillIdRef = useRef<string | null>(null);
-
-  // Discount Modal
-  const [discountBill, setDiscountBill] = useState<Bill | null>(null);
-  const [discountCode, setDiscountCode] = useState('');
 
   // Split Bill Modal
   const [splitBillItem, setSplitBillItem] = useState<Bill | null>(null);
@@ -78,23 +74,6 @@ export const BillingPage: React.FC = () => {
     refreshOnFocus: true
   });
 
-  const handleApplyDiscount = async () => {
-    if (!discountBill || !discountCode) return;
-    try {
-      const res: any = await apiClient.post(`/billing/${discountBill.id}/apply-discount`, {
-        discountCode
-      });
-      if (res.success) {
-        alert('Discount coupon applied successfully.');
-        setDiscountBill(null);
-        setDiscountCode('');
-        loadBills();
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to apply discount.');
-    }
-  };
-
   const handleSplitBill = async () => {
     if (!splitBillItem) return;
     try {
@@ -146,7 +125,7 @@ export const BillingPage: React.FC = () => {
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
           <h4 className="fw-bold mb-1 text-dark">Customer Billing & Invoices</h4>
-          <p className="text-muted small mb-0">Generate restaurant invoices, split tabs, apply discounts, and print receipts</p>
+          <p className="text-muted small mb-0">Generate restaurant invoices, split tabs, and print receipts</p>
         </div>
         {can('billing.create') && (
           <button
@@ -168,7 +147,6 @@ export const BillingPage: React.FC = () => {
           { header: 'Table', accessor: (row) => row.tableNumber || '-' },
           { header: 'Customer', accessor: (row) => row.customerName || 'Walk-in Guest' },
           { header: 'Subtotal', accessor: (row) => `₹${row.subtotal}` },
-          { header: 'Discount', accessor: (row) => row.discountAmount > 0 ? <span className="text-danger">-₹{row.discountAmount}</span> : '₹0' },
           { header: 'Tax (5% GST)', accessor: (row) => `₹${row.taxAmount}` },
           {
             header: 'Total Payable',
@@ -212,16 +190,6 @@ export const BillingPage: React.FC = () => {
             >
               <Printer size={14} /> Print
             </button>
-
-            {row.status === 'UNPAID' && can('discount.apply') && (
-              <button
-                className="btn btn-outline-warning btn-sm p-1 px-2 d-flex align-items-center gap-1 text-dark"
-                onClick={() => setDiscountBill(row)}
-                title="Apply Promo Discount"
-              >
-                <Percent size={14} /> Promo
-              </button>
-            )}
 
             {row.status === 'UNPAID' && can('billing.split') && (
               <button
@@ -383,35 +351,6 @@ export const BillingPage: React.FC = () => {
             </div>
           </div>
         )}
-      </Modal>
-
-      {/* APPLY DISCOUNT MODAL */}
-      <Modal
-        isOpen={!!discountBill}
-        onClose={() => setDiscountBill(null)}
-        title="Apply Promotional Discount Coupon"
-      >
-        <div className="d-flex flex-column gap-3">
-          <p className="small text-secondary mb-1">
-            Apply discount code to <strong>Invoice {discountBill?.billNumber}</strong> (Bill Amount: ₹{discountBill?.subtotal}):
-          </p>
-          <div>
-            <label className="form-label small fw-bold">Promo / Discount Code</label>
-            <input
-              type="text"
-              className="form-control text-uppercase"
-              placeholder="e.g. FLAT10, WELCOME20, FESTIVE15"
-              value={discountCode}
-              onChange={e => setDiscountCode(e.target.value.toUpperCase())}
-            />
-          </div>
-          <div className="d-flex justify-content-end gap-2 pt-3 border-top">
-            <button className="btn btn-secondary btn-sm" onClick={() => setDiscountBill(null)}>Cancel</button>
-            <button className="btn btn-warning btn-sm fw-bold" disabled={!discountCode} onClick={handleApplyDiscount}>
-              Apply Code
-            </button>
-          </div>
-        </div>
       </Modal>
 
       {/* SPLIT BILL MODAL */}

@@ -3,7 +3,6 @@ import { Permission, Role } from '../models/Role';
 import { User } from '../models/User';
 import { Department, Designation, Unit, TaxMaster, MenuCategory, MenuItem, DiningTable, FloorZone, Supplier, Customer } from '../models/Master';
 import { InventoryItem, Recipe } from '../models/Inventory';
-import { DiscountRule } from '../models/Discount';
 import { ChartOfAccount } from '../models/Account';
 import { Employee, SalaryStructure } from '../models/HR';
 import { SystemSetting } from '../models/System';
@@ -309,15 +308,7 @@ export async function runDatabaseMigrationsAndSeeds(): Promise<void> {
   ];
   await Customer.bulkWrite(customers.map(c => ({ updateOne: { filter: { id: c.id }, update: { $set: c }, upsert: true } })) as any);
 
-  // 12. Seed Discount Rules
-  const discountRules = [
-    { id: 'disc_family10', code: 'FAMILY10', name: 'Family Group 10% Off', type: 'PERCENTAGE', value: 10.0, maxDiscountAmount: 500.0, minOrderAmount: 800.0, requiresApproval: false, isActive: true },
-    { id: 'disc_vip20', code: 'RAJwadi20', name: 'Rajwadi VIP 20% Off', type: 'PERCENTAGE', value: 20.0, maxDiscountAmount: 1500.0, minOrderAmount: 1200.0, requiresApproval: true, isActive: true },
-    { id: 'disc_welcome50', code: 'BHATIGAL50', name: 'Flat ₹50 Welcome Discount', type: 'FIXED_AMOUNT', value: 50.0, maxDiscountAmount: 50.0, minOrderAmount: 400.0, requiresApproval: false, isActive: true }
-  ];
-  await DiscountRule.bulkWrite(discountRules.map(d => ({ updateOne: { filter: { id: d.id }, update: { $set: d }, upsert: true } })) as any);
-
-  // 13. Seed Chart of Accounts
+  // 12. Seed Chart of Accounts
   const chartOfAccounts = [
     { id: 'acc_cash_drawer', accountCode: '1010', accountName: 'Cash in Counter Drawer', accountType: 'ASSET', subType: 'CASH', currentBalance: 35000.0 },
     { id: 'acc_bank_sbi', accountCode: '1020', accountName: 'SBI Current Account (Rajkot Main)', accountType: 'ASSET', subType: 'BANK', currentBalance: 620000.0 },

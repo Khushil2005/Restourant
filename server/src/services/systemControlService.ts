@@ -7,7 +7,6 @@ import { User } from '../models/User';
 import { Role, Permission } from '../models/Role';
 import { Department, Designation, MenuCategory, MenuItem, DiningTable, Supplier, Customer } from '../models/Master';
 import { InventoryItem, Recipe } from '../models/Inventory';
-import { DiscountRule } from '../models/Discount';
 import { ChartOfAccount } from '../models/Account';
 import { Employee } from '../models/HR';
 
@@ -160,7 +159,6 @@ export class SystemControlService {
       customers,
       inventoryItems,
       recipes,
-      discountRules,
       chartOfAccounts,
       employees,
       systemSettings
@@ -177,7 +175,6 @@ export class SystemControlService {
       Customer.find(),
       InventoryItem.find(),
       Recipe.find(),
-      DiscountRule.find(),
       ChartOfAccount.find(),
       Employee.find(),
       SystemSetting.find()
@@ -211,7 +208,6 @@ export class SystemControlService {
         customers,
         inventoryItems,
         recipes,
-        discountRules,
         chartOfAccounts,
         employees,
         systemSettings

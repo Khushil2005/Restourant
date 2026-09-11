@@ -18,7 +18,6 @@ import { PosTerminalPage } from './modules/pos/PosTerminalPage';
 import { KitchenDisplayPage } from './modules/kitchen/KitchenDisplayPage';
 import { BillingPage } from './modules/billing/BillingPage';
 import { PaymentPage } from './modules/payment/PaymentPage';
-import { DiscountPage } from './modules/discount/DiscountPage';
 import { InventoryPage } from './modules/inventory/InventoryPage';
 import { RecipePage } from './modules/recipe/RecipePage';
 import { PurchasePage } from './modules/purchase/PurchasePage';
@@ -102,7 +101,6 @@ export const App: React.FC = () => {
                   <Route path="tables" element={<TableFloorPage />} />
                   <Route path="billing" element={<BillingPage />} />
                   <Route path="payments" element={<PaymentPage />} />
-                  <Route path="discounts" element={<DiscountPage />} />
                   <Route path="inventory" element={<InventoryPage />} />
                   <Route path="recipes" element={<RecipePage />} />
                   <Route path="purchases" element={<PurchasePage />} />

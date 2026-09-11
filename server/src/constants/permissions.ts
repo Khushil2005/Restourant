@@ -119,7 +119,6 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'billing.cancel', module: 'Billing', submodule: 'Invoices', action: 'cancel', name: 'Cancel Bill', description: 'Void generated invoice' },
   { id: 'billing.split', module: 'Billing', submodule: 'Invoices', action: 'split', name: 'Split Bill', description: 'Split bill among multiple guests' },
   { id: 'billing.merge', module: 'Billing', submodule: 'Invoices', action: 'merge', name: 'Merge Bills', description: 'Combine multiple bills into single invoice' },
-  { id: 'billing.apply_discount', module: 'Billing', submodule: 'Invoices', action: 'apply_discount', name: 'Apply Discount to Bill', description: 'Attach discount code to bill' },
   { id: 'billing.apply_tax', module: 'Billing', submodule: 'Invoices', action: 'apply_tax', name: 'Configure Tax', description: 'Apply or exempt specific taxes' },
   { id: 'billing.request_payment', module: 'Billing', submodule: 'Invoices', action: 'request_payment', name: 'Request Payment', description: 'Hand over bill to payment register' },
   { id: 'billing.refund', module: 'Billing', submodule: 'Invoices', action: 'refund', name: 'Issue Bill Refund', description: 'Process full or partial bill refund' },
@@ -142,18 +141,7 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'payment.report', module: 'Payment', submodule: 'Reports', action: 'report', name: 'View Payment Reports', description: 'Generate payment reconciliation summary' },
   { id: 'payment.export', module: 'Payment', submodule: 'Reports', action: 'export', name: 'Export Payment Data', description: 'Export transactions to Excel' },
 
-  // 10. DISCOUNT
-  { id: 'discount.view', module: 'Discount', submodule: 'Rules', action: 'view', name: 'View Discounts', description: 'Access discount policies and history' },
-  { id: 'discount.create', module: 'Discount', submodule: 'Rules', action: 'create', name: 'Create Discount Rule', description: 'Add new coupon or promo offer' },
-  { id: 'discount.edit', module: 'Discount', submodule: 'Rules', action: 'edit', name: 'Edit Discount Rule', description: 'Modify discount thresholds and caps' },
-  { id: 'discount.delete', module: 'Discount', submodule: 'Rules', action: 'delete', name: 'Delete Discount Rule', description: 'Remove promo offer' },
-  { id: 'discount.apply', module: 'Discount', submodule: 'Execution', action: 'apply', name: 'Apply Discount', description: 'Apply discount to active bill' },
-  { id: 'discount.approve', module: 'Discount', submodule: 'Execution', action: 'approve', name: 'Approve Discount', description: 'Authorize discounts above standard limits' },
-  { id: 'discount.reject', module: 'Discount', submodule: 'Execution', action: 'reject', name: 'Reject Discount', description: 'Deny requested discount' },
-  { id: 'discount.history', module: 'Discount', submodule: 'Execution', action: 'history', name: 'Discount History', description: 'Audit all applied discounts' },
-  { id: 'discount.report', module: 'Discount', submodule: 'Reports', action: 'report', name: 'Discount Reports', description: 'View discount analytics' },
-
-  // 11. INVENTORY / STOCK
+  // 10. INVENTORY / STOCK
   { id: 'inventory.view', module: 'Inventory / Stock', submodule: 'Stock', action: 'view', name: 'View Stock', description: 'Check live raw material stock levels' },
   { id: 'inventory.item.create', module: 'Inventory / Stock', submodule: 'Items', action: 'create', name: 'Create Stock Item', description: 'Add new raw item to catalog' },
   { id: 'inventory.item.edit', module: 'Inventory / Stock', submodule: 'Items', action: 'edit', name: 'Edit Stock Item', description: 'Update item units or thresholds' },
@@ -369,9 +357,8 @@ export const DEFAULT_ROLES = [
       'tables.view', 'tables.assign', 'tables.transfer', 'tables.merge', 'tables.split', 'tables.status', 'tables.history',
       'orders.view', 'orders.create', 'orders.edit', 'orders.item_add', 'orders.item_remove', 'orders.hold', 'orders.resume', 'orders.cancel', 'orders.send_kot', 'orders.print_kot', 'orders.request_bill', 'orders.complete',
       'kot.view', 'kot.accept', 'kot.prepare', 'kot.ready', 'kot.served', 'kot.reprint', 'kot.priority',
-      'billing.view', 'billing.create', 'billing.edit', 'billing.print', 'billing.reprint', 'billing.cancel', 'billing.split', 'billing.merge', 'billing.apply_discount', 'billing.apply_tax', 'billing.request_payment', 'billing.refund',
+      'billing.view', 'billing.create', 'billing.edit', 'billing.print', 'billing.reprint', 'billing.cancel', 'billing.split', 'billing.merge', 'billing.apply_tax', 'billing.request_payment', 'billing.refund',
       'payment.view', 'payment.create', 'payment.edit', 'payment.verify', 'payment.history', 'payment.partial', 'payment.split', 'payment.refund', 'payment.reconcile', 'payment.cash', 'payment.upi', 'payment.card', 'payment.online', 'payment.report', 'payment.export',
-      'discount.view', 'discount.apply', 'discount.approve', 'discount.reject', 'discount.history', 'discount.report',
       'inventory.view', 'inventory.stock_in', 'inventory.stock_out', 'inventory.adjust', 'inventory.transfer', 'inventory.ledger', 'inventory.valuation',
       'inventory.recipe.view', 'inventory.recipe.cost',
       'purchase.view', 'purchase.create', 'purchase.approve', 'purchase.receive',
@@ -395,9 +382,8 @@ export const DEFAULT_ROLES = [
       'booking.view',
       'tables.view', 'tables.status',
       'orders.view', 'orders.create', 'orders.edit', 'orders.item_add', 'orders.hold', 'orders.resume', 'orders.send_kot', 'orders.print_kot', 'orders.request_bill', 'orders.complete',
-      'billing.view', 'billing.create', 'billing.print', 'billing.reprint', 'billing.split', 'billing.apply_discount', 'billing.request_payment',
+      'billing.view', 'billing.create', 'billing.print', 'billing.reprint', 'billing.split', 'billing.request_payment',
       'payment.view', 'payment.create', 'payment.verify', 'payment.history', 'payment.partial', 'payment.split', 'payment.cash', 'payment.upi', 'payment.card', 'payment.online', 'payment.report',
-      'discount.view', 'discount.apply',
       'accounts.dashboard.view', 'accounts.cashbook.view', 'accounts.dayclosing.view', 'accounts.dayclosing.execute',
       'notification.view'
     ]
