@@ -34,7 +34,34 @@ reportRouter.get('/inventory', authenticate, authorize('reports.inventory.view')
   }
 });
 
-reportRouter.get('/financials', authenticate, authorize('reports.accounts.view'), async (req: AuthenticatedRequest, res: Response) => {
+reportRouter.get('/bills', authenticate, authorize('reports.sales.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const report = await ReportService.getBillingReport(req.query.startDate as string, req.query.endDate as string);
+    return ApiResponse.success(res, report, 'Billing report loaded.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+reportRouter.get('/expenses', authenticate, authorize('expense.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const report = await ReportService.getExpenseReport(req.query.startDate as string, req.query.endDate as string);
+    return ApiResponse.success(res, report, 'Expense report loaded.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+reportRouter.post('/import', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await ReportService.importData(req.body.type, req.body.rows, req.user?.userId);
+    return ApiResponse.success(res, result, `Imported ${result.importedCount} records successfully.`);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
+  }
+});
+
+reportRouter.get('/financials', authenticate, authorize('accounts.dashboard.view'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const report = await ReportService.getFinancialReport();
     return ApiResponse.success(res, report, 'Financial statements report loaded.');
