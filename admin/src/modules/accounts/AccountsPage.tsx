@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
@@ -361,7 +361,7 @@ export const AccountsPage: React.FC = () => {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(80, 80, 80);
-    doc.text('Traditional Kathiyawadi & Gujarati Dining â€¢ Enterprise Financial Books', pageWidth / 2, 19, { align: 'center' });
+    doc.text('Traditional Kathiyawadi & Gujarati Dining • Enterprise Financial Books', pageWidth / 2, 19, { align: 'center' });
 
     // Document Title
     doc.setFontSize(12);
@@ -662,7 +662,7 @@ export const AccountsPage: React.FC = () => {
                   Account & Ledger Management
                 </h6>
                 <span className="badge bg-light text-secondary border px-2 py-0.5 rounded-pill fw-medium" style={{ fontSize: '0.72rem' }}>
-                  àª¨àª¾àª®àª¾ àª–àª¾àª¤àª¾àªµàª¹à«€ àª…àª¨à«‡ àª¹àª¿àª¸àª¾àª¬
+                  નામા ખાતાવહી અને હિસાબ
                 </span>
                 <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill fw-bold" style={{ fontSize: '0.72rem' }}>
                   Double-Entry Central System
@@ -735,7 +735,7 @@ export const AccountsPage: React.FC = () => {
               className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 ${activeTab === 'ledger' ? 'active fw-bold' : 'text-dark'}`}
               onClick={() => setActiveTab('ledger')}
             >
-              <BookOpen size={16} /> Account Ledger Statement (àª–àª¾àª¤àª¾àªµàª¹à«€)
+              <BookOpen size={16} /> Account Ledger Statement (ખાતાવહી)
             </button>
           </li>
           {can('accounts.chart.view') && (
@@ -763,7 +763,7 @@ export const AccountsPage: React.FC = () => {
               className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 ${activeTab === 'trialbalance' ? 'active fw-bold' : 'text-dark'}`}
               onClick={() => setActiveTab('trialbalance')}
             >
-              <Scale size={16} /> Trial Balance (àª•àª¾àªšà«àª‚ àª¸àª°àªµà«ˆàª¯à«àª‚)
+              <Scale size={16} /> Trial Balance (કાચું સરવૈયું)
             </button>
           </li>
           {(can('accounts.dashboard.view') || can('accounts.report.view')) && (
@@ -790,7 +790,7 @@ export const AccountsPage: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* TAB 1: INDIVIDUAL ACCOUNT LEDGER STATEMENT (àª–àª¾àª¤àª¾àªµàª¹à«€) */}
+      {/* TAB 1: INDIVIDUAL ACCOUNT LEDGER STATEMENT (ખાતાવહી) */}
       {/* ======================================================== */}
       {activeTab === 'ledger' && (
         <div className="d-flex flex-column gap-3">
@@ -800,7 +800,7 @@ export const AccountsPage: React.FC = () => {
               {/* Account Dropdown */}
               <div className="col-12 col-md-4">
                 <label className="form-label small fw-bold text-dark d-flex align-items-center gap-1 mb-1">
-                  <BookOpen size={14} className="text-primary" /> Select Account Head (àª–àª¾àª¤à«àª‚ àªªàª¸àª‚àª¦ àª•àª°à«‹)
+                  <BookOpen size={14} className="text-primary" /> Select Account Head (ખાતું પસંદ કરો)
                 </label>
                 <select
                   className="form-select form-select-sm fw-bold border-primary-subtle shadow-xs"
@@ -808,38 +808,38 @@ export const AccountsPage: React.FC = () => {
                   onChange={(e) => setSelectedAccountId(e.target.value)}
                   disabled={isLoadingAccounts}
                 >
-                  <optgroup label="Assets (àª®àª¿àª²àª•àª¤à«‹ & àª°à«‹àª•àª¡/àª¬à«‡àª‚àª•)">
+                  <optgroup label="Assets (મિલકતો & રોકડ/બેંક)">
                     {accounts.filter(a => a.accountType === 'ASSET').map(a => (
                       <option key={a.id} value={a.id}>
-                        [{a.accountCode}] {a.accountName} (â‚¹{a.currentBalance.toLocaleString()} Dr)
+                        [{a.accountCode}] {a.accountName} (₹{a.currentBalance.toLocaleString()} Dr)
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="Liabilities (àª¦à«‡àªµàª¾àª‚ & àªŸà«‡àª•à«àª¸)">
+                  <optgroup label="Liabilities (દેવાં & ટેક્સ)">
                     {accounts.filter(a => a.accountType === 'LIABILITY').map(a => (
                       <option key={a.id} value={a.id}>
-                        [{a.accountCode}] {a.accountName} (â‚¹{a.currentBalance.toLocaleString()} Cr)
+                        [{a.accountCode}] {a.accountName} (₹{a.currentBalance.toLocaleString()} Cr)
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="Equity (àª®à«‚àª¡à«€)">
+                  <optgroup label="Equity (મૂડી)">
                     {accounts.filter(a => a.accountType === 'EQUITY').map(a => (
                       <option key={a.id} value={a.id}>
-                        [{a.accountCode}] {a.accountName} (â‚¹{a.currentBalance.toLocaleString()} Cr)
+                        [{a.accountCode}] {a.accountName} (₹{a.currentBalance.toLocaleString()} Cr)
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="Revenue (àª†àªµàª• & àªµà«‡àªšàª¾àª£)">
+                  <optgroup label="Revenue (આવક & વેચાણ)">
                     {accounts.filter(a => a.accountType === 'REVENUE').map(a => (
                       <option key={a.id} value={a.id}>
-                        [{a.accountCode}] {a.accountName} (â‚¹{a.currentBalance.toLocaleString()} Cr)
+                        [{a.accountCode}] {a.accountName} (₹{a.currentBalance.toLocaleString()} Cr)
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="Expenses (àª–àª°à«àªš)">
+                  <optgroup label="Expenses (ખર્ચ)">
                     {accounts.filter(a => a.accountType === 'EXPENSE').map(a => (
                       <option key={a.id} value={a.id}>
-                        [{a.accountCode}] {a.accountName} (â‚¹{a.currentBalance.toLocaleString()} Dr)
+                        [{a.accountCode}] {a.accountName} (₹{a.currentBalance.toLocaleString()} Dr)
                       </option>
                     ))}
                   </optgroup>
@@ -849,7 +849,7 @@ export const AccountsPage: React.FC = () => {
               {/* Date Presets & Inputs */}
               <div className="col-12 col-md-5">
                 <label className="form-label small fw-bold text-dark d-flex align-items-center gap-1 mb-1">
-                  <Calendar size={14} className="text-secondary" /> Statement Period (àª¸àª®àª¯àª—àª¾àª³à«‹)
+                  <Calendar size={14} className="text-secondary" /> Statement Period (સમયગાળો)
                 </label>
                 <div className="d-flex flex-wrap gap-2 align-items-center">
                   <div className="btn-group btn-group-sm" role="group">
@@ -977,7 +977,7 @@ export const AccountsPage: React.FC = () => {
                     </span>
                   </div>
                   <h5 className="fw-bold mb-0 text-dark">
-                    â‚¹{ledgerStatement.openingBalance.toLocaleString()}
+                    ₹{ledgerStatement.openingBalance.toLocaleString()}
                   </h5>
                   <span className="text-muted small mt-1" style={{ fontSize: '0.68rem' }}>
                     As of {ledgerStatement.period.startDate || 'Start'}
@@ -997,7 +997,7 @@ export const AccountsPage: React.FC = () => {
                     </span>
                   </div>
                   <h5 className="fw-bold mb-0 text-primary">
-                    â‚¹{ledgerStatement.totalDebit.toLocaleString()}
+                    ₹{ledgerStatement.totalDebit.toLocaleString()}
                   </h5>
                   <span className="text-muted small mt-1" style={{ fontSize: '0.68rem' }}>
                     {ledgerStatement.transactions.filter(t => t.debit > 0).length} Debit Postings
@@ -1017,7 +1017,7 @@ export const AccountsPage: React.FC = () => {
                     </span>
                   </div>
                   <h5 className="fw-bold mb-0 text-success">
-                    â‚¹{ledgerStatement.totalCredit.toLocaleString()}
+                    ₹{ledgerStatement.totalCredit.toLocaleString()}
                   </h5>
                   <span className="text-muted small mt-1" style={{ fontSize: '0.68rem' }}>
                     {ledgerStatement.transactions.filter(t => t.credit > 0).length} Credit Postings
@@ -1037,7 +1037,7 @@ export const AccountsPage: React.FC = () => {
                     </span>
                   </div>
                   <h5 className={`fw-bold mb-0 ${ledgerStatement.netChange >= 0 ? 'text-primary' : 'text-danger'}`}>
-                    {ledgerStatement.netChange >= 0 ? '+' : '-'}â‚¹{Math.abs(ledgerStatement.netChange).toLocaleString()}
+                    {ledgerStatement.netChange >= 0 ? '+' : '-'}₹{Math.abs(ledgerStatement.netChange).toLocaleString()}
                   </h5>
                   <span className="text-muted small mt-1" style={{ fontSize: '0.68rem' }}>
                     In selected period
@@ -1050,14 +1050,14 @@ export const AccountsPage: React.FC = () => {
                 <div className="card shadow-sm border rounded-3 p-2.5 bg-primary-subtle border-primary-subtle h-100">
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <span className="text-uppercase text-primary fw-bold" style={{ fontSize: '0.68rem' }}>
-                      Closing Balance (àª†àª–àª° àª¬àª¾àª•à«€)
+                      Closing Balance (આખર બાકી)
                     </span>
                     <span className="badge bg-primary text-white px-2 py-0.5 fw-bold" style={{ fontSize: '0.7rem' }}>
                       {ledgerStatement.closingBalanceType}
                     </span>
                   </div>
                   <h4 className="fw-bold mb-0 text-dark">
-                    â‚¹{ledgerStatement.closingBalance.toLocaleString()}
+                    ₹{ledgerStatement.closingBalance.toLocaleString()}
                   </h4>
                   <span className="text-primary small mt-1 fw-medium" style={{ fontSize: '0.7rem' }}>
                     As of {ledgerStatement.period.endDate || 'Today'}
@@ -1101,8 +1101,8 @@ export const AccountsPage: React.FC = () => {
                     <th style={{ width: '22%' }}>Particulars / Contra Account</th>
                     <th style={{ width: '12%' }}>Ref Type</th>
                     <th style={{ width: '15%' }}>Narration</th>
-                    <th className="text-end" style={{ width: '9%' }}>Debit (â‚¹ Dr)</th>
-                    <th className="text-end" style={{ width: '9%' }}>Credit (â‚¹ Cr)</th>
+                    <th className="text-end" style={{ width: '9%' }}>Debit (₹ Dr)</th>
+                    <th className="text-end" style={{ width: '9%' }}>Credit (₹ Cr)</th>
                     <th className="text-end" style={{ width: '10%' }}>Running Balance</th>
                   </tr>
                 </thead>
@@ -1113,12 +1113,12 @@ export const AccountsPage: React.FC = () => {
                       <td>{ledgerStatement.period.startDate || '-'}</td>
                       <td>-</td>
                       <td colSpan={3}>
-                        <em>Opening Balance Brought Forward (àª¶àª°à«‚àª†àª¤àª¨à«€ àª¬àª¾àª•à«€ àª†àª—àª³ àª²àª¾àªµà«àª¯àª¾)</em>
+                        <em>Opening Balance Brought Forward (શરૂઆતની બાકી આગળ લાવ્યા)</em>
                       </td>
-                      <td className="text-end">{ledgerStatement.openingBalanceType === 'Dr' ? `â‚¹${ledgerStatement.openingBalance.toLocaleString()}` : '-'}</td>
-                      <td className="text-end">{ledgerStatement.openingBalanceType === 'Cr' ? `â‚¹${ledgerStatement.openingBalance.toLocaleString()}` : '-'}</td>
+                      <td className="text-end">{ledgerStatement.openingBalanceType === 'Dr' ? `₹${ledgerStatement.openingBalance.toLocaleString()}` : '-'}</td>
+                      <td className="text-end">{ledgerStatement.openingBalanceType === 'Cr' ? `₹${ledgerStatement.openingBalance.toLocaleString()}` : '-'}</td>
                       <td className="text-end text-primary">
-                        â‚¹{ledgerStatement.openingBalance.toLocaleString()} <span className="small text-muted">{ledgerStatement.openingBalanceType}</span>
+                        ₹{ledgerStatement.openingBalance.toLocaleString()} <span className="small text-muted">{ledgerStatement.openingBalanceType}</span>
                       </td>
                     </tr>
                   )}
@@ -1164,13 +1164,13 @@ export const AccountsPage: React.FC = () => {
                           {tx.narration || '-'}
                         </td>
                         <td className="text-end fw-bold text-primary">
-                          {tx.debit > 0 ? `â‚¹${tx.debit.toLocaleString()}` : '-'}
+                          {tx.debit > 0 ? `₹${tx.debit.toLocaleString()}` : '-'}
                         </td>
                         <td className="text-end fw-bold text-success">
-                          {tx.credit > 0 ? `â‚¹${tx.credit.toLocaleString()}` : '-'}
+                          {tx.credit > 0 ? `₹${tx.credit.toLocaleString()}` : '-'}
                         </td>
                         <td className="text-end fw-bold text-dark">
-                          â‚¹{tx.runningBalance.toLocaleString()} <span className="badge bg-light text-secondary border px-1 py-0" style={{ fontSize: '0.65rem' }}>{tx.balanceType}</span>
+                          ₹{tx.runningBalance.toLocaleString()} <span className="badge bg-light text-secondary border px-1 py-0" style={{ fontSize: '0.65rem' }}>{tx.balanceType}</span>
                         </td>
                       </tr>
                     ))
@@ -1182,12 +1182,12 @@ export const AccountsPage: React.FC = () => {
                       <td>{ledgerStatement.period.endDate || '-'}</td>
                       <td>-</td>
                       <td colSpan={3}>
-                        <em>Closing Balance Carried Down (àª†àª–àª° àª¬àª¾àª•à«€ àª†àª—àª³ àª²àªˆ àª—àª¯àª¾)</em>
+                        <em>Closing Balance Carried Down (આખર બાકી આગળ લઈ ગયા)</em>
                       </td>
-                      <td className="text-end text-primary">â‚¹{ledgerStatement.totalDebit.toLocaleString()}</td>
-                      <td className="text-end text-success">â‚¹{ledgerStatement.totalCredit.toLocaleString()}</td>
+                      <td className="text-end text-primary">₹{ledgerStatement.totalDebit.toLocaleString()}</td>
+                      <td className="text-end text-success">₹{ledgerStatement.totalCredit.toLocaleString()}</td>
                       <td className="text-end text-primary fs-6">
-                        â‚¹{ledgerStatement.closingBalance.toLocaleString()} <span className="small">{ledgerStatement.closingBalanceType}</span>
+                        ₹{ledgerStatement.closingBalance.toLocaleString()} <span className="small">{ledgerStatement.closingBalanceType}</span>
                       </td>
                     </tr>
                   )}
@@ -1199,7 +1199,7 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 2: CHART OF ACCOUNTS (àª–àª¾àª¤àª¾àªµàª¹à«€ àª¯àª¾àª¦à«€) */}
+      {/* TAB 2: CHART OF ACCOUNTS (ખાતાવહી યાદી) */}
       {/* ======================================================== */}
       {activeTab === 'chart' && (
         <div className="d-flex flex-column gap-3">
@@ -1213,32 +1213,32 @@ export const AccountsPage: React.FC = () => {
             </div>
             <div className="col-6 col-md-2">
               <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
-                <span className="text-primary small fw-bold" style={{ fontSize: '0.68rem' }}>Assets (àª®àª¿àª²àª•àª¤à«‹)</span>
-                <h6 className="fw-bold mb-0 text-primary">â‚¹{coaSummary.assets.toLocaleString()}</h6>
+                <span className="text-primary small fw-bold" style={{ fontSize: '0.68rem' }}>Assets (મિલકતો)</span>
+                <h6 className="fw-bold mb-0 text-primary">₹{coaSummary.assets.toLocaleString()}</h6>
               </div>
             </div>
             <div className="col-6 col-md-2">
               <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
-                <span className="text-warning-emphasis small fw-bold" style={{ fontSize: '0.68rem' }}>Liabilities (àª¦à«‡àªµàª¾àª‚)</span>
-                <h6 className="fw-bold mb-0 text-warning-emphasis">â‚¹{coaSummary.liabilities.toLocaleString()}</h6>
+                <span className="text-warning-emphasis small fw-bold" style={{ fontSize: '0.68rem' }}>Liabilities (દેવાં)</span>
+                <h6 className="fw-bold mb-0 text-warning-emphasis">₹{coaSummary.liabilities.toLocaleString()}</h6>
               </div>
             </div>
             <div className="col-6 col-md-2">
               <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
-                <span className="text-dark small fw-bold" style={{ fontSize: '0.68rem' }}>Equity (àª®à«‚àª¡à«€)</span>
-                <h6 className="fw-bold mb-0 text-dark">â‚¹{coaSummary.equity.toLocaleString()}</h6>
+                <span className="text-dark small fw-bold" style={{ fontSize: '0.68rem' }}>Equity (મૂડી)</span>
+                <h6 className="fw-bold mb-0 text-dark">₹{coaSummary.equity.toLocaleString()}</h6>
               </div>
             </div>
             <div className="col-6 col-md-2">
               <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
-                <span className="text-success small fw-bold" style={{ fontSize: '0.68rem' }}>Revenue (àª†àªµàª•)</span>
-                <h6 className="fw-bold mb-0 text-success">â‚¹{coaSummary.revenue.toLocaleString()}</h6>
+                <span className="text-success small fw-bold" style={{ fontSize: '0.68rem' }}>Revenue (આવક)</span>
+                <h6 className="fw-bold mb-0 text-success">₹{coaSummary.revenue.toLocaleString()}</h6>
               </div>
             </div>
             <div className="col-6 col-md-2">
               <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
-                <span className="text-danger small fw-bold" style={{ fontSize: '0.68rem' }}>Expenses (àª–àª°à«àªš)</span>
-                <h6 className="fw-bold mb-0 text-danger">â‚¹{coaSummary.expenses.toLocaleString()}</h6>
+                <span className="text-danger small fw-bold" style={{ fontSize: '0.68rem' }}>Expenses (ખર્ચ)</span>
+                <h6 className="fw-bold mb-0 text-danger">₹{coaSummary.expenses.toLocaleString()}</h6>
               </div>
             </div>
           </div>
@@ -1330,7 +1330,7 @@ export const AccountsPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="text-end">
-                          <span className="fw-bold fs-6">â‚¹{acc.currentBalance.toLocaleString()}</span>{' '}
+                          <span className="fw-bold fs-6">₹{acc.currentBalance.toLocaleString()}</span>{' '}
                           <span className="small text-muted">
                             {acc.accountType === 'ASSET' || acc.accountType === 'EXPENSE' ? 'Dr' : 'Cr'}
                           </span>
@@ -1377,7 +1377,7 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 3: JOURNAL ENTRIES (àªœàª°à«àª¨àª² àªµàª¾àª‰àªšàª°à«àª¸) */}
+      {/* TAB 3: JOURNAL ENTRIES (જર્નલ વાઉચર્સ) */}
       {/* ======================================================== */}
       {activeTab === 'journal' && (
         <div className="d-flex flex-column gap-3">
@@ -1481,7 +1481,7 @@ export const AccountsPage: React.FC = () => {
                           <div className="d-flex flex-wrap gap-1 mt-1">
                             {j.items?.map((it, idx) => (
                               <span key={idx} className="badge bg-light text-dark border" style={{ fontSize: '0.68rem' }}>
-                                {it.accountName}: {it.debit > 0 ? `Dr â‚¹${it.debit}` : `Cr â‚¹${it.credit}`}
+                                {it.accountName}: {it.debit > 0 ? `Dr ₹${it.debit}` : `Cr ₹${it.credit}`}
                               </span>
                             ))}
                           </div>
@@ -1492,7 +1492,7 @@ export const AccountsPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="text-end fw-bold text-success fs-6">
-                          â‚¹{j.totalDebit.toLocaleString()}
+                          ₹{j.totalDebit.toLocaleString()}
                         </td>
                         <td className="text-center">
                           <span className="badge bg-success-subtle text-success border border-success-subtle">
@@ -1520,7 +1520,7 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 4: TRIAL BALANCE (àª•àª¾àªšà«àª‚ àª¸àª°àªµà«ˆàª¯à«àª‚) */}
+      {/* TAB 4: TRIAL BALANCE (કાચું સરવૈયું) */}
       {/* ======================================================== */}
       {activeTab === 'trialbalance' && (
         <div className="d-flex flex-column gap-3">
@@ -1528,7 +1528,7 @@ export const AccountsPage: React.FC = () => {
           <div className="card shadow-sm border rounded-3 bg-white p-3">
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
               <div className="d-flex align-items-center gap-2">
-                <label className="form-label small fw-bold text-dark mb-0">As of Date (àª† àª¤àª¾àª°à«€àª– àª¸à«àª§à«€àª¨à«àª‚):</label>
+                <label className="form-label small fw-bold text-dark mb-0">As of Date (આ તારીખ સુધીનું):</label>
                 <input
                   type="date"
                   className="form-control form-control-sm"
@@ -1566,8 +1566,8 @@ export const AccountsPage: React.FC = () => {
                     <th style={{ width: '12%' }}>Account Code</th>
                     <th style={{ width: '38%' }}>Account Head Title</th>
                     <th style={{ width: '18%' }}>Account Group / Type</th>
-                    <th className="text-end" style={{ width: '16%' }}>Debit Balance (â‚¹ Dr)</th>
-                    <th className="text-end" style={{ width: '16%' }}>Credit Balance (â‚¹ Cr)</th>
+                    <th className="text-end" style={{ width: '16%' }}>Debit Balance (₹ Dr)</th>
+                    <th className="text-end" style={{ width: '16%' }}>Credit Balance (₹ Cr)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1595,14 +1595,14 @@ export const AccountsPage: React.FC = () => {
                         <td className="fw-bold text-dark">{row.accountName}</td>
                         <td>
                           <span className="badge bg-light text-secondary border">
-                            {row.accountType} {row.subType ? `â€¢ ${row.subType}` : ''}
+                            {row.accountType} {row.subType ? `• ${row.subType}` : ''}
                           </span>
                         </td>
                         <td className="text-end fw-bold text-primary">
-                          {row.debitBalance > 0 ? `â‚¹${row.debitBalance.toLocaleString()}` : '-'}
+                          {row.debitBalance > 0 ? `₹${row.debitBalance.toLocaleString()}` : '-'}
                         </td>
                         <td className="text-end fw-bold text-success">
-                          {row.creditBalance > 0 ? `â‚¹${row.creditBalance.toLocaleString()}` : '-'}
+                          {row.creditBalance > 0 ? `₹${row.creditBalance.toLocaleString()}` : '-'}
                         </td>
                       </tr>
                     ))
@@ -1613,10 +1613,10 @@ export const AccountsPage: React.FC = () => {
                     <tr className="table-warning-subtle fw-bold fs-6 border-top border-2">
                       <td colSpan={3} className="text-uppercase">
                         <div className="d-flex align-items-center justify-content-between">
-                          <span>Total Trial Balance (àª•àª¾àªšà«àª‚ àª¸àª°àªµà«ˆàª¯à«àª‚ àª•à«àª²)</span>
+                          <span>Total Trial Balance (કાચું સરવૈયું કુલ)</span>
                           {trialBalanceReport.isBalanced ? (
                             <span className="badge bg-success text-white d-inline-flex align-items-center gap-1 px-2.5 py-1">
-                              <CheckCircle2 size={14} /> Books Balanced (àª¸àª°àª­àª°)
+                              <CheckCircle2 size={14} /> Books Balanced (સરભર)
                             </span>
                           ) : (
                             <span className="badge bg-danger text-white d-inline-flex align-items-center gap-1 px-2.5 py-1">
@@ -1626,10 +1626,10 @@ export const AccountsPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="text-end text-primary">
-                        â‚¹{trialBalanceReport.grandDebit.toLocaleString()}
+                        ₹{trialBalanceReport.grandDebit.toLocaleString()}
                       </td>
                       <td className="text-end text-success">
-                        â‚¹{trialBalanceReport.grandCredit.toLocaleString()}
+                        ₹{trialBalanceReport.grandCredit.toLocaleString()}
                       </td>
                     </tr>
                   )}
@@ -1650,21 +1650,21 @@ export const AccountsPage: React.FC = () => {
             <div className="col-12 col-md-3">
               <div className="card border-0 shadow-sm p-3 bg-white rounded-3">
                 <span className="small text-uppercase text-muted fw-bold">Total Sales Revenue</span>
-                <h3 className="fw-bold text-success mt-1">â‚¹{(financialSummary.profitAndLoss?.totalRevenue || 0).toLocaleString()}</h3>
+                <h3 className="fw-bold text-success mt-1">₹{(financialSummary.profitAndLoss?.totalRevenue || 0).toLocaleString()}</h3>
                 <span className="text-muted small">Food & Chaas Dining Collections</span>
               </div>
             </div>
             <div className="col-12 col-md-3">
               <div className="card border-0 shadow-sm p-3 bg-white rounded-3">
                 <span className="small text-uppercase text-muted fw-bold">Cost of Goods Sold (COGS)</span>
-                <h3 className="fw-bold text-danger mt-1">â‚¹{(financialSummary.profitAndLoss?.totalCOGS || 0).toLocaleString()}</h3>
+                <h3 className="fw-bold text-danger mt-1">₹{(financialSummary.profitAndLoss?.totalCOGS || 0).toLocaleString()}</h3>
                 <span className="text-muted small">Deshi Provisions & Ingredients</span>
               </div>
             </div>
             <div className="col-12 col-md-3">
               <div className="card border-0 shadow-sm p-3 bg-white rounded-3">
                 <span className="small text-uppercase text-muted fw-bold">Operating Expenses (OPEX)</span>
-                <h3 className="fw-bold text-warning-emphasis mt-1">â‚¹{(financialSummary.profitAndLoss?.totalOperatingExpense || 0).toLocaleString()}</h3>
+                <h3 className="fw-bold text-warning-emphasis mt-1">₹{(financialSummary.profitAndLoss?.totalOperatingExpense || 0).toLocaleString()}</h3>
                 <span className="text-muted small">Rent, Electricity, Cook Salaries</span>
               </div>
             </div>
@@ -1677,7 +1677,7 @@ export const AccountsPage: React.FC = () => {
                   </span>
                 </div>
                 <h3 className={`fw-bold mt-1 ${(financialSummary.profitAndLoss?.netProfit || 0) >= 0 ? 'text-primary' : 'text-danger'}`}>
-                  â‚¹{(financialSummary.profitAndLoss?.netProfit || 0).toLocaleString()}
+                  ₹{(financialSummary.profitAndLoss?.netProfit || 0).toLocaleString()}
                 </h3>
                 <span className="text-muted small">Net Restaurant Earnings</span>
               </div>
@@ -1687,26 +1687,26 @@ export const AccountsPage: React.FC = () => {
           {/* Balance Sheet Snapshot Card */}
           {financialSummary.balanceSheet && (
             <div className="card shadow-sm border rounded-3 bg-white p-3">
-              <h6 className="fw-bold text-dark mb-3">Balance Sheet Equilibrium Snapshot (àª®àª¿àª²àª•àª¤à«‹ àª…àª¨à«‡ àª¦à«‡àªµàª¾àª‚ àª¸àª°àªµà«ˆàª¯à«àª‚)</h6>
+              <h6 className="fw-bold text-dark mb-3">Balance Sheet Equilibrium Snapshot (મિલકતો અને દેવાં સરવૈયું)</h6>
               <div className="row g-3">
                 <div className="col-12 col-md-4">
                   <div className="p-3 bg-light rounded-3">
-                    <span className="text-muted small fw-bold">Total Assets (àª®àª¿àª²àª•àª¤à«‹)</span>
-                    <h4 className="fw-bold text-primary mt-1">â‚¹{financialSummary.balanceSheet.totalAssets.toLocaleString()}</h4>
+                    <span className="text-muted small fw-bold">Total Assets (મિલકતો)</span>
+                    <h4 className="fw-bold text-primary mt-1">₹{financialSummary.balanceSheet.totalAssets.toLocaleString()}</h4>
                     <span className="small text-secondary">Cash in drawer, Bank, Inventory</span>
                   </div>
                 </div>
                 <div className="col-12 col-md-4">
                   <div className="p-3 bg-light rounded-3">
-                    <span className="text-muted small fw-bold">Total Liabilities (àª¦à«‡àªµàª¾àª‚)</span>
-                    <h4 className="fw-bold text-warning-emphasis mt-1">â‚¹{financialSummary.balanceSheet.totalLiabilities.toLocaleString()}</h4>
+                    <span className="text-muted small fw-bold">Total Liabilities (દેવાં)</span>
+                    <h4 className="fw-bold text-warning-emphasis mt-1">₹{financialSummary.balanceSheet.totalLiabilities.toLocaleString()}</h4>
                     <span className="small text-secondary">Vendor payables, GST payable</span>
                   </div>
                 </div>
                 <div className="col-12 col-md-4">
                   <div className="p-3 bg-light rounded-3">
-                    <span className="text-muted small fw-bold">Total Equity & Capital (àª®à«‚àª¡à«€)</span>
-                    <h4 className="fw-bold text-dark mt-1">â‚¹{financialSummary.balanceSheet.totalEquity.toLocaleString()}</h4>
+                    <span className="text-muted small fw-bold">Total Equity & Capital (મૂડી)</span>
+                    <h4 className="fw-bold text-dark mt-1">₹{financialSummary.balanceSheet.totalEquity.toLocaleString()}</h4>
                     <span className="small text-secondary">Owner capital & retained earnings</span>
                   </div>
                 </div>
@@ -1717,23 +1717,23 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 6: DAY CLOSING REGISTER (àª°à«‹àªœàª®à«‡àª³ àª¬àª‚àª§) */}
+      {/* TAB 6: DAY CLOSING REGISTER (રોજમેળ બંધ) */}
       {/* ======================================================== */}
       {activeTab === 'dayclosing' && (
         <DataTable<DayClosing>
           columns={[
             { header: 'Closing Date', accessor: 'closingDate', width: 120 },
-            { header: 'Opening Cash', accessor: (row) => `â‚¹${row.openingCash.toLocaleString()}` },
-            { header: 'Total Sales', accessor: (row) => <span className="fw-bold text-success">â‚¹{row.totalSales.toLocaleString()}</span> },
-            { header: 'Cash Collected', accessor: (row) => `â‚¹${row.cashSales.toLocaleString()}` },
-            { header: 'UPI & Card', accessor: (row) => `â‚¹${(row.upiSales + row.cardSales).toLocaleString()}` },
-            { header: 'Expenses', accessor: (row) => `â‚¹${row.cashExpenses.toLocaleString()}` },
-            { header: 'Actual Cash Counted', accessor: (row) => <span className="fw-bold">â‚¹{row.actualCash.toLocaleString()}</span> },
+            { header: 'Opening Cash', accessor: (row) => `₹${row.openingCash.toLocaleString()}` },
+            { header: 'Total Sales', accessor: (row) => <span className="fw-bold text-success">₹{row.totalSales.toLocaleString()}</span> },
+            { header: 'Cash Collected', accessor: (row) => `₹${row.cashSales.toLocaleString()}` },
+            { header: 'UPI & Card', accessor: (row) => `₹${(row.upiSales + row.cardSales).toLocaleString()}` },
+            { header: 'Expenses', accessor: (row) => `₹${row.cashExpenses.toLocaleString()}` },
+            { header: 'Actual Cash Counted', accessor: (row) => <span className="fw-bold">₹{row.actualCash.toLocaleString()}</span> },
             {
               header: 'Cash Variance',
               accessor: (row) => (
                 <span className={`badge ${row.cashDifference === 0 ? 'bg-success' : row.cashDifference > 0 ? 'bg-info' : 'bg-danger'}`}>
-                  {row.cashDifference === 0 ? 'Balanced' : `â‚¹${row.cashDifference.toLocaleString()}`}
+                  {row.cashDifference === 0 ? 'Balanced' : `₹${row.cashDifference.toLocaleString()}`}
                 </span>
               )
             }
@@ -1751,7 +1751,7 @@ export const AccountsPage: React.FC = () => {
       <Modal
         isOpen={isAddAccountModalOpen}
         onClose={() => setIsAddAccountModalOpen(false)}
-        title="Add New Account Head (àª¨àªµà«àª‚ àª–àª¾àª¤à«àª‚ àª¬àª¨àª¾àªµà«‹)"
+        title="Add New Account Head (નવું ખાતું બનાવો)"
       >
         <form onSubmit={handleCreateAccount} className="d-flex flex-column gap-3">
           <div className="row g-2">
@@ -1786,11 +1786,11 @@ export const AccountsPage: React.FC = () => {
                 value={newAccType}
                 onChange={e => setNewAccType(e.target.value as any)}
               >
-                <option value="ASSET">ASSET (àª®àª¿àª²àª•àª¤)</option>
-                <option value="LIABILITY">LIABILITY (àª¦à«‡àªµà«àª‚)</option>
-                <option value="EQUITY">EQUITY (àª®à«‚àª¡à«€)</option>
-                <option value="REVENUE">REVENUE (àª†àªµàª•)</option>
-                <option value="EXPENSE">EXPENSE (àª–àª°à«àªš)</option>
+                <option value="ASSET">ASSET (મિલકત)</option>
+                <option value="LIABILITY">LIABILITY (દેવું)</option>
+                <option value="EQUITY">EQUITY (મૂડી)</option>
+                <option value="REVENUE">REVENUE (આવક)</option>
+                <option value="EXPENSE">EXPENSE (ખર્ચ)</option>
               </select>
             </div>
             <div className="col-6">
@@ -1806,7 +1806,7 @@ export const AccountsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="form-label small fw-bold">Initial Opening Balance (â‚¹)</label>
+            <label className="form-label small fw-bold">Initial Opening Balance (₹)</label>
             <input
               type="number"
               className="form-control form-control-sm"
@@ -1894,7 +1894,7 @@ export const AccountsPage: React.FC = () => {
       <Modal
         isOpen={isJournalModalOpen}
         onClose={() => setIsJournalModalOpen(false)}
-        title="Post Double-Entry Journal Voucher (àªœàª°à«àª¨àª² àªµàª¾àª‰àªšàª° àªàª¨à«àªŸà«àª°à«€)"
+        title="Post Double-Entry Journal Voucher (જર્નલ વાઉચર એન્ટ્રી)"
         size="lg"
       >
         <form onSubmit={handlePostJournalVoucher} className="d-flex flex-column gap-3">
@@ -1916,11 +1916,11 @@ export const AccountsPage: React.FC = () => {
                 value={journalRefType}
                 onChange={e => setJournalRefType(e.target.value)}
               >
-                <option value="MANUAL">MANUAL (àª¸àª¾àª®àª¾àª¨à«àª¯)</option>
-                <option value="EXPENSE">EXPENSE (àª–àª°à«àªš)</option>
-                <option value="SALES">SALES (àªµà«‡àªšàª¾àª£)</option>
-                <option value="PAYROLL">PAYROLL (àªªàª—àª¾àª°)</option>
-                <option value="ADJUSTMENT">ADJUSTMENT (àª¹àªµàª¾àª²àª¾)</option>
+                <option value="MANUAL">MANUAL (સામાન્ય)</option>
+                <option value="EXPENSE">EXPENSE (ખર્ચ)</option>
+                <option value="SALES">SALES (વેચાણ)</option>
+                <option value="PAYROLL">PAYROLL (પગાર)</option>
+                <option value="ADJUSTMENT">ADJUSTMENT (હવાલા)</option>
               </select>
             </div>
             <div className="col-4">
@@ -1936,7 +1936,7 @@ export const AccountsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="form-label small fw-bold">Voucher Narration / Particulars (àªµàª¿àª—àª¤ / àªµàª°à«àª£àª¨)</label>
+            <label className="form-label small fw-bold">Voucher Narration / Particulars (વિગત / વર્ણન)</label>
             <input
               type="text"
               className="form-control form-control-sm"
@@ -1984,7 +1984,7 @@ export const AccountsPage: React.FC = () => {
                 </div>
                 <div className="col-5 col-md-3">
                   <div className="input-group input-group-sm">
-                    <span className="input-group-text">Dr â‚¹</span>
+                    <span className="input-group-text">Dr ₹</span>
                     <input
                       type="number"
                       className="form-control form-control-sm text-end"
@@ -2002,7 +2002,7 @@ export const AccountsPage: React.FC = () => {
                 </div>
                 <div className="col-5 col-md-3">
                   <div className="input-group input-group-sm">
-                    <span className="input-group-text">Cr â‚¹</span>
+                    <span className="input-group-text">Cr ₹</span>
                     <input
                       type="number"
                       className="form-control form-control-sm text-end"
@@ -2037,8 +2037,8 @@ export const AccountsPage: React.FC = () => {
             {/* Auto-balancing Indicator */}
             <div className="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-2 border-top bg-white p-2 rounded-2">
               <div className="d-flex gap-3">
-                <span className="small">Total Debits: <strong className="text-primary">â‚¹{journalTotals.debitSum.toLocaleString()}</strong></span>
-                <span className="small">Total Credits: <strong className="text-success">â‚¹{journalTotals.creditSum.toLocaleString()}</strong></span>
+                <span className="small">Total Debits: <strong className="text-primary">₹{journalTotals.debitSum.toLocaleString()}</strong></span>
+                <span className="small">Total Credits: <strong className="text-success">₹{journalTotals.creditSum.toLocaleString()}</strong></span>
               </div>
               <div>
                 {journalTotals.isBalanced ? (
@@ -2047,7 +2047,7 @@ export const AccountsPage: React.FC = () => {
                   </span>
                 ) : (
                   <span className="badge bg-danger-subtle text-danger border border-danger-subtle d-inline-flex align-items-center gap-1 px-2 py-1">
-                    <AlertTriangle size={13} /> Unbalanced Diff: â‚¹{journalTotals.diff.toLocaleString()}
+                    <AlertTriangle size={13} /> Unbalanced Diff: ₹{journalTotals.diff.toLocaleString()}
                   </span>
                 )}
               </div>
@@ -2079,7 +2079,7 @@ export const AccountsPage: React.FC = () => {
             <div ref={printSlipRef} className="border rounded-3 p-4 bg-white">
               {/* Slip Header */}
               <div className="text-center border-bottom pb-3 mb-3">
-                <h5 className="fw-bold mb-0 text-dark">àª­àª¾àª¤à«€àª—àª³ àª­àª¾àª£à«àª‚ - BHATIGAL BHANU RESTAURANT</h5>
+                <h5 className="fw-bold mb-0 text-dark">ભાતીગળ ભાણું - BHATIGAL BHANU RESTAURANT</h5>
                 <small className="text-muted">Double-Entry Journal Voucher Slip</small>
                 <div className="d-flex justify-content-between align-items-center mt-3 small">
                   <span><strong>Voucher #:</strong> {selectedVoucherForSlip.entryNumber}</span>
@@ -2100,8 +2100,8 @@ export const AccountsPage: React.FC = () => {
                   <tr>
                     <th>Account Title</th>
                     <th>Line Note</th>
-                    <th className="text-end" style={{ width: '20%' }}>Debit (â‚¹)</th>
-                    <th className="text-end" style={{ width: '20%' }}>Credit (â‚¹)</th>
+                    <th className="text-end" style={{ width: '20%' }}>Debit (₹)</th>
+                    <th className="text-end" style={{ width: '20%' }}>Credit (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2110,17 +2110,17 @@ export const AccountsPage: React.FC = () => {
                       <td className="fw-bold">{it.accountName}</td>
                       <td className="text-muted small">{it.description || '-'}</td>
                       <td className="text-end text-primary fw-bold">
-                        {it.debit > 0 ? `â‚¹${it.debit.toLocaleString()}` : '-'}
+                        {it.debit > 0 ? `₹${it.debit.toLocaleString()}` : '-'}
                       </td>
                       <td className="text-end text-success fw-bold">
-                        {it.credit > 0 ? `â‚¹${it.credit.toLocaleString()}` : '-'}
+                        {it.credit > 0 ? `₹${it.credit.toLocaleString()}` : '-'}
                       </td>
                     </tr>
                   ))}
                   <tr className="table-light fw-bold border-top border-2">
                     <td colSpan={2} className="text-end">Total Amount</td>
-                    <td className="text-end text-primary">â‚¹{selectedVoucherForSlip.totalDebit.toLocaleString()}</td>
-                    <td className="text-end text-success">â‚¹{selectedVoucherForSlip.totalCredit.toLocaleString()}</td>
+                    <td className="text-end text-primary">₹{selectedVoucherForSlip.totalDebit.toLocaleString()}</td>
+                    <td className="text-end text-success">₹{selectedVoucherForSlip.totalCredit.toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
@@ -2150,14 +2150,14 @@ export const AccountsPage: React.FC = () => {
       <Modal
         isOpen={isDayClosingModalOpen}
         onClose={() => setIsDayClosingModalOpen(false)}
-        title="Daily Register & Shift Closing Summary (àª°à«‹àªœàª®à«‡àª³ àª¬àª‚àª§)"
+        title="Daily Register & Shift Closing Summary (રોજમેળ બંધ)"
       >
         <form onSubmit={handleExecuteDayClosing} className="d-flex flex-column gap-3">
           <p className="small text-secondary mb-1">
             Reconcile all POS orders, customer tender payments, cash drawer balance, and expenses for today:
           </p>
           <div>
-            <label className="form-label small fw-bold">Actual Physical Cash Counted in Drawer (â‚¹)</label>
+            <label className="form-label small fw-bold">Actual Physical Cash Counted in Drawer (₹)</label>
             <input
               type="number"
               className="form-control"
