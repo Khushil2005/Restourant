@@ -30,7 +30,18 @@ import {
   Trash2,
   Filter,
   ArrowUpDown,
-  Smartphone
+  Smartphone,
+  Wallet,
+  Building2,
+  Users,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Sparkles,
+  HelpCircle,
+  Info,
+  Check,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -91,6 +102,10 @@ interface JournalFormItem {
 export const AccountsPage: React.FC = () => {
   const { can } = usePermission();
   const [activeTab, setActiveTab] = useState<AccountTab>('ledger');
+
+  // User Mode & Explainer Toggle (Simple vs Pro CA mode)
+  const [viewMode, setViewMode] = useState<'simple' | 'pro'>('simple');
+  const [showExplainer, setShowExplainer] = useState(false);
 
   // Core Data States
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
@@ -669,6 +684,99 @@ export const AccountsPage: React.FC = () => {
     return { assets, liabilities, equity, revenue, expenses };
   }, [accounts]);
 
+  // 4 Core Restaurant Financial Pulse metrics for Simple Mode
+  const quickStats = useMemo(() => {
+    let cash = 0;
+    let bank = 0;
+    let payables = 0;
+    let receivables = 0;
+    let cashAccountId = '';
+    let bankAccountId = '';
+    let payableAccountId = '';
+    let receivableAccountId = '';
+
+    accounts.forEach(a => {
+      const name = a.accountName.toLowerCase();
+      const code = a.accountCode;
+      const subType = (a.subType || '').toUpperCase();
+
+      if (a.id === 'acc_cash_drawer' || subType === 'CASH' || name.includes('cash in counter') || name.includes('cash in drawer') || (name.includes('cash') && !name.includes('expense'))) {
+        cash += a.currentBalance;
+        if (!cashAccountId) cashAccountId = a.id;
+      } else if (a.id === 'acc_bank_sbi' || subType === 'BANK' || name.includes('bank') || name.includes('sbi')) {
+        bank += a.currentBalance;
+        if (!bankAccountId) bankAccountId = a.id;
+      } else if (a.accountType === 'LIABILITY' && (a.id === 'acc_supplier_payable' || code === '2010' || name.includes('supplier') || name.includes('payable'))) {
+        payables += a.currentBalance;
+        if (!payableAccountId) payableAccountId = a.id;
+      } else if (a.accountType === 'ASSET' && (a.id === 'acc_pos_receivable' || code === '1030' || name.includes('receivable') || name.includes('customer'))) {
+        receivables += a.currentBalance;
+        if (!receivableAccountId) receivableAccountId = a.id;
+      }
+    });
+
+    return {
+      cash,
+      bank,
+      payables,
+      receivables,
+      cashAccountId: cashAccountId || accounts[0]?.id || '',
+      bankAccountId: bankAccountId || accounts[1]?.id || '',
+      payableAccountId: payableAccountId || accounts.find(a => a.accountType === 'LIABILITY')?.id || '',
+      receivableAccountId: receivableAccountId || accounts.find(a => a.accountType === 'ASSET' && a.id !== cashAccountId)?.id || '',
+    };
+  }, [accounts]);
+
+  // 1-Click Popular Accounts for fast navigation without searching dropdowns
+  const popularAccounts = useMemo(() => {
+    const findAcc = (fn: (a: ChartOfAccount) => boolean) => accounts.find(fn);
+    const list = [
+      {
+        id: 'cash',
+        label: '💵 રોકડ ગલ્લો',
+        badge: 'Cash Drawer',
+        acc: findAcc(a => a.id === 'acc_cash_drawer' || (a.subType || '').toUpperCase() === 'CASH' || a.accountName.toLowerCase().includes('cash'))
+      },
+      {
+        id: 'bank',
+        label: '🏦 SBI બેંક ખાતું',
+        badge: 'Bank Account',
+        acc: findAcc(a => a.id === 'acc_bank_sbi' || (a.subType || '').toUpperCase() === 'BANK' || a.accountName.toLowerCase().includes('bank'))
+      },
+      {
+        id: 'sales',
+        label: '🍽️ થાળી વેચાણ આવક',
+        badge: 'Food Sales',
+        acc: findAcc(a => a.id === 'acc_food_sales' || a.accountCode === '4010' || a.accountName.toLowerCase().includes('sales'))
+      },
+      {
+        id: 'raw',
+        label: '🥬 શાકભાજી & કરિયાણું',
+        badge: 'Raw Provisions',
+        acc: findAcc(a => a.id === 'acc_inventory_asset' || a.id === 'acc_cogs_food' || a.accountCode === '1040' || a.accountName.toLowerCase().includes('provision') || a.accountName.toLowerCase().includes('inventory'))
+      },
+      {
+        id: 'salary',
+        label: '👨‍🍳 સ્ટાફ પગાર',
+        badge: 'Salaries',
+        acc: findAcc(a => a.id === 'acc_exp_salaries' || a.accountCode === '6030' || a.accountName.toLowerCase().includes('salary'))
+      },
+      {
+        id: 'gas',
+        label: '⚡ લાઈટબિલ & ગેસ',
+        badge: 'Utilities',
+        acc: findAcc(a => a.id === 'acc_exp_utilities' || a.accountCode === '6020' || a.accountName.toLowerCase().includes('utilit') || a.accountName.toLowerCase().includes('gas'))
+      },
+      {
+        id: 'supplier',
+        label: '🤝 વેપારી ખાતાઓ',
+        badge: 'Suppliers (દેવાં)',
+        acc: findAcc(a => a.id === 'acc_supplier_payable' || a.accountCode === '2010' || a.accountName.toLowerCase().includes('supplier') || a.accountName.toLowerCase().includes('payable'))
+      }
+    ];
+    return list.filter(item => Boolean(item.acc));
+  }, [accounts]);
+
   // Filtered Ledger Transactions for search input inside ledger tab
   const filteredLedgerTx = useMemo(() => {
     if (!ledgerStatement) return [];
@@ -788,6 +896,281 @@ export const AccountsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* MODE SWITCHER & QUICK HELP BAR */}
+      <div className="card shadow-sm border rounded-3 bg-white p-2.5">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+          {/* Mode Switcher */}
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <span className="small fw-bold text-dark d-flex align-items-center gap-1">
+              <Sparkles size={14} className="text-warning" /> દર્શાવવાની પદ્ધતિ (Mode):
+            </span>
+            <div className="btn-group btn-group-sm shadow-xs" role="group">
+              <button
+                type="button"
+                className={`btn btn-sm px-3 py-1 fw-bold ${viewMode === 'simple' ? 'btn-success text-white' : 'btn-outline-secondary'}`}
+                onClick={() => setViewMode('simple')}
+              >
+                🟢 સરળ મોડ (Simple View)
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm px-3 py-1 fw-bold ${viewMode === 'pro' ? 'btn-dark text-white' : 'btn-outline-secondary'}`}
+                onClick={() => setViewMode('pro')}
+              >
+                💼 પ્રો મોડ (CA / Accounting)
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Guide Toggle & Help Hint */}
+          <div className="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-between justify-content-md-end">
+            <button
+              type="button"
+              className={`btn btn-sm d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-pill shadow-xs fw-bold ${
+                showExplainer ? 'btn-warning text-dark' : 'btn-outline-secondary'
+              }`}
+              onClick={() => setShowExplainer(!showExplainer)}
+            >
+              <HelpCircle size={15} /> <span>💡 હિસાબ સરળતાથી સમજો {showExplainer ? '▲' : '▼'}</span>
+            </button>
+            <span className="text-muted small d-none d-lg-inline" style={{ fontSize: '0.72rem' }}>
+              રોકડ, બેંક અને નફા-નુકસાનનું વિશ્લેષણ
+            </span>
+          </div>
+        </div>
+
+        {/* COLLAPSIBLE BEGINNER'S GUIDE */}
+        {showExplainer && (
+          <div className="mt-3 pt-3 border-top">
+            <div className="p-3 rounded-3" style={{ backgroundColor: '#FFFDF5', border: '1px solid #FDE68A' }}>
+              <div className="d-flex justify-content-between align-items-center mb-2.5">
+                <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-1.5 fs-6">
+                  <Sparkles size={16} className="text-warning" />
+                  <span>રેસ્ટોરન્ટ હિસાબને ૩ સાદા નિયમોથી સમજો (Simple Accounting Guide)</span>
+                </h6>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm py-0 px-1.5 rounded-circle"
+                  style={{ fontSize: '0.7rem' }}
+                  onClick={() => setShowExplainer(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="row g-2.5">
+                {/* Rule 1: Dr & Cr Niyam */}
+                <div className="col-12 col-md-4">
+                  <div className="card border-0 p-2.5 rounded-2 h-100 shadow-xs" style={{ backgroundColor: '#F0FDF4', borderLeft: '3px solid #16A34A' }}>
+                    <div className="fw-bold text-success small mb-1 d-flex align-items-center gap-1">
+                      <ArrowDownLeft size={15} /> ૧. ઉધાર (Debit) અને જમા (Credit) શું છે?
+                    </div>
+                    <p className="small text-secondary mb-1" style={{ fontSize: '0.75rem' }}>
+                      રોકડ ગલ્લો અને બેંક ખાતા માટે યાદ રાખો:
+                    </p>
+                    <ul className="small text-dark mb-0 ps-3" style={{ fontSize: '0.74rem' }}>
+                      <li><strong className="text-success">🟢 Debit (Dr ⬇️):</strong> ગલ્લામાં કે બેંકમાં <strong>રૂપિયા આવ્યા</strong> (થાળી વેચાણ, બિલ વસૂલાત).</li>
+                      <li><strong className="text-danger">🔴 Credit (Cr ⬆️):</strong> ગલ્લામાંથી કે બેંકમાંથી <strong>રૂપિયા ગયા</strong> (શાકભાજી, તેલ, સ્ટાફ પગાર).</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Rule 2: 5 Mukhy Khatao */}
+                <div className="col-12 col-md-4">
+                  <div className="card border-0 p-2.5 rounded-2 h-100 shadow-xs" style={{ backgroundColor: '#EFF6FF', borderLeft: '3px solid #2563EB' }}>
+                    <div className="fw-bold text-primary small mb-1 d-flex align-items-center gap-1">
+                      <Wallet size={15} /> ૨. રેસ્ટોરન્ટના ૫ મુખ્ય ખાતાઓ:
+                    </div>
+                    <ul className="small text-dark mb-0 ps-3" style={{ fontSize: '0.74rem' }}>
+                      <li><strong>મિલકતો (Assets):</strong> ગલ્લાની રોકડ, બેંક બેલેન્સ, ગોડાઉનનો સ્ટોક.</li>
+                      <li><strong>દેવાં (Liabilities):</strong> વેપારીઓને ચૂકવવાના બાકી, GST ટેક્સ.</li>
+                      <li><strong>આવક (Revenue):</strong> કાઠિયાવાડી ભોજન અને પીણાંનું વેચાણ.</li>
+                      <li><strong>ખર્ચ (Expenses):</strong> કરિયાણું, ગેસ, પગાર અને ભાડું.</li>
+                      <li><strong>મૂડી (Equity):</strong> માલિકે ધંધામાં લગાવેલા પોતાના રૂપિયા.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Rule 3: Tabs Shu Kaam Kare Chhe */}
+                <div className="col-12 col-md-4">
+                  <div className="card border-0 p-2.5 rounded-2 h-100 shadow-xs" style={{ backgroundColor: '#FFF7ED', borderLeft: '3px solid #EA580C' }}>
+                    <div className="fw-bold text-warning-emphasis small mb-1 d-flex align-items-center gap-1">
+                      <BookOpen size={15} /> ૩. કઈ ટેબ શેના માટે વાપરવી?
+                    </div>
+                    <ul className="small text-dark mb-0 ps-3" style={{ fontSize: '0.74rem' }}>
+                      <li><strong>ખાતાવહી (Ledger):</strong> ૧ ખાતાની તારીખવાર આવક-જાવક જોવી.</li>
+                      <li><strong>તમામ ખાતાઓ (Chart):</strong> દુકાનના તમામ ખાતાઓનું લિસ્ટ.</li>
+                      <li><strong>જર્નલ:</strong> ગલ્લામાંથી બેંકમાં કે ખર્ચમાં એન્ટ્રી ટ્રાન્સફર કરવી.</li>
+                      <li><strong>P&L (નફો-નુકસાન):</strong> આવક માઈનસ ખર્ચ = ચોખ્ખો નફો.</li>
+                      <li><strong>ડે-ક્લોઝિંગ:</strong> રાત્રે ગલ્લો ગણીને સરભર કરવો.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4 LIVE RESTAURANT FINANCE PULSE CARDS (1-CLICK DIRECT NAVIGATION) */}
+      <div className="row g-2">
+        {/* Pulse Card 1: Cash in Counter */}
+        <div className="col-6 col-lg-3">
+          <div
+            className="card shadow-sm border rounded-3 p-2.5 bg-white h-100 transition-all"
+            style={{
+              borderLeft: '4px solid #16A34A',
+              cursor: 'pointer',
+              backgroundColor: selectedAccountId === quickStats.cashAccountId && activeTab === 'ledger' ? '#F0FDF4' : '#FFFFFF'
+            }}
+            onClick={() => {
+              if (quickStats.cashAccountId) {
+                setSelectedAccountId(quickStats.cashAccountId);
+                setActiveTab('ledger');
+              }
+            }}
+            title="ક્લિક કરીને રોકડ ગલ્લાની ખાતાવહી જુઓ"
+          >
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <span className="small fw-bold text-success d-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
+                <Wallet size={14} /> રોકડ ગલ્લો (Cash in Hand)
+              </span>
+              <span className="badge bg-success text-white px-1.5 py-0.5 rounded-pill" style={{ fontSize: '0.65rem' }}>
+                લાઇવ
+              </span>
+            </div>
+            <h5 className="fw-bold mb-0 text-dark fs-5">
+              ₹{quickStats.cash.toLocaleString()}
+            </h5>
+            <div className="d-flex justify-content-between align-items-center mt-1">
+              <span className="text-muted small text-truncate" style={{ fontSize: '0.68rem' }}>
+                કાઉન્ટર ડ્રોઅરમાં રોકડ
+              </span>
+              <span className="text-success fw-bold small text-nowrap" style={{ fontSize: '0.68rem' }}>
+                હિસાબ જુઓ ➔
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Pulse Card 2: Bank Balance */}
+        <div className="col-6 col-lg-3">
+          <div
+            className="card shadow-sm border rounded-3 p-2.5 bg-white h-100 transition-all"
+            style={{
+              borderLeft: '4px solid #2563EB',
+              cursor: 'pointer',
+              backgroundColor: selectedAccountId === quickStats.bankAccountId && activeTab === 'ledger' ? '#EFF6FF' : '#FFFFFF'
+            }}
+            onClick={() => {
+              if (quickStats.bankAccountId) {
+                setSelectedAccountId(quickStats.bankAccountId);
+                setActiveTab('ledger');
+              }
+            }}
+            title="ક્લિક કરીને બેંક ખાતાની ખાતાવહી જુઓ"
+          >
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <span className="small fw-bold text-primary d-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
+                <Building2 size={14} /> બેંક એકાઉન્ટ (Bank Balance)
+              </span>
+              <span className="badge bg-primary text-white px-1.5 py-0.5 rounded-pill" style={{ fontSize: '0.65rem' }}>
+                કરંટ ખાતું
+              </span>
+            </div>
+            <h5 className="fw-bold mb-0 text-primary fs-5">
+              ₹{quickStats.bank.toLocaleString()}
+            </h5>
+            <div className="d-flex justify-content-between align-items-center mt-1">
+              <span className="text-muted small text-truncate" style={{ fontSize: '0.68rem' }}>
+                SBI / HDFC બેંક જમા
+              </span>
+              <span className="text-primary fw-bold small text-nowrap" style={{ fontSize: '0.68rem' }}>
+                સ્ટેટમેન્ટ ➔
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Pulse Card 3: Supplier Payables */}
+        <div className="col-6 col-lg-3">
+          <div
+            className="card shadow-sm border rounded-3 p-2.5 bg-white h-100 transition-all"
+            style={{
+              borderLeft: '4px solid #DC2626',
+              cursor: 'pointer',
+              backgroundColor: selectedAccountId === quickStats.payableAccountId && activeTab === 'ledger' ? '#FEF2F2' : '#FFFFFF'
+            }}
+            onClick={() => {
+              if (quickStats.payableAccountId) {
+                setSelectedAccountId(quickStats.payableAccountId);
+                setActiveTab('ledger');
+              }
+            }}
+            title="ક્લિક કરીને વેપારીઓના ચૂકવવાના દેવાં જુઓ"
+          >
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <span className="small fw-bold text-danger d-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
+                <Users size={14} /> વેપારી દેવાં (To Pay / Suppliers)
+              </span>
+              <span className="badge bg-danger text-white px-1.5 py-0.5 rounded-pill" style={{ fontSize: '0.65rem' }}>
+                ચૂકવવાના
+              </span>
+            </div>
+            <h5 className="fw-bold mb-0 text-danger fs-5">
+              ₹{quickStats.payables.toLocaleString()}
+            </h5>
+            <div className="d-flex justify-content-between align-items-center mt-1">
+              <span className="text-muted small text-truncate" style={{ fontSize: '0.68rem' }}>
+                શાકભાજી & કરિયાણા વેપારીઓ
+              </span>
+              <span className="text-danger fw-bold small text-nowrap" style={{ fontSize: '0.68rem' }}>
+                વિગત ➔
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Pulse Card 4: Customer Receivables */}
+        <div className="col-6 col-lg-3">
+          <div
+            className="card shadow-sm border rounded-3 p-2.5 bg-white h-100 transition-all"
+            style={{
+              borderLeft: '4px solid #D97706',
+              cursor: 'pointer',
+              backgroundColor: selectedAccountId === quickStats.receivableAccountId && activeTab === 'ledger' ? '#FFFBEB' : '#FFFFFF'
+            }}
+            onClick={() => {
+              if (quickStats.receivableAccountId) {
+                setSelectedAccountId(quickStats.receivableAccountId);
+                setActiveTab('ledger');
+              }
+            }}
+            title="ક્લિક કરીને ગ્રાહક ઉધાર લેણાં જુઓ"
+          >
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <span className="small fw-bold text-warning-emphasis d-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
+                <ArrowDownLeft size={14} /> માર્કેટ લેણાં (To Receive / Udhar)
+              </span>
+              <span className="badge bg-warning text-dark px-1.5 py-0.5 rounded-pill" style={{ fontSize: '0.65rem' }}>
+                આવવાના
+              </span>
+            </div>
+            <h5 className="fw-bold mb-0 text-warning-emphasis fs-5">
+              ₹{quickStats.receivables.toLocaleString()}
+            </h5>
+            <div className="d-flex justify-content-between align-items-center mt-1">
+              <span className="text-muted small text-truncate" style={{ fontSize: '0.68rem' }}>
+                ગ્રાહકો પાસેથી લેવાના
+              </span>
+              <span className="text-warning-emphasis fw-bold small text-nowrap" style={{ fontSize: '0.68rem' }}>
+                વિગત ➔
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 2. NAVIGATION TABS: Horizontal Touch Scroll for Mobile & Web */}
       <div className="card shadow-sm border rounded-3 bg-white p-1.5">
         <ul className="nav nav-pills gap-1 flex-nowrap overflow-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
@@ -876,6 +1259,34 @@ export const AccountsPage: React.FC = () => {
           {/* Top Filter & Toolbar Card - Perfectly Structured for Mobile & Web */}
           <div className="card shadow-sm border rounded-3 bg-white p-3">
             <div className="row g-3">
+              {/* Quick 1-Click Popular Accounts Bar */}
+              {popularAccounts.length > 0 && (
+                <div className="col-12 pb-2.5 border-bottom">
+                  <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                    <span className="small text-secondary fw-bold me-1 text-nowrap d-flex align-items-center gap-1" style={{ fontSize: '0.76rem' }}>
+                      <Sparkles size={13} className="text-warning" /> મુખ્ય ખાતાઓ (Quick Select):
+                    </span>
+                    {popularAccounts.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`btn btn-xs rounded-pill px-2.5 py-1 text-nowrap transition-all ${
+                          selectedAccountId === p.acc!.id
+                            ? 'btn-dark fw-bold text-white shadow-xs'
+                            : 'btn-outline-secondary bg-white text-dark'
+                        }`}
+                        style={{ fontSize: '0.74rem' }}
+                        onClick={() => {
+                          if (p.acc) setSelectedAccountId(p.acc.id);
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Row A: Account Selector (Left) + Export & Refresh Buttons (Right) */}
               <div className="col-12 col-lg-7">
                 <label className="form-label small fw-bold text-dark d-flex align-items-center gap-1 mb-1.5">
@@ -1062,7 +1473,7 @@ export const AccountsPage: React.FC = () => {
                 <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #2563EB' }}>
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-                      Total Debits (Dr)
+                      કુલ આવ્યા / ઉધાર (Dr ⬇️)
                     </span>
                     <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
                       Inflow
@@ -1082,7 +1493,7 @@ export const AccountsPage: React.FC = () => {
                 <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #16A34A' }}>
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-                      Total Credits (Cr)
+                      કુલ ગયા / જમા (Cr ⬆️)
                     </span>
                     <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
                       Outflow
@@ -1102,7 +1513,7 @@ export const AccountsPage: React.FC = () => {
                 <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #D97706' }}>
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-                      Net Movement
+                      ચોખ્ખો ફેરફાર (Net Change)
                     </span>
                     <span className="badge bg-light text-secondary border px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
                       Activity
@@ -1184,8 +1595,14 @@ export const AccountsPage: React.FC = () => {
                     <th className="text-nowrap" style={{ width: '14%' }}>Voucher #</th>
                     <th style={{ width: '28%' }}>Particulars / Contra Account</th>
                     <th className="text-nowrap" style={{ width: '12%' }}>Ref Type</th>
-                    <th className="text-end text-nowrap" style={{ width: '11%' }}>Debit (₹ Dr)</th>
-                    <th className="text-end text-nowrap" style={{ width: '11%' }}>Credit (₹ Cr)</th>
+                    <th className="text-end text-nowrap" style={{ width: '12%' }}>
+                      <span className="badge bg-success-subtle text-success border border-success-subtle me-1" style={{ fontSize: '0.65rem' }}>⬇️ આવ્યા</span>
+                      <span>ઉધાર (Dr)</span>
+                    </th>
+                    <th className="text-end text-nowrap" style={{ width: '12%' }}>
+                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle me-1" style={{ fontSize: '0.65rem' }}>⬆️ ગયા</span>
+                      <span>જમા (Cr)</span>
+                    </th>
                     <th className="text-end text-nowrap pe-3" style={{ width: '13%' }}>Running Balance</th>
                   </tr>
                 </thead>
@@ -1731,6 +2148,42 @@ export const AccountsPage: React.FC = () => {
       {/* ======================================================== */}
       {activeTab === 'summary' && financialSummary && (
         <div className="d-flex flex-column gap-3">
+          {/* Visual P&L Equation Card */}
+          <div className="card shadow-sm border rounded-3 bg-white p-3 mb-2" style={{ borderLeft: '4px solid #16A34A' }}>
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 fw-bold" style={{ fontSize: '0.74rem' }}>
+                💡 સરળ નફો-નુકસાન ગણતરી (Simple Profit & Loss Formula)
+              </span>
+              <span className="small text-muted" style={{ fontSize: '0.72rem' }}>
+                આવકમાંથી તમામ ખર્ચ બાદ કરતાં વધતો ચોખ્ખો નફો
+              </span>
+            </div>
+            <div className="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-2 p-2.5 rounded-3 bg-light text-center">
+              <div className="p-2 bg-white rounded-2 border flex-fill shadow-xs">
+                <span className="text-success fw-bold small d-block" style={{ fontSize: '0.72rem' }}>૧. કુલ વેચાણ આવક</span>
+                <h5 className="fw-bold text-success mb-0 mt-0.5 fs-6">₹{(financialSummary.profitAndLoss?.totalRevenue || 0).toLocaleString()}</h5>
+              </div>
+              <div className="fs-5 text-muted fw-bold align-self-center">➖</div>
+              <div className="p-2 bg-white rounded-2 border flex-fill shadow-xs">
+                <span className="text-danger fw-bold small d-block" style={{ fontSize: '0.72rem' }}>૨. કાચી સામગ્રી ખર્ચ (COGS)</span>
+                <h5 className="fw-bold text-danger mb-0 mt-0.5 fs-6">₹{(financialSummary.profitAndLoss?.totalCOGS || 0).toLocaleString()}</h5>
+              </div>
+              <div className="fs-5 text-muted fw-bold align-self-center">➖</div>
+              <div className="p-2 bg-white rounded-2 border flex-fill shadow-xs">
+                <span className="text-warning-emphasis fw-bold small d-block" style={{ fontSize: '0.72rem' }}>૩. અન્ય ખર્ચ (પગાર, લાઈટ, ભાડું)</span>
+                <h5 className="fw-bold text-warning-emphasis mb-0 mt-0.5 fs-6">₹{(financialSummary.profitAndLoss?.totalOperatingExpense || 0).toLocaleString()}</h5>
+              </div>
+              <div className="fs-5 text-muted fw-bold align-self-center">🟰</div>
+              <div
+                className="p-2 rounded-2 border flex-fill text-white shadow-xs"
+                style={{ backgroundColor: (financialSummary.profitAndLoss?.netProfit || 0) >= 0 ? '#15803D' : '#DC2626' }}
+              >
+                <span className="fw-bold small d-block text-white-50" style={{ fontSize: '0.72rem' }}>૪. ચોખ્ખો નફો (Net Profit)</span>
+                <h5 className="fw-bold text-white mb-0 mt-0.5 fs-6">₹{(financialSummary.profitAndLoss?.netProfit || 0).toLocaleString()}</h5>
+              </div>
+            </div>
+          </div>
+
           {/* P&L 4 Metric Cards */}
           <div className="row g-3">
             <div className="col-12 col-sm-6 col-md-3">
