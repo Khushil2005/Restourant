@@ -26,17 +26,11 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
-    },
-    {
-      "src": "/logo_square.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
     }
   ],
   "start_url": "/",
-  "background_color": "#1a1612",
-  "theme_color": "#d48b28",
+  "background_color": "#f7f1e5",
+  "theme_color": "#7a1c24",
   "display": "standalone",
   "orientation": "any",
   "scope": "/"
