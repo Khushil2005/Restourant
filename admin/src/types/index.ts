@@ -318,9 +318,63 @@ export interface ChartOfAccount {
   accountName: string;
   accountType: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
   subType?: string;
+  openingBalance?: number;
   currentBalance: number;
+  description?: string;
   isActive: boolean;
 }
+
+export interface LedgerTransaction {
+  id: string;
+  entryId: string;
+  entryNumber: string;
+  entryDate: string;
+  referenceType?: string;
+  referenceId?: string;
+  narration: string;
+  particulars: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+  balanceType: 'Dr' | 'Cr';
+}
+
+export interface AccountLedgerStatement {
+  account: ChartOfAccount;
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+  openingBalance: number;
+  openingBalanceType: 'Dr' | 'Cr';
+  totalDebit: number;
+  totalCredit: number;
+  netChange: number;
+  closingBalance: number;
+  closingBalanceType: 'Dr' | 'Cr';
+  transactions: LedgerTransaction[];
+}
+
+export interface TrialBalanceRow {
+  id: string;
+  accountCode: string;
+  accountName: string;
+  accountType: string;
+  subType?: string;
+  totalDebit: number;
+  totalCredit: number;
+  debitBalance: number;
+  creditBalance: number;
+}
+
+export interface TrialBalanceReport {
+  asOfDate: string;
+  grandDebit: number;
+  grandCredit: number;
+  isBalanced: boolean;
+  rows: TrialBalanceRow[];
+}
+
 
 export interface JournalEntry {
   id: string;
@@ -337,6 +391,7 @@ export interface JournalEntry {
     accountName: string;
     debit: number;
     credit: number;
+    description?: string;
   }>;
   createdAt: string;
 }

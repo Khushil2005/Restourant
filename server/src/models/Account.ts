@@ -7,7 +7,9 @@ export interface IChartOfAccount extends Document {
   accountName: string;
   accountType: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
   subType?: string;
+  openingBalance?: number;
   currentBalance: number;
+  description?: string;
   isActive: boolean;
   createdAt: Date;
 }
@@ -17,7 +19,9 @@ const ChartOfAccountSchema = new Schema<IChartOfAccount>({
   accountName: { type: String, required: true, unique: true },
   accountType: { type: String, enum: ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'], required: true },
   subType: { type: String },
+  openingBalance: { type: Number, default: 0 },
   currentBalance: { type: Number, default: 0 },
+  description: { type: String },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

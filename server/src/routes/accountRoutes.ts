@@ -26,6 +26,15 @@ accountRouter.post('/chart', authenticate, authorize('accounts.chart.create'), a
   }
 });
 
+accountRouter.put('/chart/:id', authenticate, authorize('accounts.chart.edit'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const head = await AccountService.updateAccountHead(req.params.id, req.body, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, head, 'Account head updated.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
+  }
+});
+
 // --- JOURNAL ENTRIES ---
 accountRouter.get('/journal', authenticate, authorize('accounts.journal.view'), async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -42,6 +51,31 @@ accountRouter.post('/journal', authenticate, authorize('accounts.journal.create'
     return ApiResponse.success(res, entry, 'Journal voucher posted.', 201);
   } catch (err: any) {
     return ApiResponse.error(res, err.message, err.statusCode || 400);
+  }
+});
+
+// --- ACCOUNT LEDGER STATEMENT ---
+accountRouter.get('/ledger', authenticate, authorize('accounts.ledger.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { accountId, startDate, endDate } = req.query as { accountId?: string; startDate?: string; endDate?: string };
+    if (!accountId) {
+      return ApiResponse.error(res, 'accountId query parameter is required.', 400);
+    }
+    const statement = await AccountService.getAccountLedger(accountId, startDate, endDate);
+    return ApiResponse.success(res, statement, 'Account ledger statement loaded.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, err.statusCode || 500);
+  }
+});
+
+// --- TRIAL BALANCE ---
+accountRouter.get('/trial-balance', authenticate, authorize('accounts.dashboard.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { asOfDate } = req.query as { asOfDate?: string };
+    const trialBalance = await AccountService.getTrialBalance(asOfDate);
+    return ApiResponse.success(res, trialBalance, 'Trial balance loaded.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
   }
 });
 
