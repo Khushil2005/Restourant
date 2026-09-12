@@ -3,12 +3,11 @@ import { apiClient } from '../../api/client';
 import { useSocket } from '../../context/SocketContext';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { QueueToken } from '../../types';
-import { Bell, Utensils, Users } from 'lucide-react';
+import { Bell } from 'lucide-react';
 
 export const PublicTokenDisplay: React.FC = () => {
   const { socket } = useSocket();
   const [tokens, setTokens] = useState<QueueToken[]>([]);
-  const [calledToken, setCalledToken] = useState<QueueToken | null>(null);
 
   const loadQueue = async (forceFresh = false) => {
     try {
@@ -36,16 +35,12 @@ export const PublicTokenDisplay: React.FC = () => {
     if (!socket) return;
     const refreshLive = () => loadQueue(true);
 
-    socket.on('token.called', (token: QueueToken) => {
-      setCalledToken(token);
-      loadQueue(true);
-    });
-
+    socket.on('token.called', refreshLive);
     socket.on('token.updated', refreshLive);
     socket.on('data.changed', refreshLive);
 
     return () => {
-      socket.off('token.called');
+      socket.off('token.called', refreshLive);
       socket.off('token.updated', refreshLive);
       socket.off('data.changed', refreshLive);
     };

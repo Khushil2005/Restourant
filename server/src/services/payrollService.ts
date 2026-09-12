@@ -1,4 +1,4 @@
-import { PayrollRun, Payslip, Employee, SalaryStructure, AttendanceRecord, LeaveRequest } from '../models/HR';
+import { PayrollRun, Payslip, Employee, SalaryStructure, AttendanceRecord } from '../models/HR';
 import { ChartOfAccount, JournalEntry } from '../models/Account';
 import { createAuditLog } from '../middleware/auditMiddleware';
 import { v4 as uuidv4 } from 'uuid';

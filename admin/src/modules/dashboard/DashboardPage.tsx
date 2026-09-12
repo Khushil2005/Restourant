@@ -6,12 +6,10 @@ import {
   DollarSign,
   ShoppingBag,
   Clock,
-  CalendarCheck,
   Ticket,
   Grid,
   ChefHat,
   AlertTriangle,
-  Users,
   TrendingUp,
   CreditCard
 } from 'lucide-react';

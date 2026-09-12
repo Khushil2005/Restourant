@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../api/client';
-import { usePermission } from '../../context/PermissionContext';
 import { MenuItem, MenuCategory, DayOfWeek, DailyMenu } from '../../types';
 import {
   Calendar,
@@ -12,9 +11,7 @@ import {
   Search,
   ShieldCheck,
   ShieldAlert,
-  Sparkles,
   Utensils,
-  ArrowRight,
   RefreshCw,
   AlertCircle
 } from 'lucide-react';
@@ -33,7 +30,6 @@ import { appCache } from '../../api/cache';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const DailyMenuPage: React.FC = () => {
-  const { can } = usePermission();
 
   const cachedCats = appCache.get('/masters/menu-categories')?.data || appCache.get('/masters/menu-categories');
   const cachedItems = appCache.get('/masters/menu-items')?.data || appCache.get('/masters/menu-items');
@@ -45,7 +41,6 @@ export const DailyMenuPage: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>(() => cachedDaily?.currentDay || 'MONDAY');
   const [systemToday, setSystemToday] = useState<DayOfWeek>(() => cachedDaily?.currentDay || 'MONDAY');
   const [isStrictEnforced, setIsStrictEnforced] = useState(() => cachedDaily ? cachedDaily.isStrictEnforced !== false : true);
-  const [activeOverrideDay, setActiveOverrideDay] = useState<DayOfWeek | null>(() => cachedDaily?.activeOverrideDay || null);
 
   // Selected Day's active item IDs (editable state)
   const [activeItemIds, setActiveItemIds] = useState<string[]>(() => {
@@ -98,7 +93,6 @@ export const DailyMenuPage: React.FC = () => {
         setDailyMenus(dailyRes.data.menus || []);
         setSystemToday(dailyRes.data.currentDay || 'MONDAY');
         setIsStrictEnforced(dailyRes.data.isStrictEnforced !== false);
-        setActiveOverrideDay(dailyRes.data.activeOverrideDay || null);
 
         // Default active day to today ONLY on initial load
         if (isInitialLoadRef.current) {

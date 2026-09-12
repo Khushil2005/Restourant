@@ -1,24 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
-import { Server, Activity, Database, Wifi, Cpu, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Activity, Database, Wifi, Cpu, RefreshCw } from 'lucide-react';
 
 export const SystemDiagnosticsPage: React.FC = () => {
   const [latency, setLatency] = useState<number | null>(null);
-  const [status, setStatus] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
 
   const runDiagnostics = async () => {
-    setLoading(true);
     const start = performance.now();
     try {
-      const res: any = await apiClient.get('/system/system-control/status');
+      await apiClient.get('/system/system-control/status');
       const end = performance.now();
       setLatency(Math.round(end - start));
-      setStatus(res.data);
     } catch (err) {
       console.error('Diagnostics failed:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

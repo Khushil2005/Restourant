@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
-import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
+import { DataTable, Modal } from '../../components/PermissionGate';
 import { Expense } from '../../types';
-import { DollarSign, Plus, Trash2, Calendar, FileText } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 export const ExpensesPage: React.FC = () => {
   const { can } = usePermission();
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,14 +21,11 @@ export const ExpensesPage: React.FC = () => {
   });
 
   const loadExpenses = async () => {
-    setLoading(true);
     try {
       const res: any = await apiClient.get('/expenses');
       if (res.success) setExpenses(res.data);
     } catch (err) {
       console.error('Failed to load expenses:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

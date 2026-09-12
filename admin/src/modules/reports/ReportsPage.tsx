@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { apiClient } from '../../api/client';
-import { usePermission } from '../../context/PermissionContext';
-import { DataTable, Modal } from '../../components/PermissionGate';
+import { Modal } from '../../components/PermissionGate';
 import {
   BarChart3,
   Download,
   Upload,
-  Calendar,
   DollarSign,
   CreditCard,
   Boxes,
@@ -17,9 +15,7 @@ import {
   Search,
   CheckCircle2,
   Receipt,
-  Utensils,
-  TrendingUp,
-  FileText
+  Utensils
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -107,8 +103,6 @@ const REPORT_COLUMNS: Record<ReportType, ColumnDef[]> = {
 };
 
 export const ReportsPage: React.FC = () => {
-  const { can } = usePermission();
-
   // Active Report Type
   const [reportType, setReportType] = useState<ReportType>('sales');
 

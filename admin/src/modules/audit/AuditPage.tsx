@@ -1,27 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
-import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
 import { AuditLog } from '../../types';
-import { ShieldAlert, Eye, Filter, RefreshCw } from 'lucide-react';
+import { Eye, RefreshCw } from 'lucide-react';
 
 export const AuditPage: React.FC = () => {
-  const { can } = usePermission();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [selectedModule, setSelectedModule] = useState<string>('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const loadLogs = async () => {
-    setLoading(true);
     try {
       const q = selectedModule ? `?module=${selectedModule}` : '';
       const res: any = await apiClient.get(`/system/audit-logs${q}`);
       if (res.success) setLogs(res.data);
     } catch (err) {
       console.error('Failed to load audit logs:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -146,7 +140,6 @@ export const AuditPage: React.FC = () => {
 };
 
 export const SystemControlPage: React.FC = () => {
-  const { can } = usePermission();
   const [systemStatus, setSystemStatus] = useState<string>('ONLINE');
   const [reason, setReason] = useState<string>('');
   const [maintenanceLogs, setMaintenanceLogs] = useState<any[]>([]);

@@ -1,5 +1,5 @@
-import { DailyMenu, DailyMenuConfig, DayOfWeek, IDailyMenu } from '../models/DailyMenu';
-import { MenuItem, MenuCategory } from '../models/Master';
+import { DailyMenu, DailyMenuConfig, DayOfWeek } from '../models/DailyMenu';
+import { MenuItem } from '../models/Master';
 import { createAuditLog } from '../middleware/auditMiddleware';
 
 export const ALL_DAYS: DayOfWeek[] = [

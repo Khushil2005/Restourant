@@ -15,15 +15,12 @@ import {
   CheckCircle2,
   RefreshCw,
   FileJson,
-  Filter,
-  Clock,
   ShieldAlert,
   Copy,
   Check,
   Table,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal,
   XCircle,
   FileSpreadsheet
 } from 'lucide-react';
@@ -42,7 +39,6 @@ export const DatabaseToolsPage: React.FC = () => {
 
   // Collections Registry Metadata
   const [collections, setCollections] = useState<CollectionItem[]>([]);
-  const [loadingCollections, setLoadingCollections] = useState(false);
 
   // -------------------------------------------------------------
   // TAB 1: DATA EXPLORER & CRUD STATES
@@ -116,7 +112,6 @@ export const DatabaseToolsPage: React.FC = () => {
   // LOAD COLLECTIONS METADATA
   // -------------------------------------------------------------
   const loadCollections = async () => {
-    setLoadingCollections(true);
     try {
       const res: any = await apiClient.get('/system/database/collections');
       if (res.success && Array.isArray(res.data)) {
@@ -127,8 +122,6 @@ export const DatabaseToolsPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load collections:', err);
-    } finally {
-      setLoadingCollections(false);
     }
   };
 

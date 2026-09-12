@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
-import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
+import { DataTable, Modal } from '../../components/PermissionGate';
 import { PurchaseOrder, Supplier, InventoryItem } from '../../types';
-import { Truck, Plus, CheckCircle2, PackageCheck, CreditCard, Trash2, Eye } from 'lucide-react';
+import { Plus, CheckCircle2, PackageCheck, Trash2 } from 'lucide-react';
 
 export const PurchasePage: React.FC = () => {
   const { can } = usePermission();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Create PO Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,7 +21,6 @@ export const PurchasePage: React.FC = () => {
   const [vendorInvoiceNo, setVendorInvoiceNo] = useState('');
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const [pRes, sRes, iRes]: any = await Promise.all([
         apiClient.get('/purchases/orders'),
@@ -34,8 +32,6 @@ export const PurchasePage: React.FC = () => {
       if (iRes.success) setInventoryItems(iRes.data);
     } catch (err) {
       console.error('Failed to load purchase data:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -228,7 +224,6 @@ export const PurchasePage: React.FC = () => {
             <div className="d-flex flex-column gap-2">
               {poItems.map((it, idx) => {
                 const raw = inventoryItems.find(i => i.id === it.inventoryItemId);
-                const lineTotal = (it.quantity || 0) * (it.unitPrice || 0);
 
                 return (
                   <div key={idx} className="row g-2 align-items-center">

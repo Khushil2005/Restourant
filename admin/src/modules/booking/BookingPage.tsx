@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../../api/client';
-import { usePermission } from '../../context/PermissionContext';
-import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { Modal } from '../../components/PermissionGate';
 import { Booking } from '../../types';
@@ -24,8 +22,6 @@ import {
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const BookingPage: React.FC = () => {
-  const { can } = usePermission();
-  const { user } = useAuth();
   const { socket } = useSocket();
 
   // Current real date & system clock

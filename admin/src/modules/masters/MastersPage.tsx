@@ -3,7 +3,7 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal, ConfirmDialog, PermissionGate } from '../../components/PermissionGate';
 import { Customer, Supplier, MenuCategory, MenuItem, DiningTable, FloorZone } from '../../types';
-import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 
 import { appCache } from '../../api/cache';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
@@ -26,7 +26,6 @@ export const MastersPage: React.FC = () => {
   const [floorZones, setFloorZones] = useState<FloorZone[]>(() => Array.isArray(cachedZones) ? cachedZones : []);
   const [customers, setCustomers] = useState<Customer[]>(() => Array.isArray(cachedCustomers) ? cachedCustomers : []);
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => Array.isArray(cachedSuppliers) ? cachedSuppliers : []);
-  const [loading, setLoading] = useState(false);
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,19 +36,7 @@ export const MastersPage: React.FC = () => {
   // Confirm delete
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string; type: string } | null>(null);
 
-  const hasDataForTab = () => {
-    if (activeTab === 'menu' || activeTab === 'categories') return menuItems.length > 0;
-    if (activeTab === 'tables') return tables.length > 0;
-    if (activeTab === 'zones') return floorZones.length > 0;
-    if (activeTab === 'customers') return customers.length > 0;
-    if (activeTab === 'suppliers') return suppliers.length > 0;
-    return false;
-  };
-
-  const loadData = async (showSpinner = false, forceFresh = false) => {
-    if (showSpinner || !hasDataForTab()) {
-      setLoading(true);
-    }
+  const loadData = async (forceFresh = false) => {
     try {
       const config = forceFresh ? { forceFresh: true } : undefined;
       if (activeTab === 'menu' && can('masters.menu.view')) {
@@ -85,13 +72,11 @@ export const MastersPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load master data:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
   // Universal Auto-Refresh: Real-time sync across devices and tabs
-  useAutoRefresh(() => loadData(false, true), {
+  useAutoRefresh(() => loadData(true), {
     entities: ['masters', 'tables', 'floor-zones', 'menu', 'categories', 'customers', 'suppliers'],
     intervalMs: 3000,
     refreshOnFocus: true
@@ -116,7 +101,7 @@ export const MastersPage: React.FC = () => {
   }, [can]);
 
   useEffect(() => {
-    loadData(false, true);
+    loadData(true);
   }, [activeTab]);
 
   const handleOpenModal = (type: string, item: any = null) => {
@@ -202,7 +187,7 @@ export const MastersPage: React.FC = () => {
         }
       }
       setIsModalOpen(false);
-      loadData(false, true);
+      loadData(true);
     } catch (err: any) {
       alert(err.message || 'Failed to save record.');
     }
@@ -220,7 +205,7 @@ export const MastersPage: React.FC = () => {
       else if (deleteConfirm.type === 'supplier') await apiClient.delete(`/masters/suppliers/${deleteConfirm.id}`);
       else if (deleteConfirm.type === 'category') await apiClient.delete(`/masters/menu-categories/${deleteConfirm.id}`);
       setDeleteConfirm(null);
-      loadData(false, true);
+      loadData(true);
     } catch (err: any) {
       alert(err.message || 'Failed to delete record.');
     }

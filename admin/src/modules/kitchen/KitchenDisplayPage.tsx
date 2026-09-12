@@ -4,7 +4,7 @@ import { usePermission } from '../../context/PermissionContext';
 import { useSocket } from '../../context/SocketContext';
 import { KOTTicket } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Clock, CheckCircle2, AlertTriangle, ArrowLeft, RefreshCw, Flame } from 'lucide-react';
+import { ChefHat, Clock, CheckCircle2, ArrowLeft, RefreshCw, Flame } from 'lucide-react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const KitchenDisplayPage: React.FC = () => {
@@ -14,12 +14,8 @@ export const KitchenDisplayPage: React.FC = () => {
 
   const [tickets, setTickets] = useState<KOTTicket[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('ACTIVE');
-  const [loading, setLoading] = useState(false);
 
-  const loadKOTs = async (showSpinner = false, forceFresh = false) => {
-    if (showSpinner || tickets.length === 0) {
-      setLoading(true);
-    }
+  const loadKOTs = async (forceFresh = false) => {
     try {
       const config = forceFresh ? { forceFresh: true } : undefined;
       const res: any = await apiClient.get('/kot', config);
@@ -28,16 +24,14 @@ export const KitchenDisplayPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load KOT tickets:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadKOTs(false, true);
+    loadKOTs(true);
   }, []);
 
-  useAutoRefresh(() => loadKOTs(false, true), {
+  useAutoRefresh(() => loadKOTs(true), {
     entities: ['kot', 'orders', 'kitchen'],
     intervalMs: 3000,
     refreshOnFocus: true
@@ -46,7 +40,7 @@ export const KitchenDisplayPage: React.FC = () => {
   // Socket listener for new/updated KOT tickets
   useEffect(() => {
     if (!socket) return;
-    const refreshLive = () => loadKOTs(false, true);
+    const refreshLive = () => loadKOTs(true);
 
     socket.on('kot.created', refreshLive);
     socket.on('kot.updated', refreshLive);
@@ -64,7 +58,7 @@ export const KitchenDisplayPage: React.FC = () => {
   const handleAction = async (id: string, action: 'accept' | 'prepare' | 'ready' | 'served') => {
     try {
       await apiClient.patch(`/kot/${id}/${action}`);
-      loadKOTs(false, true);
+      loadKOTs(true);
     } catch (err: any) {
       alert(err.message || 'Action failed.');
     }
@@ -124,7 +118,7 @@ export const KitchenDisplayPage: React.FC = () => {
             </button>
           </div>
 
-          <button className="btn btn-outline-secondary btn-sm p-1 px-2" onClick={() => loadKOTs(false, true)} title="Refresh">
+          <button className="btn btn-outline-secondary btn-sm p-1 px-2" onClick={() => loadKOTs(true)} title="Refresh">
             <RefreshCw size={14} />
           </button>
         </div>

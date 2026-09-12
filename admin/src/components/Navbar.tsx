@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useSocket } from '../context/SocketContext';
-import { Bell, User as UserIcon, LogOut, Shield, Wifi, WifiOff, Settings } from 'lucide-react';
+import { Bell, LogOut, Wifi, WifiOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Navbar: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) => {

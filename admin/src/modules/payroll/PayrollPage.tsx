@@ -3,7 +3,7 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
 import { PayrollRun, Payslip } from '../../types';
-import { FileSpreadsheet, Plus, CheckCircle2, Eye, Printer, DollarSign } from 'lucide-react';
+import { Plus, CheckCircle2, Eye, Printer } from 'lucide-react';
 
 export const PayrollPage: React.FC = () => {
   const { can } = usePermission();
@@ -11,7 +11,6 @@ export const PayrollPage: React.FC = () => {
   const [selectedRun, setSelectedRun] = useState<PayrollRun | null>(null);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
-  const [loading, setLoading] = useState(false);
 
   // Process Modal
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
@@ -19,14 +18,11 @@ export const PayrollPage: React.FC = () => {
   const [processYear, setProcessYear] = useState(new Date().getFullYear());
 
   const loadRuns = async () => {
-    setLoading(true);
     try {
       const res: any = await apiClient.get('/hr/payroll/runs');
       if (res.success) setPayrollRuns(res.data);
     } catch (err) {
       console.error('Failed to load payroll runs:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

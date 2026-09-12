@@ -3,14 +3,13 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
 import { Recipe, MenuItem, InventoryItem } from '../../types';
-import { BookOpen, Plus, Trash2, Edit2, Utensils, DollarSign, Calculator } from 'lucide-react';
+import { Plus, Trash2, Edit2 } from 'lucide-react';
 
 export const RecipePage: React.FC = () => {
   const { can } = usePermission();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,7 +18,6 @@ export const RecipePage: React.FC = () => {
   const [instructions, setInstructions] = useState('');
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const [rRes, mRes, iRes]: any = await Promise.all([
         apiClient.get('/inventory/recipes'),
@@ -31,8 +29,6 @@ export const RecipePage: React.FC = () => {
       if (iRes.success) setInventoryItems(iRes.data);
     } catch (err) {
       console.error('Failed to load recipe data:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

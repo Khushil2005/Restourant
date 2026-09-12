@@ -4,7 +4,7 @@ import { usePermission } from '../../context/PermissionContext';
 import { useSocket } from '../../context/SocketContext';
 import { Modal } from '../../components/PermissionGate';
 import { DiningTable, FloorZone, Bill } from '../../types';
-import { Grid, Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2, Receipt, Download, Printer, CreditCard } from 'lucide-react';
+import { Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2, Receipt, Download, Printer, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateInvoicePdf, printInvoiceReceipt } from '../../utils/invoicePdf';
 

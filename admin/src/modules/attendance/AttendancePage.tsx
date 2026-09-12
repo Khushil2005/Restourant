@@ -3,13 +3,12 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
 import { AttendanceRecord, Employee } from '../../types';
-import { Clock, CheckCircle2, XCircle, Plus, Calendar, AlertCircle } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 export const AttendancePage: React.FC = () => {
   const { can } = usePermission();
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Punch Modal
@@ -18,7 +17,6 @@ export const AttendancePage: React.FC = () => {
   const [punchType, setPunchType] = useState<'IN' | 'OUT'>('IN');
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const [aRes, eRes]: any = await Promise.all([
         apiClient.get(`/hr/attendance?date=${selectedDate}`),
@@ -28,8 +26,6 @@ export const AttendancePage: React.FC = () => {
       if (eRes.success) setEmployees(eRes.data);
     } catch (err) {
       console.error('Failed to load attendance:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

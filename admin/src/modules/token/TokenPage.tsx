@@ -1,19 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../../api/client';
-import { usePermission } from '../../context/PermissionContext';
 import { useSocket } from '../../context/SocketContext';
 import { QueueToken, DiningTable } from '../../types';
 import { Modal } from '../../components/PermissionGate';
 import { 
   Megaphone, 
   RotateCcw, 
-  FastForward, 
   UserCheck, 
   Plus, 
   Search, 
   Volume2, 
-  CheckCircle2, 
-  Clock, 
   Phone,
   Users,
   X
@@ -21,7 +17,6 @@ import {
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 export const TokenPage: React.FC = () => {
-  const { can } = usePermission();
   const { socket } = useSocket();
 
   // Current system clock
@@ -208,8 +203,6 @@ export const TokenPage: React.FC = () => {
 
   // Counts
   const waitingCount = tokens.filter(t => t.status === 'WAITING').length;
-  const callingCount = tokens.filter(t => t.status === 'CALLED' || t.status === 'RECALLED').length;
-  const servedCount = tokens.filter(t => t.status === 'SEATED').length;
 
   // Filtered Tokens
   const filteredTokens = useMemo(() => {

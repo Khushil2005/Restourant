@@ -4,21 +4,17 @@ import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
 import { InventoryItem } from '../../types';
 import {
-  Boxes,
   ArrowDownLeft,
   ArrowUpRight,
   SlidersHorizontal,
-  ArrowRightLeft,
   BookOpen,
   Plus,
-  AlertTriangle,
-  FileSpreadsheet
+  AlertTriangle
 } from 'lucide-react';
 
 export const InventoryPage: React.FC = () => {
   const { can } = usePermission();
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Modals
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -52,14 +48,11 @@ export const InventoryPage: React.FC = () => {
   });
 
   const loadItems = async () => {
-    setLoading(true);
     try {
       const res: any = await apiClient.get('/inventory/items');
       if (res.success) setItems(res.data);
     } catch (err) {
       console.error('Failed to load inventory items:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

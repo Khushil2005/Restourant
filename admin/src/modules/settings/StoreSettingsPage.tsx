@@ -8,7 +8,6 @@ import {
   UtensilsCrossed,
   Grid,
   Ticket,
-  Percent,
   CreditCard,
   Printer,
   Boxes,
@@ -22,7 +21,6 @@ import {
   Save,
   Search,
   CheckCircle2,
-  HelpCircle,
   Volume2
 } from 'lucide-react';
 import {
@@ -55,7 +53,6 @@ export const StoreSettingsPage: React.FC = () => {
   // Local Print Settings
   const [printConfig, setPrintConfig] = useState<PrintAndBillSettings>(getPrintSettings());
 
-  const [loading, setLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
@@ -72,7 +69,6 @@ export const StoreSettingsPage: React.FC = () => {
   // Fetch Settings from backend
   const loadSettings = async () => {
     try {
-      setLoading(true);
       const [resMap, resDetailed]: any = await Promise.all([
         apiClient.get('/system/settings'),
         apiClient.get('/system/settings/detailed')
@@ -86,8 +82,6 @@ export const StoreSettingsPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load store settings:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -3,13 +3,12 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
 import { LeaveRequest, Employee } from '../../types';
-import { Calendar, Plus, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle } from 'lucide-react';
 
 export const LeavePage: React.FC = () => {
   const { can } = usePermission();
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,7 +22,6 @@ export const LeavePage: React.FC = () => {
   });
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const [lRes, eRes]: any = await Promise.all([
         apiClient.get('/hr/leaves'),
@@ -33,8 +31,6 @@ export const LeavePage: React.FC = () => {
       if (eRes.success) setEmployees(eRes.data);
     } catch (err) {
       console.error('Failed to load leaves:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -1,7 +1,7 @@
 import { PurchaseOrder, GoodsReceipt, PurchaseInvoice, IPurchaseOrderItem } from '../models/Purchase';
 import { Supplier } from '../models/Master';
 import { InventoryItem, StockTransaction } from '../models/Inventory';
-import { ChartOfAccount, JournalEntry } from '../models/Account';
+import { JournalEntry } from '../models/Account';
 import { createAuditLog } from '../middleware/auditMiddleware';
 import { v4 as uuidv4 } from 'uuid';
 

@@ -3,16 +3,7 @@ import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
 import { ChartOfAccount, JournalEntry, DayClosing } from '../../types';
-import {
-  BookCheck,
-  Plus,
-  DollarSign,
-  TrendingUp,
-  Receipt,
-  FileSpreadsheet,
-  CheckCircle2,
-  Calendar
-} from 'lucide-react';
+import { Plus, Calendar } from 'lucide-react';
 
 export const AccountsPage: React.FC = () => {
   const { can } = usePermission();
@@ -22,7 +13,6 @@ export const AccountsPage: React.FC = () => {
   const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [dayClosings, setDayClosings] = useState<DayClosing[]>([]);
   const [financialSummary, setFinancialSummary] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
 
   // Day Closing Modal
   const [isDayClosingModalOpen, setIsDayClosingModalOpen] = useState(false);
@@ -35,7 +25,6 @@ export const AccountsPage: React.FC = () => {
   const [journalItems, setJournalItems] = useState<Array<{ accountId: string; debit: number; credit: number }>>([]);
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const canChart = can('accounts.chart.view');
       const canJournal = can('accounts.journal.view') || can('accounts.ledger.view');
@@ -54,8 +43,6 @@ export const AccountsPage: React.FC = () => {
       if (sRes?.success) setFinancialSummary(sRes.data);
     } catch (err) {
       console.error('Failed to load accounts:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

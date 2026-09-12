@@ -9,10 +9,7 @@ import {
   Minus,
   Trash2,
   Send,
-  PauseCircle,
-  PlayCircle,
   Receipt,
-  X,
   Search,
   Utensils,
   ArrowLeft,
@@ -54,7 +51,7 @@ export const PosTerminalPage: React.FC = () => {
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [activeOrderId, setActiveOrderId] = useState<string | null>(searchParams.get('orderId') || null);
+  const activeOrderId = searchParams.get('orderId') || null;
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
 
   // Line item note modal

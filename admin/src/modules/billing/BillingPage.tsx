@@ -97,7 +97,6 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
   // Data lists
   const [bills, setBills] = useState<Bill[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Bill View & Thermal Slip Modal
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
@@ -130,10 +129,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
   const [generatingForOrderId, setGeneratingForOrderId] = useState<string | null>(null);
 
   // Load Invoices
-  const loadBills = async (showSpinner = false, forceFresh = false) => {
-    if (showSpinner || bills.length === 0) {
-      setLoading(true);
-    }
+  const loadBills = async (forceFresh = false) => {
     try {
       const config = forceFresh ? { forceFresh: true } : undefined;
       const res: any = await apiClient.get('/billing', config);
@@ -161,8 +157,6 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
       }
     } catch (err) {
       console.error('Failed to load bills:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -180,14 +174,14 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
 
   // Initial Load
   useEffect(() => {
-    loadBills(false, true);
+    loadBills(true);
     loadPayments();
   }, []);
 
   // Real-time Auto-Refresh every 4 seconds
   useAutoRefresh(
     () => {
-      loadBills(false, true);
+      loadBills(true);
       loadPayments();
     },
     {
@@ -376,7 +370,6 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
       .reduce((acc, b) => acc + (b.paidAmount || b.totalPayable || 0), 0);
   }, [dayBills]);
 
-  const totalPaymentsCount = dayPayments.length;
   const totalCollectedAmount = useMemo(() => {
     return dayPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
   }, [dayPayments]);
@@ -480,7 +473,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
         setSelectedBill(settledBill);
 
         // 5. Refresh lists
-        loadBills(false, true);
+        loadBills(true);
         loadPayments();
 
         // Clear query parameters if any
@@ -502,7 +495,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
       await apiClient.post(`/billing/${splitBillItem.id}/split`, { splitCount });
       alert(`Bill split into ${splitCount} equal invoices.`);
       setSplitBillItem(null);
-      loadBills(false, true);
+      loadBills(true);
     } catch (err: any) {
       alert(err.message || 'Failed to split bill.');
     }
@@ -561,7 +554,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
     try {
       const res: any = await apiClient.post('/billing/generate', { orderId });
       setIsBillTableModalOpen(false);
-      await loadBills(false, true);
+      await loadBills(true);
       if (res?.data) {
         setSelectedBill(res.data);
       }

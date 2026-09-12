@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { apiClient } from '../../api/client';
 import { useNotification } from '../../context/NotificationContext';
 import { usePermission } from '../../context/PermissionContext';
 import { DataTable, Modal } from '../../components/PermissionGate';
 import { SystemNotification } from '../../types';
-import { Bell, Plus, CheckCheck, Mail } from 'lucide-react';
+import { Plus, CheckCheck } from 'lucide-react';
 
 export const NotificationsPage: React.FC = () => {
   const { can } = usePermission();

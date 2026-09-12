@@ -10,7 +10,6 @@ import {
   ShoppingBag,
   ChefHat,
   Receipt,
-  CreditCard,
   Boxes,
   BookOpen,
   Truck,
@@ -27,9 +26,6 @@ import {
   ShieldAlert,
   Server,
   Activity,
-  Shield,
-  Terminal,
-  Tv,
   X
 } from 'lucide-react';
 

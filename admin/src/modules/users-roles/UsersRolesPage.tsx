@@ -2,23 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { useAuth } from '../../context/AuthContext';
-import { DataTable, Modal, ConfirmDialog } from '../../components/PermissionGate';
+import { DataTable, Modal } from '../../components/PermissionGate';
 import { User, Role } from '../../types';
 import {
-  UserCog,
   Shield,
   Plus,
   Edit2,
   Trash2,
   Key,
-  CheckSquare,
-  Square,
   ChevronDown,
   ChevronRight,
-  Copy,
-  CheckCircle2,
-  XCircle,
-  RotateCcw
+  Copy
 } from 'lucide-react';
 
 export const UsersRolesPage: React.FC = () => {
@@ -29,7 +23,6 @@ export const UsersRolesPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [permTree, setPermTree] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
 
   // User Modal
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -58,7 +51,6 @@ export const UsersRolesPage: React.FC = () => {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const [uRes, rRes, pRes]: any = await Promise.all([
         apiClient.get('/access-control/users'),
@@ -74,8 +66,6 @@ export const UsersRolesPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load RBAC data:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
