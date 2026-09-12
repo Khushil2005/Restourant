@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../../api/client';
+import { usePermission } from '../../context/PermissionContext';
 import { Modal } from '../../components/PermissionGate';
 import {
   Database,
@@ -513,6 +514,21 @@ export const DatabaseToolsPage: React.FC = () => {
     }
   };
 
+  const { can } = usePermission();
+
+  const canView = can('database.tools.view') || can('system.control.view');
+  if (!canView) {
+    return (
+      <div className="card bg-black border border-danger p-4 text-center text-white my-4 shadow-sm">
+        <ShieldAlert size={48} className="text-danger mx-auto mb-2" />
+        <h5 className="fw-bold">Access Denied (પરવાનગી નથી)</h5>
+        <p className="text-secondary small mb-0">
+          You do not have permission to access Database Management Tools. Required permission: <code>database.tools.view</code> or <code>system.control.view</code>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="d-flex flex-column gap-3 text-white">
       {/* HEADER BAR */}
@@ -671,38 +687,46 @@ export const DatabaseToolsPage: React.FC = () => {
 
               {/* Action Buttons */}
               <div className="col-12 col-md-2 d-flex align-items-end justify-content-end gap-1.5 pt-md-4">
-                <button
-                  type="button"
-                  className="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm fw-bold"
-                  onClick={handleOpenAddModal}
-                  title="Add new document"
-                >
-                  <Plus size={14} /> Add Record
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-info btn-sm p-1.5"
-                  onClick={() => handleExportFiltered('json')}
-                  title="Export JSON"
-                >
-                  <Download size={14} />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-success btn-sm p-1.5"
-                  onClick={() => handleExportFiltered('csv')}
-                  title="Export CSV"
-                >
-                  <FileSpreadsheet size={14} />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-warning btn-sm p-1.5"
-                  onClick={() => setIsImportModalOpen(true)}
-                  title="Import JSON Records"
-                >
-                  <Upload size={14} />
-                </button>
+                {(can('database.tools.create') || can('system.control.view')) && (
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm fw-bold"
+                    onClick={handleOpenAddModal}
+                    title="Add new document"
+                  >
+                    <Plus size={14} /> Add Record
+                  </button>
+                )}
+                {(can('database.tools.export') || can('system.control.view')) && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-outline-info btn-sm p-1.5"
+                      onClick={() => handleExportFiltered('json')}
+                      title="Export JSON"
+                    >
+                      <Download size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-success btn-sm p-1.5"
+                      onClick={() => handleExportFiltered('csv')}
+                      title="Export CSV"
+                    >
+                      <FileSpreadsheet size={14} />
+                    </button>
+                  </>
+                )}
+                {(can('database.tools.import') || can('system.control.view')) && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-warning btn-sm p-1.5"
+                    onClick={() => setIsImportModalOpen(true)}
+                    title="Import JSON Records"
+                  >
+                    <Upload size={14} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -797,24 +821,28 @@ export const DatabaseToolsPage: React.FC = () => {
                               >
                                 <Eye size={12} /> View
                               </button>
-                              <button
-                                type="button"
-                                className="btn btn-outline-warning btn-sm py-0.5 px-1.5"
-                                style={{ fontSize: '0.72rem' }}
-                                onClick={() => handleOpenEditModal(row)}
-                                title="Edit Record"
-                              >
-                                <Edit3 size={12} /> Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-outline-danger btn-sm py-0.5 px-1.5"
-                                style={{ fontSize: '0.72rem' }}
-                                onClick={() => handleOpenDeleteModal(row)}
-                                title="Delete Record"
-                              >
-                                <Trash2 size={12} /> Del
-                              </button>
+                              {(can('database.tools.edit') || can('system.control.view')) && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-warning btn-sm py-0.5 px-1.5"
+                                  style={{ fontSize: '0.72rem' }}
+                                  onClick={() => handleOpenEditModal(row)}
+                                  title="Edit Record"
+                                >
+                                  <Edit3 size={12} /> Edit
+                                </button>
+                              )}
+                              {(can('database.tools.delete') || can('system.control.view')) && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger btn-sm py-0.5 px-1.5"
+                                  style={{ fontSize: '0.72rem' }}
+                                  onClick={() => handleOpenDeleteModal(row)}
+                                  title="Delete Record"
+                                >
+                                  <Trash2 size={12} /> Del
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -946,16 +974,22 @@ export const DatabaseToolsPage: React.FC = () => {
 
                 {/* Permanent Purge Trigger Button */}
                 {datePreview.totalRecords > 0 ? (
-                  <button
-                    type="button"
-                    className="btn btn-danger btn-sm px-3 py-1.5 fw-bold shadow-sm d-flex align-items-center gap-1.5"
-                    onClick={() => {
-                      setPurgeConfirmationInput('');
-                      setIsPurgeModalOpen(true);
-                    }}
-                  >
-                    <ShieldAlert size={16} /> Permanently Delete Date Data
-                  </button>
+                  (can('database.tools.purge') || can('system.control.view')) ? (
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm px-3 py-1.5 fw-bold shadow-sm d-flex align-items-center gap-1.5"
+                      onClick={() => {
+                        setPurgeConfirmationInput('');
+                        setIsPurgeModalOpen(true);
+                      }}
+                    >
+                      <ShieldAlert size={16} /> Permanently Delete Date Data
+                    </button>
+                  ) : (
+                    <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                      <ShieldAlert size={13} className="me-1" /> Purge Restricted
+                    </span>
+                  )
                 ) : (
                   <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
                     <CheckCircle2 size={13} className="me-1" /> Clean: 0 records found

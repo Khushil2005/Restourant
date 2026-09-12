@@ -28,6 +28,7 @@ import {
   playPaymentChime,
   PrintAndBillSettings
 } from '../../utils/printSettings';
+import { getBoolSetting } from '../../utils/storeSettings';
 
 // Date helpers for Day-Wise List ("New Day New List")
 const getLocalDateString = (d: Date = new Date()): string => {
@@ -519,10 +520,11 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
     status?: string,
     amount?: number
   ) => {
+    const requireServed = getBoolSetting('billing_require_order_served', true) && !can('billing.bypass_served');
     const isServed = status === 'SERVED' || status === 'BILLED';
 
-    // Gate: Must be SERVED before bill generation
-    if (!isServed) {
+    // Gate: Must be SERVED before bill generation (bypassed if setting is off or user has permission)
+    if (requireServed && !isServed) {
       const wantToServe = window.confirm(
         `Cannot generate bill: Order #${orderNumber || orderId} is currently '${status || 'IN_KITCHEN'}'.\n\nOrders must be SERVED before generating a bill.\n(ઓર્ડર સર્વ થયા પછી જ બિલ જનરેટ કરી શકાય છે).\n\nHas the food been served to Table ${tableNumber || ''}? Click OK to mark as SERVED now, or Cancel to wait.`
       );
@@ -544,15 +546,21 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
       }
     }
 
-    // Explicit Confirmation Prompt before generating bill
-    const isConfirmed = window.confirm(
-      `Confirm Bill Generation (બિલ જનરેટ કન્ફર્મેશન):\n\nAre you sure you want to generate the bill for Table ${tableNumber || 'N/A'} (Order #${orderNumber || orderId})?${amount ? `\nTotal Amount: ₹${amount}` : ''}\n\nશું તમે ખરેખર આ ટેબલ માટે બિલ જનરેટ કરવા માંગો છો?`
-    );
-    if (!isConfirmed) return;
+    // Dynamic Confirmation Prompt before generating bill (configurable in Settings)
+    const requireConfirmation = getBoolSetting('billing_confirm_before_generation', true);
+    if (requireConfirmation) {
+      const isConfirmed = window.confirm(
+        `Confirm Bill Generation (બિલ જનરેટ કન્ફર્મેશન):\n\nAre you sure you want to generate the bill for Table ${tableNumber || 'N/A'} (Order #${orderNumber || orderId})?${amount ? `\nTotal Amount: ₹${amount}` : ''}\n\nશું તમે ખરેખર આ ટેબલ માટે બિલ જનરેટ કરવા માંગો છો?`
+      );
+      if (!isConfirmed) return;
+    }
 
     setGeneratingForOrderId(orderId);
     try {
-      const res: any = await apiClient.post('/billing/generate', { orderId });
+      const res: any = await apiClient.post('/billing/generate', {
+        orderId,
+        bypassServed: !requireServed
+      });
       setIsBillTableModalOpen(false);
       await loadBills(true);
       if (res?.data) {

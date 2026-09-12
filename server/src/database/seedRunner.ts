@@ -358,19 +358,105 @@ export async function runDatabaseMigrationsAndSeeds(): Promise<void> {
   }));
   await SalaryStructure.bulkWrite(salaryOps as any);
 
-  // 15. Seed System Settings (Bhatigal Bhanu)
+  // 15. Seed System Settings (Bhatigal Bhanu Enterprise Settings Suite)
   const settings = [
-    { key: 'restaurant_name', value: 'Bhatigal Bhanu', category: 'GENERAL', description: 'Business Name' },
-    { key: 'restaurant_tagline', value: 'Traditional Kathiyawadi & Gujarati Dining', category: 'GENERAL', description: 'Brand Tagline' },
-    { key: 'restaurant_address', value: 'Kothariya Ring Road, Rajkot, Gujarat - 360022', category: 'GENERAL', description: 'Physical Address' },
-    { key: 'restaurant_phone', value: '+91 98790 12345', category: 'GENERAL', description: 'Contact Phone' },
-    { key: 'restaurant_email', value: 'contact@bhatigalbhanu.com', category: 'GENERAL', description: 'Support Email' },
-    { key: 'currency_symbol', value: '₹', category: 'BILLING', description: 'Currency Display Symbol' },
+    // Store Profile & Legal
+    { key: 'restaurant_name', value: 'Bhatigal Bhanu (ભાતીગળ ભાણું)', category: 'GENERAL', description: 'Restaurant Brand Name' },
+    { key: 'restaurant_name_gujarati', value: 'ભાતીગળ ભાણું', category: 'GENERAL', description: 'Gujarati Brand Name' },
+    { key: 'restaurant_tagline', value: '...ભાવ, ભજન અને ભોજનનો ત્રિવેણી સંગમ...', category: 'GENERAL', description: 'Brand Tagline' },
+    { key: 'restaurant_address', value: 'Kothariya Ring Road, Near HP Petrol Pump, Rajkot, Gujarat - 360022', category: 'GENERAL', description: 'Physical Store Address' },
+    { key: 'restaurant_phone', value: '+91 98790 12345', category: 'GENERAL', description: 'Official Phone Number' },
+    { key: 'restaurant_email', value: 'contact@bhatigalbhanu.com', category: 'GENERAL', description: 'Official Email Address' },
+    { key: 'restaurant_website', value: 'https://bhatigalbhanu.com', category: 'GENERAL', description: 'Official Website' },
+    { key: 'gst_number', value: '24AAAFB1234A1Z8', category: 'TAX', description: 'GST Identification Number (GSTIN)' },
+    { key: 'fssai_license', value: '10724026000123', category: 'GENERAL', description: 'FSSAI Food License Number' },
+    { key: 'currency_symbol', value: '₹', category: 'BILLING', description: 'Currency Symbol' },
     { key: 'currency_code', value: 'INR', category: 'BILLING', description: 'ISO Currency Code' },
-    { key: 'gst_number', value: '24AAAFB1234A1Z8', category: 'TAX', description: 'GST Identification Number' },
-    { key: 'service_charge_percentage', value: '0.0', category: 'BILLING', description: 'Default Service Charge %' },
+    { key: 'system_timezone', value: 'Asia/Kolkata', category: 'GENERAL', description: 'System Timezone' },
+
+    // Date & Time Formats
+    { key: 'date_format', value: 'DD/MM/YYYY', category: 'GENERAL', description: 'Date Display Format (DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY)' },
+    { key: 'time_format', value: '12_HOUR', category: 'GENERAL', description: 'Time Display Format (12_HOUR, 24_HOUR)' },
+    { key: 'financial_year_start', value: '04-01', category: 'ACCOUNTS', description: 'Financial Year Start Date (MM-DD)' },
+
+    // Taxes, GST & Charges
+    { key: 'tax_gst_enabled', value: 'true', category: 'TAX', description: 'Enable GST on Invoices' },
+    { key: 'tax_gst_percentage', value: '5.0', category: 'TAX', description: 'Standard Restaurant GST Rate (%)' },
+    { key: 'tax_cgst_percentage', value: '2.5', category: 'TAX', description: 'Central GST Rate (%)' },
+    { key: 'tax_sgst_percentage', value: '2.5', category: 'TAX', description: 'State GST Rate (%)' },
+    { key: 'tax_inclusive_pricing', value: 'false', category: 'TAX', description: 'Menu Prices Include Tax' },
+    { key: 'service_charge_enabled', value: 'false', category: 'BILLING', description: 'Enable Mandatory Service Charge' },
+    { key: 'service_charge_percentage', value: '0.0', category: 'BILLING', description: 'Service Charge Percentage (%)' },
+    { key: 'packaging_charge_takeaway', value: '20', category: 'BILLING', description: 'Flat Packaging Charge for Takeaway (₹)' },
+    { key: 'delivery_charge_fixed', value: '40', category: 'BILLING', description: 'Flat Delivery Charge (₹)' },
+    { key: 'max_discount_percentage', value: '10', category: 'BILLING', description: 'Maximum Discount Limit without Override (%)' },
+
+    // Invoicing, Rounding & Financials
+    { key: 'bill_rounding_mode', value: 'NEAREST', category: 'BILLING', description: 'Invoice Rounding Mode (NEAREST, UP, DOWN, NONE)' },
+    { key: 'bill_invoice_prefix', value: 'BB-INV-', category: 'BILLING', description: 'Bill Invoice Number Prefix' },
+    { key: 'bill_kot_prefix', value: 'KOT-', category: 'KITCHEN', description: 'Kitchen Order Ticket Prefix' },
+    { key: 'accounts_default_cash_account', value: 'Cash in Drawer', category: 'ACCOUNTS', description: 'Default Cash Register Account Head' },
+    { key: 'accounts_cash_variance_alert_threshold', value: '200', category: 'ACCOUNTS', description: 'Day Closing Cash Variance Alert Threshold (₹)' },
+    { key: 'accounts_auto_journal_on_billing', value: 'true', category: 'ACCOUNTS', description: 'Auto Post Revenue Journal on Bill Settlement' },
+
+    // POS & Billing Workflows
+    { key: 'billing_require_order_served', value: 'true', category: 'BILLING', description: 'Require Order to be SERVED before Bill Generation' },
+    { key: 'billing_confirm_before_generation', value: 'true', category: 'BILLING', description: 'Require Confirmation Dialog before Bill Generation' },
+    { key: 'billing_allow_custom_price', value: 'false', category: 'POS', description: 'Allow Cashier to Edit Item Selling Price at POS' },
+    { key: 'orders_auto_send_kot', value: 'false', category: 'POS', description: 'Auto Dispatch KOT immediately on item selection' },
+    { key: 'orders_dinein_customer_mandatory', value: 'false', category: 'POS', description: 'Require Customer Details for Dine-In Orders' },
+    { key: 'orders_takeaway_customer_mandatory', value: 'true', category: 'POS', description: 'Require Customer Mobile for Takeaway Orders' },
+
+    // Print & Thermal Printer
+    { key: 'receipt_format', value: '80MM', category: 'PRINTER', description: 'Receipt Paper Size (80MM, 58MM, A4)' },
+    { key: 'receipt_copies', value: '1', category: 'PRINTER', description: 'Number of Printed Receipt Copies (1 or 2)' },
+    { key: 'print_font_scale', value: 'MEDIUM', category: 'PRINTER', description: 'Thermal Slip Font Scale (SMALL, MEDIUM, LARGE)' },
+    { key: 'payment_auto_print_receipt', value: 'true', category: 'PRINTER', description: 'Auto Open Print Dialog upon Payment Settlement' },
     { key: 'auto_kot_print', value: 'true', category: 'KITCHEN', description: 'Automatically trigger KOT print on order' },
-    { key: 'system_status', value: 'ONLINE', category: 'SYSTEM', description: 'System operational status' }
+    { key: 'payment_auto_download_pdf', value: 'false', category: 'PRINTER', description: 'Auto Download PDF Invoice upon Settlement' },
+    { key: 'payment_audio_chime', value: 'true', category: 'PRINTER', description: 'Play Pleasant Audio Chime on Successful Payment' },
+    { key: 'receipt_show_logo', value: 'true', category: 'PRINTER', description: 'Print Restaurant Logo on Thermal Slip' },
+    { key: 'receipt_show_gstin', value: 'true', category: 'PRINTER', description: 'Print GSTIN on Thermal Slip' },
+    { key: 'receipt_show_table', value: 'true', category: 'PRINTER', description: 'Print Table Number on Thermal Slip' },
+    { key: 'receipt_show_customer', value: 'true', category: 'PRINTER', description: 'Print Customer Info on Thermal Slip' },
+    { key: 'receipt_show_tax_breakdown', value: 'true', category: 'PRINTER', description: 'Print Detailed CGST/SGST Breakdown' },
+    { key: 'receipt_show_service_charge', value: 'false', category: 'PRINTER', description: 'Print Service Charge Line on Receipt' },
+    { key: 'receipt_show_footer', value: 'true', category: 'PRINTER', description: 'Print Custom Footer Note on Receipt' },
+    { key: 'receipt_header_note', value: 'જય શ્રી કૃષ્ણ! પધારજો...', category: 'PRINTER', description: 'Custom Header Note on Bill' },
+    { key: 'receipt_custom_footer', value: 'મુલાકાત બદલ આભાર! ફરી પધારશો... 🙏', category: 'PRINTER', description: 'Custom Footer Note on Bill' },
+
+    // Kitchen Display (KDS)
+    { key: 'kds_refresh_seconds', value: '10', category: 'KITCHEN', description: 'KDS Live Auto-Refresh Interval (seconds)' },
+    { key: 'kds_warning_minutes', value: '15', category: 'KITCHEN', description: 'KDS Yellow Warning Alert Threshold (minutes)' },
+    { key: 'kds_critical_minutes', value: '25', category: 'KITCHEN', description: 'KDS Red Critical Blinking Threshold (minutes)' },
+    { key: 'kds_audio_alert', value: 'true', category: 'KITCHEN', description: 'Play Sound Alert on New KOT in Kitchen' },
+    { key: 'kds_group_by_station', value: 'true', category: 'KITCHEN', description: 'Group Kitchen Dishes by Cooking Station' },
+
+    // Tables & Token Management
+    { key: 'tables_dining_warning_minutes', value: '45', category: 'TABLES', description: 'Dining Duration Alert Warning (minutes)' },
+    { key: 'tables_auto_vacate_on_settlement', value: 'true', category: 'TABLES', description: 'Auto Mark Table Cleaning upon Bill Payment' },
+    { key: 'token_auto_clear_seconds', value: '120', category: 'TOKEN', description: 'Auto Clear Called Token from Display (seconds)' },
+    { key: 'token_voice_announcement', value: 'false', category: 'TOKEN', description: 'Text-to-Speech Voice Token Calling' },
+    { key: 'token_prefix', value: 'BB-T', category: 'TOKEN', description: 'Token Number Prefix' },
+
+    // Inventory & Recipe Procurement
+    { key: 'inventory_auto_recipe_deduction', value: 'true', category: 'INVENTORY', description: 'Auto Deduct Recipe Raw Materials on Order Complete' },
+    { key: 'inventory_allow_negative_stock', value: 'false', category: 'INVENTORY', description: 'Allow Billing When Raw Stock is Insufficient' },
+    { key: 'inventory_low_stock_threshold_percentage', value: '20', category: 'INVENTORY', description: 'Low Stock Reorder Alert Threshold (%)' },
+    { key: 'purchase_po_approval_threshold', value: '10000', category: 'PROCUREMENT', description: 'PO Amount Requiring Manager Approval (₹)' },
+
+    // HR, Attendance & Payroll
+    { key: 'attendance_shift_duration_hours', value: '9', category: 'STAFF', description: 'Standard Working Shift Duration (hours)' },
+    { key: 'attendance_grace_period_minutes', value: '15', category: 'STAFF', description: 'Attendance Punch Late Grace Period (minutes)' },
+    { key: 'attendance_half_day_hours', value: '4.5', category: 'STAFF', description: 'Minimum Hours for Half Day Present' },
+    { key: 'attendance_overtime_multiplier', value: '1.5', category: 'STAFF', description: 'Overtime Hourly Wage Rate Multiplier' },
+    { key: 'payroll_monthly_calculation_days', value: '30', category: 'STAFF', description: 'Base Days for Monthly Daily Wage Calculation' },
+
+    // Security & Manager PIN Overrides
+    { key: 'security_manager_pin', value: '1234', category: 'STAFF', description: 'Manager Override 4-Digit Security PIN' },
+    { key: 'security_session_timeout_minutes', value: '480', category: 'SYSTEM', description: 'Inactivity Session Logout Timeout (minutes)' },
+    { key: 'security_audit_log_retention_days', value: '365', category: 'SYSTEM', description: 'Audit Trail Retention Period (days)' },
+    { key: 'system_status', value: 'ONLINE', category: 'SYSTEM', description: 'System operational status (ONLINE/MAINTENANCE/LOCKDOWN)' }
   ];
   await SystemSetting.bulkWrite(settings.map(s => ({ updateOne: { filter: { key: s.key }, update: { $set: s }, upsert: true } })) as any);
 

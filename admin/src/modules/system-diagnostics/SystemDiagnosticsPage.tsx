@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
-import { Activity, Database, Wifi, Cpu, RefreshCw } from 'lucide-react';
+import { usePermission } from '../../context/PermissionContext';
+import { Activity, Database, Wifi, Cpu, RefreshCw, ShieldAlert } from 'lucide-react';
 
 export const SystemDiagnosticsPage: React.FC = () => {
+  const { can } = usePermission();
   const [latency, setLatency] = useState<number | null>(null);
+
+  const canView = can('system.diagnostics.view') || can('system.control.view');
 
   const runDiagnostics = async () => {
     const start = performance.now();
@@ -17,8 +21,22 @@ export const SystemDiagnosticsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    runDiagnostics();
-  }, []);
+    if (canView) {
+      runDiagnostics();
+    }
+  }, [canView]);
+
+  if (!canView) {
+    return (
+      <div className="card bg-black border border-danger p-4 text-center text-white my-4 shadow-sm">
+        <ShieldAlert size={48} className="text-danger mx-auto mb-2" />
+        <h5 className="fw-bold">Access Denied (પરવાનગી નથી)</h5>
+        <p className="text-secondary small mb-0">
+          You do not have permission to access System Diagnostics. Required permission: <code>system.diagnostics.view</code> or <code>system.control.view</code>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="d-flex flex-column gap-4 text-white">
@@ -28,9 +46,11 @@ export const SystemDiagnosticsPage: React.FC = () => {
           <h4 className="fw-bold mb-1 text-white">Infrastructure & System Diagnostics</h4>
           <p className="text-secondary small mb-0">Live API response latency, database engine state, and process telemetry</p>
         </div>
-        <button className="btn btn-outline-info btn-sm d-flex align-items-center gap-1" onClick={runDiagnostics}>
-          <RefreshCw size={14} /> Run Latency Probe
-        </button>
+        {(can('system.diagnostics.run') || can('system.control.view')) && (
+          <button className="btn btn-outline-info btn-sm d-flex align-items-center gap-1" onClick={runDiagnostics}>
+            <RefreshCw size={14} /> Run Latency Probe
+          </button>
+        )}
       </div>
 
       {/* Health Metrics Grid */}

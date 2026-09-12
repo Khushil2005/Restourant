@@ -71,8 +71,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose?: () => void; onCloseM
     { title: 'Store Settings', path: '/settings', icon: <Settings size={18} />, permission: 'settings.view' },
     { title: 'Audit Trail Logs', path: '/audit-logs', icon: <ShieldAlert size={18} />, permission: 'audit.view' },
     { title: 'Emergency Control', path: '/system-control', icon: <Server size={18} />, permission: 'system.control.view' },
-    { title: 'System Diagnostics', path: '/diagnostics', icon: <Activity size={18} />, permission: 'system.control.view' },
-    { title: 'Database Tools', path: '/database', icon: <Database size={18} />, permission: 'system.control.view' }
+    { title: 'System Diagnostics', path: '/diagnostics', icon: <Activity size={18} />, permission: ['system.diagnostics.view', 'system.control.view'] },
+    { title: 'Database Tools', path: '/database', icon: <Database size={18} />, permission: ['database.tools.view', 'system.control.view'] }
   ];
 
   // Dynamically filter menu items based on user's granted permissions

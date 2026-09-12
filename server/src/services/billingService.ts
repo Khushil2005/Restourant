@@ -1,5 +1,6 @@
 import { Bill, IBillItem } from '../models/Billing';
 import { Order } from '../models/Order';
+import { SystemSetting } from '../models/System';
 import { SocketEvents } from '../sockets/socketManager';
 import { createAuditLog } from '../middleware/auditMiddleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -27,8 +28,20 @@ export class BillingService {
     const order = await Order.findOne({ id: orderId });
     if (!order) throw { statusCode: 404, message: 'Order not found.' };
 
-    // Strict Rule: Order must be SERVED before generating a bill
-    if (order.status !== 'SERVED' && order.status !== 'BILLED') {
+    // Dynamic Setting: Check whether order must be SERVED before generating a bill
+    let requireServed = true;
+    try {
+      const setting = await SystemSetting.findOne({ key: 'billing_require_order_served' });
+      if (setting && (setting.value === 'false' || setting.value === '0')) {
+        requireServed = false;
+      }
+    } catch (_) {}
+
+    if (options.bypassServed || options.bypassServedCheck) {
+      requireServed = false;
+    }
+
+    if (requireServed && order.status !== 'SERVED' && order.status !== 'BILLED') {
       throw {
         statusCode: 400,
         message: `Cannot generate bill: Order #${order.orderNumber || order.id} is currently '${order.status}'. Orders must be SERVED before generating a bill (ઓર્ડર સર્વ થયા પછી જ બિલ જનરેટ કરી શકાય છે).`
@@ -81,8 +94,25 @@ export class BillingService {
       return existingBill;
     }
 
+    let invoicePrefix = 'BB-INV-';
+    let serviceChargePct = 0;
+    let serviceChargeEnabled = false;
+    let roundingMode = 'NEAREST';
+
+    try {
+      const settingsList = await SystemSetting.find({
+        key: { $in: ['bill_invoice_prefix', 'service_charge_percentage', 'service_charge_enabled', 'bill_rounding_mode'] }
+      });
+      for (const s of settingsList) {
+        if (s.key === 'bill_invoice_prefix' && s.value) invoicePrefix = s.value;
+        if (s.key === 'service_charge_enabled') serviceChargeEnabled = s.value === 'true' || s.value === '1';
+        if (s.key === 'service_charge_percentage') serviceChargePct = parseFloat(s.value) || 0;
+        if (s.key === 'bill_rounding_mode') roundingMode = s.value;
+      }
+    } catch (_) {}
+
     const count = await Bill.countDocuments();
-    const billNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    const billNumber = `${invoicePrefix}${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
     const id = `bill_${uuidv4().slice(0, 8)}`;
 
     const items: IBillItem[] = order.items.map(it => ({
@@ -98,9 +128,14 @@ export class BillingService {
     const subtotal = order.totalAmount;
     const discountAmount = 0;
     const taxAmount = order.taxAmount;
-    const serviceCharge = options.serviceCharge || Math.round(subtotal * 0.05); // 5% service charge
+    const serviceCharge = options.serviceCharge !== undefined
+      ? options.serviceCharge
+      : (serviceChargeEnabled ? Math.round((subtotal * serviceChargePct) / 100) : 0);
     const rawTotal = subtotal + taxAmount + serviceCharge - discountAmount;
-    const totalPayable = Math.round(rawTotal);
+    let totalPayable = Math.round(rawTotal);
+    if (roundingMode === 'UP') totalPayable = Math.ceil(rawTotal);
+    else if (roundingMode === 'DOWN') totalPayable = Math.floor(rawTotal);
+    else if (roundingMode === 'NONE') totalPayable = Number(rawTotal.toFixed(2));
     const roundOff = Number((totalPayable - rawTotal).toFixed(2));
 
     const bill = await Bill.create({

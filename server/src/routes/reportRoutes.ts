@@ -52,7 +52,7 @@ reportRouter.get('/expenses', authenticate, authorize('expense.view'), async (re
   }
 });
 
-reportRouter.post('/import', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+reportRouter.post('/import', authenticate, authorize(['reports.import', 'database.tools.import']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await ReportService.importData(req.body.type, req.body.rows, req.user?.userId);
     return ApiResponse.success(res, result, `Imported ${result.importedCount} records successfully.`);

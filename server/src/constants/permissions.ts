@@ -99,6 +99,8 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'orders.print_kot', module: 'POS / Orders', submodule: 'Terminal', action: 'print_kot', name: 'Print KOT Slip', description: 'Print kitchen order ticket' },
   { id: 'orders.request_bill', module: 'POS / Orders', submodule: 'Terminal', action: 'request_bill', name: 'Request Bill', description: 'Send bill request from table' },
   { id: 'orders.complete', module: 'POS / Orders', submodule: 'Terminal', action: 'complete', name: 'Complete Order', description: 'Finalize order and trigger inventory deductions' },
+  { id: 'orders.override_price', module: 'POS / Orders', submodule: 'Terminal', action: 'override_price', name: 'Override Dish Price', description: 'Manually adjust line item selling price during order entry' },
+  { id: 'orders.discount', module: 'POS / Orders', submodule: 'Terminal', action: 'discount', name: 'Apply Order Discount', description: 'Apply order level discount or complimentary concession' },
 
   // 7. KITCHEN / KOT
   { id: 'kot.view', module: 'Kitchen / KOT', submodule: 'KDS', action: 'view', name: 'View Kitchen Display', description: 'Open Kitchen Display System (KDS)' },
@@ -122,6 +124,9 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'billing.apply_tax', module: 'Billing', submodule: 'Invoices', action: 'apply_tax', name: 'Configure Tax', description: 'Apply or exempt specific taxes' },
   { id: 'billing.request_payment', module: 'Billing', submodule: 'Invoices', action: 'request_payment', name: 'Request Payment', description: 'Hand over bill to payment register' },
   { id: 'billing.refund', module: 'Billing', submodule: 'Invoices', action: 'refund', name: 'Issue Bill Refund', description: 'Process full or partial bill refund' },
+  { id: 'billing.bypass_served', module: 'Billing', submodule: 'Invoices', action: 'bypass_served', name: 'Bypass Served Check', description: 'Generate bill even if order is not marked served' },
+  { id: 'billing.discount_override', module: 'Billing', submodule: 'Invoices', action: 'discount_override', name: 'Discount Limit Override', description: 'Apply bill discount exceeding maximum configured threshold' },
+  { id: 'billing.void', module: 'Billing', submodule: 'Invoices', action: 'void', name: 'Void Settled Bill', description: 'Void or cancel bill after settlement' },
 
   // 9. PAYMENT
   { id: 'payment.view', module: 'Payment', submodule: 'Settlements', action: 'view', name: 'View Payments', description: 'Access payment records and ledger' },
@@ -289,6 +294,7 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'reports.accounts.export', module: 'Reports', submodule: 'Accounts', action: 'export', name: 'Export Financial Reports', description: 'Download financial statements' },
   { id: 'reports.payroll.view', module: 'Reports', submodule: 'HR', action: 'view', name: 'View HR & Payroll Reports', description: 'Access staff attendance and wage reports' },
   { id: 'reports.payroll.export', module: 'Reports', submodule: 'HR', action: 'export', name: 'Export HR Reports', description: 'Download wage registers' },
+  { id: 'reports.import', module: 'Reports', submodule: 'Import', action: 'import', name: 'Bulk Import Data', description: 'Upload Excel/CSV bulk data into reports and logs' },
 
   // 21. USERS & ROLES
   { id: 'users.view', module: 'Users & Roles', submodule: 'Users', action: 'view', name: 'View User Accounts', description: 'View system login users' },
@@ -311,6 +317,7 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   // 23. SETTINGS
   { id: 'settings.view', module: 'Settings', submodule: 'Config', action: 'view', name: 'View System Settings', description: 'Inspect restaurant profile and printer configuration' },
   { id: 'settings.edit', module: 'Settings', submodule: 'Config', action: 'edit', name: 'Modify System Settings', description: 'Update taxes, currency, and business profile' },
+  { id: 'settings.reset', module: 'Settings', submodule: 'Config', action: 'reset', name: 'Reset System Settings', description: 'Restore all store parameters to factory defaults' },
 
   // 24. AUDIT LOGS
   { id: 'audit.view', module: 'Audit Logs', submodule: 'Security', action: 'view', name: 'View Audit Logs', description: 'Audit all sensitive mutations and logins' },
@@ -327,7 +334,22 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
 
   // 26. DAILY MENU
   { id: 'daily_menu.view', module: 'Daily Menu', submodule: 'Scheduler', action: 'view', name: 'View Daily Menu', description: 'Access day-wise rotating daily menu schedule' },
-  { id: 'daily_menu.edit', module: 'Daily Menu', submodule: 'Scheduler', action: 'edit', name: 'Configure Daily Menu', description: 'Assign dishes, copy menu across days, and toggle strict mode' }
+  { id: 'daily_menu.edit', module: 'Daily Menu', submodule: 'Scheduler', action: 'edit', name: 'Configure Daily Menu', description: 'Assign dishes, copy menu across days, and toggle strict mode' },
+
+  // 27. DATABASE TOOLS
+  { id: 'database.tools.view', module: 'Database Tools', submodule: 'Explorer', action: 'view', name: 'View Database Schema', description: 'Inspect MongoDB collections, document counts and schema' },
+  { id: 'database.tools.query', module: 'Database Tools', submodule: 'Explorer', action: 'query', name: 'Query Collection Records', description: 'Search, filter and inspect collection documents' },
+  { id: 'database.tools.create', module: 'Database Tools', submodule: 'CRUD', action: 'create', name: 'Direct Insert Record', description: 'Manually insert document into MongoDB collection' },
+  { id: 'database.tools.edit', module: 'Database Tools', submodule: 'CRUD', action: 'edit', name: 'Direct Update Record', description: 'Manually modify document in MongoDB collection' },
+  { id: 'database.tools.delete', module: 'Database Tools', submodule: 'CRUD', action: 'delete', name: 'Direct Delete Record', description: 'Delete individual document from MongoDB' },
+  { id: 'database.tools.export', module: 'Database Tools', submodule: 'Migration', action: 'export', name: 'Export Collections', description: 'Export collection records to JSON format' },
+  { id: 'database.tools.import', module: 'Database Tools', submodule: 'Migration', action: 'import', name: 'Import Collections', description: 'Import and merge JSON documents into collections' },
+  { id: 'database.tools.purge', module: 'Database Tools', submodule: 'Maintenance', action: 'purge', name: 'Purge Transactional Data', description: 'Permanent date-wise deletion of orders, bills, and logs' },
+
+  // 28. SYSTEM DIAGNOSTICS
+  { id: 'system.diagnostics.view', module: 'System Diagnostics', submodule: 'Telemetry', action: 'view', name: 'View Diagnostics', description: 'Inspect API gateway latency and runtime telemetry' },
+  { id: 'system.diagnostics.run', module: 'System Diagnostics', submodule: 'Telemetry', action: 'run', name: 'Execute Health Probes', description: 'Trigger real-time network and database health probes' },
+  { id: 'system.diagnostics.cache', module: 'System Diagnostics', submodule: 'Telemetry', action: 'cache', name: 'Manage Cache & Memory', description: 'Inspect and clear runtime application cache' }
 ];
 
 // Pre-defined Role Templates with Granular Permission Sets
@@ -354,9 +376,9 @@ export const DEFAULT_ROLES = [
       'booking.view', 'booking.create', 'booking.edit', 'booking.confirm', 'booking.cancel', 'booking.assign_table', 'booking.change_table', 'booking.checkin', 'booking.no_show', 'booking.complete', 'booking.print', 'booking.export',
       'token.view', 'token.create', 'token.call', 'token.recall', 'token.skip', 'token.seat', 'token.complete', 'token.history', 'token.display',
       'tables.view', 'tables.assign', 'tables.transfer', 'tables.merge', 'tables.split', 'tables.status', 'tables.history',
-      'orders.view', 'orders.create', 'orders.edit', 'orders.item_add', 'orders.item_remove', 'orders.hold', 'orders.resume', 'orders.cancel', 'orders.send_kot', 'orders.print_kot', 'orders.request_bill', 'orders.complete',
+      'orders.view', 'orders.create', 'orders.edit', 'orders.item_add', 'orders.item_remove', 'orders.hold', 'orders.resume', 'orders.cancel', 'orders.send_kot', 'orders.print_kot', 'orders.request_bill', 'orders.complete', 'orders.override_price', 'orders.discount',
       'kot.view', 'kot.accept', 'kot.prepare', 'kot.ready', 'kot.served', 'kot.reprint', 'kot.priority',
-      'billing.view', 'billing.create', 'billing.edit', 'billing.print', 'billing.reprint', 'billing.cancel', 'billing.split', 'billing.merge', 'billing.apply_tax', 'billing.request_payment', 'billing.refund',
+      'billing.view', 'billing.create', 'billing.edit', 'billing.print', 'billing.reprint', 'billing.cancel', 'billing.split', 'billing.merge', 'billing.apply_tax', 'billing.request_payment', 'billing.refund', 'billing.bypass_served', 'billing.discount_override',
       'payment.view', 'payment.create', 'payment.edit', 'payment.verify', 'payment.history', 'payment.partial', 'payment.split', 'payment.refund', 'payment.cash', 'payment.upi', 'payment.card', 'payment.online', 'payment.report', 'payment.export',
       'inventory.view', 'inventory.stock_in', 'inventory.stock_out', 'inventory.adjust', 'inventory.transfer', 'inventory.ledger', 'inventory.valuation',
       'inventory.recipe.view', 'inventory.recipe.cost',
@@ -365,7 +387,10 @@ export const DEFAULT_ROLES = [
       'expense.view', 'expense.create', 'expense.approve', 'expense.receipt', 'expense.report',
       'employee.view', 'attendance.view', 'attendance.create', 'attendance.approve', 'attendance.report',
       'leave.view', 'leave.approve', 'leave.reject', 'leave.report',
-      'reports.sales.view', 'reports.sales.export', 'reports.payment.view', 'reports.payment.export', 'reports.inventory.view',
+      'reports.sales.view', 'reports.sales.export', 'reports.payment.view', 'reports.payment.export', 'reports.inventory.view', 'reports.import',
+      'settings.view',
+      'database.tools.view', 'database.tools.query', 'database.tools.export',
+      'system.diagnostics.view', 'system.diagnostics.run',
       'notification.view', 'notification.send', 'audit.view'
     ]
   },
@@ -380,7 +405,7 @@ export const DEFAULT_ROLES = [
       'daily_menu.view',
       'booking.view',
       'tables.view', 'tables.status',
-      'orders.view', 'orders.create', 'orders.edit', 'orders.item_add', 'orders.hold', 'orders.resume', 'orders.send_kot', 'orders.print_kot', 'orders.request_bill', 'orders.complete',
+      'orders.view', 'orders.create', 'orders.edit', 'orders.item_add', 'orders.hold', 'orders.resume', 'orders.send_kot', 'orders.print_kot', 'orders.request_bill', 'orders.complete', 'orders.discount',
       'billing.view', 'billing.create', 'billing.print', 'billing.reprint', 'billing.split', 'billing.request_payment',
       'payment.view', 'payment.create', 'payment.verify', 'payment.history', 'payment.partial', 'payment.split', 'payment.cash', 'payment.upi', 'payment.card', 'payment.online', 'payment.report',
       'accounts.dashboard.view', 'accounts.cashbook.view', 'accounts.dayclosing.view', 'accounts.dayclosing.execute',

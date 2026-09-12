@@ -64,7 +64,7 @@ systemRouter.get('/system-control/status', async (req, res: Response) => {
   }
 });
 
-systemRouter.post('/system-control/status', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/system-control/status', authenticate, authorize(['system.control.view', 'system.diagnostics.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { status, reason } = req.body;
     const result = await SystemControlService.setSystemStatus(status, reason, req.user!.userId, req.user!.username);
@@ -74,7 +74,7 @@ systemRouter.post('/system-control/status', authenticate, authorize('system.cont
   }
 });
 
-systemRouter.get('/settings', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.get('/settings', authenticate, authorize(['settings.view', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const settings = await SystemControlService.getSettings();
     return ApiResponse.success(res, settings, 'System settings loaded.');
@@ -83,7 +83,7 @@ systemRouter.get('/settings', authenticate, async (req: AuthenticatedRequest, re
   }
 });
 
-systemRouter.get('/settings/detailed', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.get('/settings/detailed', authenticate, authorize(['settings.view', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const settings = await SystemControlService.getAllDetailedSettings();
     return ApiResponse.success(res, settings, 'Detailed system settings loaded.');
@@ -92,7 +92,7 @@ systemRouter.get('/settings/detailed', authenticate, async (req: AuthenticatedRe
   }
 });
 
-systemRouter.post('/settings', authenticate, authorize('settings.edit'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/settings', authenticate, authorize(['settings.edit', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await SystemControlService.updateSettings(req.body.settings, req.user!.userId, req.user!.username);
     return ApiResponse.success(res, result, result.message);
@@ -101,7 +101,7 @@ systemRouter.post('/settings', authenticate, authorize('settings.edit'), async (
   }
 });
 
-systemRouter.post('/settings/single', authenticate, authorize('settings.edit'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/settings/single', authenticate, authorize(['settings.edit', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await SystemControlService.saveSingleSetting(req.body, req.user!.userId, req.user!.username);
     return ApiResponse.success(res, result, 'Setting saved successfully.');
@@ -110,7 +110,7 @@ systemRouter.post('/settings/single', authenticate, authorize('settings.edit'), 
   }
 });
 
-systemRouter.delete('/settings/:key', authenticate, authorize('settings.edit'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.delete('/settings/:key', authenticate, authorize(['settings.edit', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await SystemControlService.deleteSetting(req.params.key, req.user!.userId, req.user!.username);
     return ApiResponse.success(res, result, 'Setting deleted successfully.');
@@ -119,7 +119,7 @@ systemRouter.delete('/settings/:key', authenticate, authorize('settings.edit'), 
   }
 });
 
-systemRouter.post('/database/snapshot', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/database/snapshot', authenticate, authorize(['database.tools.export', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const snapshot = await SystemControlService.createDatabaseSnapshot();
     return ApiResponse.success(res, snapshot, 'Database snapshot generated successfully.');
@@ -128,7 +128,7 @@ systemRouter.post('/database/snapshot', authenticate, authorize('system.control.
   }
 });
 
-systemRouter.post('/database/reseed', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/database/reseed', authenticate, authorize(['database.tools.purge', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await SystemControlService.reseedDatabase();
     return ApiResponse.success(res, result, result.message);
@@ -140,7 +140,7 @@ systemRouter.post('/database/reseed', authenticate, authorize('system.control.vi
 // --- ADVANCED DATABASE MANAGEMENT & CRUD STUDIO ---
 
 // 1. Get all collections metadata and record counts
-systemRouter.get('/database/collections', authenticate, authorize('system.control.view'), async (_req: AuthenticatedRequest, res: Response) => {
+systemRouter.get('/database/collections', authenticate, authorize(['database.tools.view', 'system.control.view']), async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const list = await DatabaseToolService.getCollectionList();
     return ApiResponse.success(res, list, 'Collection list retrieved successfully.');
@@ -150,7 +150,7 @@ systemRouter.get('/database/collections', authenticate, authorize('system.contro
 });
 
 // 2. Query paginated records with search and date range
-systemRouter.get('/database/query', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.get('/database/query', authenticate, authorize(['database.tools.query', 'database.tools.view', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { collection, page, limit, search, startDate, endDate } = req.query;
     if (!collection) return ApiResponse.error(res, 'Collection key is required.', 400);
@@ -169,7 +169,7 @@ systemRouter.get('/database/query', authenticate, authorize('system.control.view
 });
 
 // 3. Direct Record Creation
-systemRouter.post('/database/record', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/database/record', authenticate, authorize(['database.tools.create', 'database.tools.edit', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { collection, data } = req.body;
     if (!collection || !data) return ApiResponse.error(res, 'Collection and data are required.', 400);
@@ -185,7 +185,7 @@ systemRouter.post('/database/record', authenticate, authorize('system.control.vi
 });
 
 // 4. Direct Record Update
-systemRouter.put('/database/record/:id', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.put('/database/record/:id', authenticate, authorize(['database.tools.edit', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { collection, data } = req.body;
     const { id } = req.params;
@@ -202,7 +202,7 @@ systemRouter.put('/database/record/:id', authenticate, authorize('system.control
 });
 
 // 5. Direct Record Deletion
-systemRouter.delete('/database/record/:id', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.delete('/database/record/:id', authenticate, authorize(['database.tools.delete', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { collection } = req.query;
     const { id } = req.params;
@@ -219,7 +219,7 @@ systemRouter.delete('/database/record/:id', authenticate, authorize('system.cont
 });
 
 // 6. Date-Filtered Data Export
-systemRouter.post('/database/export', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/database/export', authenticate, authorize(['database.tools.export', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { collections, startDate, endDate } = req.body;
     const result = await DatabaseToolService.exportData({ collections, startDate, endDate });
@@ -230,7 +230,7 @@ systemRouter.post('/database/export', authenticate, authorize('system.control.vi
 });
 
 // 7. Data Import
-systemRouter.post('/database/import', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/database/import', authenticate, authorize(['database.tools.import', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { collection, records, mode } = req.body;
     if (!collection || !records) return ApiResponse.error(res, 'Collection and records are required.', 400);
@@ -246,7 +246,7 @@ systemRouter.post('/database/import', authenticate, authorize('system.control.vi
 });
 
 // 8. Date-Wise Preview Count
-systemRouter.post('/database/date-preview', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/database/date-preview', authenticate, authorize(['database.tools.view', 'database.tools.query', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { startDate, endDate } = req.body;
     if (!startDate) return ApiResponse.error(res, 'Start date is required.', 400);
@@ -259,7 +259,7 @@ systemRouter.post('/database/date-preview', authenticate, authorize('system.cont
 });
 
 // 9. Permanent Date-Wise Data Purge
-systemRouter.post('/database/date-purge', authenticate, authorize('system.control.view'), async (req: AuthenticatedRequest, res: Response) => {
+systemRouter.post('/database/date-purge', authenticate, authorize(['database.tools.purge', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { startDate, endDate, collections, confirmationPhrase } = req.body;
     if (!startDate) return ApiResponse.error(res, 'Start date is required.', 400);
