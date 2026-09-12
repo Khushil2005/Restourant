@@ -28,7 +28,9 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   Trash2,
-  Filter
+  Filter,
+  ArrowUpDown,
+  Smartphone
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -153,23 +155,50 @@ export const AccountsPage: React.FC = () => {
 
   // 4. Day Closing Modal
   const [isDayClosingModalOpen, setIsDayClosingModalOpen] = useState(false);
-  const [actualCashInput, setActualCashInput] = useState<number>(0);
+  const [closingDate, setClosingDate] = useState(getTodayStr());
+  const [countedCash, setCountedCash] = useState<number>(0);
   const [closingNotes, setClosingNotes] = useState('');
+  const [denominations, setDenominations] = useState<{ [key: string]: number }>({
+    '500': 0,
+    '200': 0,
+    '100': 0,
+    '50': 0,
+    '20': 0,
+    '10': 0,
+    'coins': 0
+  });
 
-  // 5. Printable slip ref
-  const printSlipRef = useRef<HTMLDivElement>(null);
+  // Calculate total from denominations
+  const totalDenominationCash = useMemo(() => {
+    return (
+      (denominations['500'] || 0) * 500 +
+      (denominations['200'] || 0) * 200 +
+      (denominations['100'] || 0) * 100 +
+      (denominations['50'] || 0) * 50 +
+      (denominations['20'] || 0) * 20 +
+      (denominations['10'] || 0) * 10 +
+      (denominations['coins'] || 0)
+    );
+  }, [denominations]);
 
-  // Load Base Chart of Accounts
+  // Sync counted cash if user uses denomination counter
+  useEffect(() => {
+    if (totalDenominationCash > 0) {
+      setCountedCash(totalDenominationCash);
+    }
+  }, [totalDenominationCash]);
+
+  // --- DATA FETCHING ---
   const loadAccounts = async () => {
     try {
       setIsLoadingAccounts(true);
       const res: any = await apiClient.get('/accounts/chart');
       if (res?.success && Array.isArray(res.data)) {
         setAccounts(res.data);
-        // Default select first cash/bank account if none selected
         if (!selectedAccountId && res.data.length > 0) {
-          const defaultAcc = res.data.find((a: any) => a.id === 'acc_cash_drawer') || res.data[0];
-          setSelectedAccountId(defaultAcc.id);
+          // Default to first Asset (e.g. Cash in Drawer) or first account
+          const cashAcc = res.data.find((a: any) => a.accountCode === '1010' || a.accountName.toLowerCase().includes('cash'));
+          setSelectedAccountId(cashAcc ? cashAcc.id : res.data[0].id);
         }
       }
     } catch (err) {
@@ -179,16 +208,18 @@ export const AccountsPage: React.FC = () => {
     }
   };
 
-  // Load Ledger Statement for Selected Account
-  const loadLedgerStatement = async (accId = selectedAccountId, sDate = ledgerStartDate, eDate = ledgerEndDate) => {
-    if (!accId) return;
+  const loadLedgerStatement = async (accId?: string, start?: string, end?: string) => {
+    const targetId = accId || selectedAccountId;
+    if (!targetId) return;
+
     try {
       setIsLoadingLedger(true);
-      const params: any = { accountId: accId };
-      if (sDate) params.startDate = sDate;
-      if (eDate) params.endDate = eDate;
-      const res: any = await apiClient.get('/accounts/ledger', { params });
-      if (res?.success) {
+      const sDate = start || ledgerStartDate;
+      const eDate = end || ledgerEndDate;
+      const res: any = await apiClient.get(`/accounts/ledger/${targetId}`, {
+        params: { startDate: sDate, endDate: eDate }
+      });
+      if (res?.success && res.data) {
         setLedgerStatement(res.data);
       }
     } catch (err) {
@@ -198,31 +229,14 @@ export const AccountsPage: React.FC = () => {
     }
   };
 
-  // Load Trial Balance
-  const loadTrialBalance = async (asOf = trialAsOfDate) => {
-    try {
-      setIsLoadingTrialBalance(true);
-      const res: any = await apiClient.get('/accounts/trial-balance', { params: { asOfDate: asOf } });
-      if (res?.success) {
-        setTrialBalanceReport(res.data);
-      }
-    } catch (err) {
-      console.error('Failed to load trial balance:', err);
-    } finally {
-      setIsLoadingTrialBalance(false);
-    }
-  };
-
-  // Load Journal Entries
   const loadJournals = async () => {
     try {
       setIsLoadingJournals(true);
       const params: any = {};
-      if (journalSearch) params.search = journalSearch;
       if (journalStartDate) params.startDate = journalStartDate;
       if (journalEndDate) params.endDate = journalEndDate;
       const res: any = await apiClient.get('/accounts/journal', { params });
-      if (res?.success) {
+      if (res?.success && Array.isArray(res.data)) {
         setJournals(res.data);
       }
     } catch (err) {
@@ -232,263 +246,288 @@ export const AccountsPage: React.FC = () => {
     }
   };
 
-  // Load Day Closings & Financial Summary
-  const loadOtherData = async () => {
+  const loadTrialBalance = async (asOf?: string) => {
     try {
-      const [dRes, sRes]: any = await Promise.all([
-        can('accounts.dayclosing.view') ? apiClient.get('/accounts/day-closing').catch(() => null) : null,
-        (can('accounts.dashboard.view') || can('accounts.report.view')) ? apiClient.get('/accounts/financial-summary').catch(() => null) : null
-      ]);
-      if (dRes?.success) setDayClosings(dRes.data);
-      if (sRes?.success) setFinancialSummary(sRes.data);
+      setIsLoadingTrialBalance(true);
+      const res: any = await apiClient.get('/accounts/trial-balance', {
+        params: { asOfDate: asOf || trialAsOfDate }
+      });
+      if (res?.success && res.data) {
+        setTrialBalanceReport(res.data);
+      }
     } catch (err) {
-      console.error('Failed to load secondary accounting data:', err);
+      console.error('Failed to load trial balance:', err);
+    } finally {
+      setIsLoadingTrialBalance(false);
     }
   };
 
-  // Initial Load
+  const loadDayClosings = async () => {
+    try {
+      const res: any = await apiClient.get('/accounts/dayclosing/history');
+      if (res?.success && Array.isArray(res.data)) {
+        setDayClosings(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load day closing history:', err);
+    }
+  };
+
+  const loadFinancialSummary = async () => {
+    try {
+      const res: any = await apiClient.get('/accounts/reports/summary');
+      if (res?.success && res.data) {
+        setFinancialSummary(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load financial summary:', err);
+    }
+  };
+
+  // Initial Boot
   useEffect(() => {
     loadAccounts();
-    loadOtherData();
+    loadFinancialSummary();
   }, []);
 
-  // When active tab changes, fetch its data
+  // When selected account or date changes, fetch ledger
   useEffect(() => {
-    if (activeTab === 'ledger' && selectedAccountId) {
-      loadLedgerStatement();
-    } else if (activeTab === 'journal') {
-      loadJournals();
-    } else if (activeTab === 'trialbalance') {
-      loadTrialBalance();
-    } else if (activeTab === 'chart') {
-      loadAccounts();
-    } else if (activeTab === 'summary' || activeTab === 'dayclosing') {
-      loadOtherData();
-    }
-  }, [activeTab]);
-
-  // When selected account or date range changes in ledger
-  useEffect(() => {
-    if (activeTab === 'ledger' && selectedAccountId) {
+    if (selectedAccountId) {
       loadLedgerStatement(selectedAccountId, ledgerStartDate, ledgerEndDate);
     }
   }, [selectedAccountId, ledgerStartDate, ledgerEndDate]);
 
-  // --- JOURNAL CALCULATION & AUTO-BALANCING ---
-  const journalTotals = useMemo(() => {
-    const debitSum = journalItems.reduce((s, it) => s + (Number(it.debit) || 0), 0);
-    const creditSum = journalItems.reduce((s, it) => s + (Number(it.credit) || 0), 0);
-    const diff = Math.abs(debitSum - creditSum);
-    const isBalanced = diff < 0.01 && debitSum > 0;
-    return { debitSum, creditSum, diff, isBalanced };
-  }, [journalItems]);
+  // Tab switch side effects
+  useEffect(() => {
+    if (activeTab === 'journal') loadJournals();
+    if (activeTab === 'trialbalance') loadTrialBalance();
+    if (activeTab === 'dayclosing') loadDayClosings();
+    if (activeTab === 'summary') loadFinancialSummary();
+  }, [activeTab]);
 
-  // --- EXPORT TO EXCEL: LEDGER STATEMENT ---
+  // --- EXPORT TO EXCEL ---
   const handleExportLedgerExcel = () => {
-    if (!ledgerStatement) {
-      alert('No ledger statement to export.');
-      return;
-    }
-    const acc = ledgerStatement.account;
-    const sheetData: any[] = [
-      { A: 'BHATIGAL BHANU RESTAURANT - ACCOUNT LEDGER STATEMENT' },
-      { A: `Account: ${acc.accountCode} - ${acc.accountName} (${acc.accountType})` },
-      { A: `Statement Period: ${ledgerStatement.period.startDate || 'Beginning'} to ${ledgerStatement.period.endDate || 'Today'}` },
-      { A: `Opening Balance: Rs. ${ledgerStatement.openingBalance.toLocaleString()} ${ledgerStatement.openingBalanceType}` },
-      { A: `Closing Balance: Rs. ${ledgerStatement.closingBalance.toLocaleString()} ${ledgerStatement.closingBalanceType}` },
-      {},
-      {
-        A: 'Date',
-        B: 'Voucher #',
-        C: 'Particulars / Counter Account',
-        D: 'Reference Type',
-        E: 'Ref #',
-        F: 'Narration',
-        G: 'Debit (Dr Rs.)',
-        H: 'Credit (Cr Rs.)',
-        I: 'Running Balance (Rs.)',
-        J: 'Dr/Cr'
-      }
-    ];
+    if (!ledgerStatement) return;
+    try {
+      const acc = ledgerStatement.account;
+      const rows: any[] = [];
 
-    ledgerStatement.transactions.forEach(tx => {
-      sheetData.push({
-        A: tx.entryDate,
-        B: tx.entryNumber,
-        C: tx.particulars,
-        D: tx.referenceType || 'MANUAL',
-        E: tx.referenceId || '',
-        F: tx.narration,
-        G: tx.debit > 0 ? tx.debit : '',
-        H: tx.credit > 0 ? tx.credit : '',
-        I: tx.runningBalance,
-        J: tx.balanceType
+      // Header rows
+      rows.push(['BHATIGAL BHANU - RESTAURANT ACCOUNT STATEMENT']);
+      rows.push([`Account: [${acc.accountCode}] ${acc.accountName} (${acc.accountType})`]);
+      rows.push([`Period: ${ledgerStatement.period.startDate} to ${ledgerStatement.period.endDate}`]);
+      rows.push([`Generated On: ${new Date().toLocaleString('en-IN')}`]);
+      rows.push([]);
+
+      // Summary
+      rows.push([
+        'Opening Balance',
+        `₹${ledgerStatement.openingBalance.toLocaleString()} ${ledgerStatement.openingBalanceType}`,
+        'Total Debits (Inflow)',
+        `₹${ledgerStatement.totalDebit.toLocaleString()}`,
+        'Total Credits (Outflow)',
+        `₹${ledgerStatement.totalCredit.toLocaleString()}`,
+        'Closing Balance',
+        `₹${ledgerStatement.closingBalance.toLocaleString()} ${ledgerStatement.closingBalanceType}`
+      ]);
+      rows.push([]);
+
+      // Transactions
+      rows.push(['Date', 'Voucher #', 'Particulars', 'Ref Type', 'Narration', 'Debit (₹)', 'Credit (₹)', 'Running Balance']);
+      rows.push([
+        ledgerStatement.period.startDate,
+        '-',
+        'Opening Balance Brought Forward (શરૂઆતની બાકી)',
+        'OPENING',
+        '-',
+        ledgerStatement.openingBalanceType === 'Dr' ? ledgerStatement.openingBalance : 0,
+        ledgerStatement.openingBalanceType === 'Cr' ? ledgerStatement.openingBalance : 0,
+        `₹${ledgerStatement.openingBalance.toLocaleString()} ${ledgerStatement.openingBalanceType}`
+      ]);
+
+      ledgerStatement.transactions.forEach((tx) => {
+        rows.push([
+          tx.entryDate,
+          tx.entryNumber,
+          tx.particulars,
+          tx.referenceType,
+          tx.narration,
+          tx.debit || 0,
+          tx.credit || 0,
+          `₹${((tx as any).balance ?? tx.runningBalance ?? 0).toLocaleString()} ${tx.balanceType}`
+        ]);
       });
-    });
 
-    sheetData.push({});
-    sheetData.push({
-      A: 'TOTALS',
-      G: ledgerStatement.totalDebit,
-      H: ledgerStatement.totalCredit,
-      I: ledgerStatement.closingBalance,
-      J: ledgerStatement.closingBalanceType
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(sheetData, { skipHeader: true });
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ledger_Statement');
-    const fileName = `Ledger_${acc.accountCode}_${acc.accountName.replace(/[^a-zA-Z0-9]/g, '_')}_${ledgerStartDate}_to_${ledgerEndDate}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ledger_Statement');
+      XLSX.writeFile(wb, `${acc.accountCode}_${acc.accountName.replace(/\s+/g, '_')}_Statement.xlsx`);
+    } catch (err: any) {
+      alert('Failed to export Excel: ' + err.message);
+    }
   };
 
-  // --- EXPORT TO PDF: LEDGER STATEMENT ---
+  // --- EXPORT TO PDF ---
   const handleExportLedgerPDF = () => {
-    if (!ledgerStatement) {
-      alert('No ledger statement to export.');
-      return;
-    }
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const acc = ledgerStatement.account;
+    if (!ledgerStatement) return;
+    try {
+      const doc = new jsPDF('p', 'pt', 'a4');
+      const acc = ledgerStatement.account;
 
-    // Header Branding
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(122, 27, 40); // Maroon
-    doc.text('BHATIGAL BHANU RESTAURANT', pageWidth / 2, 14, { align: 'center' });
+      // Title & Letterhead
+      doc.setFontSize(16);
+      doc.setTextColor(122, 27, 40); // Bhatigal Maroon
+      doc.text('BHATIGAL BHANU RESTAURANT', 40, 45);
 
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 80);
-    doc.text('Traditional Kathiyawadi & Gujarati Dining • Enterprise Financial Books', pageWidth / 2, 19, { align: 'center' });
+      doc.setFontSize(11);
+      doc.setTextColor(40, 40, 40);
+      doc.text('ACCOUNT LEDGER STATEMENT (નામા ખાતાવહી સ્ટેટમેન્ટ)', 40, 62);
 
-    // Document Title
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 30, 30);
-    doc.text('ACCOUNT LEDGER STATEMENT', pageWidth / 2, 26, { align: 'center' });
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Account: [${acc.accountCode}] ${acc.accountName} | Group: ${acc.accountType} (${acc.subType || 'General'})`, 40, 78);
+      doc.text(`Statement Period: ${ledgerStatement.period.startDate} to ${ledgerStatement.period.endDate}`, 40, 90);
+      doc.text(`Closing Balance: Rs. ${ledgerStatement.closingBalance.toLocaleString()} ${ledgerStatement.closingBalanceType}`, 40, 102);
 
-    // Account Details Box
-    doc.setDrawColor(220, 220, 220);
-    doc.setFillColor(250, 245, 238); // Cream background
-    doc.roundedRect(14, 30, pageWidth - 28, 22, 2, 2, 'FD');
+      // Table
+      const tableData = [
+        [
+          ledgerStatement.period.startDate,
+          '-',
+          'Opening Balance (શરૂઆતની બાકી)',
+          'OPENING',
+          ledgerStatement.openingBalanceType === 'Dr' ? `Rs. ${ledgerStatement.openingBalance}` : '-',
+          ledgerStatement.openingBalanceType === 'Cr' ? `Rs. ${ledgerStatement.openingBalance}` : '-',
+          `Rs. ${ledgerStatement.openingBalance} ${ledgerStatement.openingBalanceType}`
+        ],
+        ...ledgerStatement.transactions.map((tx) => [
+          tx.entryDate,
+          tx.entryNumber,
+          tx.particulars,
+          tx.referenceType,
+          tx.debit > 0 ? `Rs. ${tx.debit.toLocaleString()}` : '-',
+          tx.credit > 0 ? `Rs. ${tx.credit.toLocaleString()}` : '-',
+          `Rs. ${((tx as any).balance ?? tx.runningBalance ?? 0).toLocaleString()} ${tx.balanceType}`
+        ])
+      ];
 
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text(`Account: [${acc.accountCode}] ${acc.accountName}`, 18, 36);
-
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Account Type: ${acc.accountType} (${acc.subType || 'General'})`, 18, 42);
-    doc.text(`Period: ${ledgerStartDate} to ${ledgerEndDate}`, 18, 48);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Opening Balance: Rs. ${ledgerStatement.openingBalance.toLocaleString()} ${ledgerStatement.openingBalanceType}`, pageWidth - 18, 36, { align: 'right' });
-    doc.text(`Closing Balance: Rs. ${ledgerStatement.closingBalance.toLocaleString()} ${ledgerStatement.closingBalanceType}`, pageWidth - 18, 42, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Net Period Movement: Rs. ${ledgerStatement.netChange.toLocaleString()}`, pageWidth - 18, 48, { align: 'right' });
-
-    // Transactions Table
-    const tableRows = ledgerStatement.transactions.map(tx => [
-      tx.entryDate,
-      tx.entryNumber,
-      tx.particulars,
-      tx.narration || '-',
-      tx.debit > 0 ? `Rs. ${tx.debit.toLocaleString()}` : '-',
-      tx.credit > 0 ? `Rs. ${tx.credit.toLocaleString()}` : '-',
-      `Rs. ${tx.runningBalance.toLocaleString()} ${tx.balanceType}`
-    ]);
-
-    autoTable(doc, {
-      startY: 56,
-      head: [['Date', 'Voucher #', 'Particulars', 'Narration', 'Debit (Dr)', 'Credit (Cr)', 'Balance']],
-      body: tableRows,
-      theme: 'grid',
-      headStyles: { fillColor: [122, 27, 40], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-      bodyStyles: { fontSize: 7.5, textColor: [30, 30, 30] },
-      columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 26 },
-        2: { cellWidth: 40 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 22, halign: 'right' },
-        5: { cellWidth: 22, halign: 'right' },
-        6: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
-      },
-      foot: [[
-        'Total Movement',
-        '',
-        '',
-        '',
-        `Rs. ${ledgerStatement.totalDebit.toLocaleString()}`,
-        `Rs. ${ledgerStatement.totalCredit.toLocaleString()}`,
-        `Rs. ${ledgerStatement.closingBalance.toLocaleString()} ${ledgerStatement.closingBalanceType}`
-      ]],
-      footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8 }
-    });
-
-    const fileName = `Ledger_${acc.accountCode}_${acc.accountName.replace(/[^a-zA-Z0-9]/g, '_')}_${ledgerStartDate}.pdf`;
-    doc.save(fileName);
-  };
-
-  // --- EXPORT TRIAL BALANCE TO EXCEL ---
-  const handleExportTrialBalanceExcel = () => {
-    if (!trialBalanceReport) return;
-    const sheetData: any[] = [
-      { A: 'BHATIGAL BHANU RESTAURANT - TRIAL BALANCE' },
-      { A: `As of Date: ${trialBalanceReport.asOfDate}` },
-      { A: `Status: ${trialBalanceReport.isBalanced ? 'Balanced' : 'Unbalanced Variance Detected'}` },
-      {},
-      { A: 'Account Code', B: 'Account Name', C: 'Account Type', D: 'Debit Balance (Rs.)', E: 'Credit Balance (Rs.)' }
-    ];
-
-    trialBalanceReport.rows.forEach(r => {
-      sheetData.push({
-        A: r.accountCode,
-        B: r.accountName,
-        C: r.accountType,
-        D: r.debitBalance > 0 ? r.debitBalance : '',
-        E: r.creditBalance > 0 ? r.creditBalance : ''
+      autoTable(doc, {
+        startY: 115,
+        head: [['Date', 'Voucher #', 'Particulars / Contra', 'Type', 'Debit (Dr)', 'Credit (Cr)', 'Balance']],
+        body: tableData,
+        theme: 'striped',
+        styles: { fontSize: 8, cellPadding: 4 },
+        headStyles: { fillColor: [122, 27, 40], textColor: [255, 255, 255], fontStyle: 'bold' },
+        columnStyles: {
+          0: { cellWidth: 60 },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 160 },
+          3: { cellWidth: 50 },
+          4: { cellWidth: 65, halign: 'right' },
+          5: { cellWidth: 65, halign: 'right' },
+          6: { cellWidth: 70, halign: 'right', fontStyle: 'bold' }
+        }
       });
-    });
 
-    sheetData.push({});
-    sheetData.push({
-      A: 'GRAND TOTALS',
-      D: trialBalanceReport.grandDebit,
-      E: trialBalanceReport.grandCredit
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(sheetData, { skipHeader: true });
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Trial_Balance');
-    XLSX.writeFile(workbook, `Trial_Balance_${trialBalanceReport.asOfDate}.xlsx`);
+      doc.save(`${acc.accountCode}_Ledger_Statement.pdf`);
+    } catch (err: any) {
+      alert('Failed to export PDF: ' + err.message);
+    }
   };
 
-  // --- PRINT LEDGER STATEMENT ---
+  // --- PRINT LEDGER ---
   const handlePrintLedger = () => {
     window.print();
   };
 
-  // --- CREATE NEW ACCOUNT HEAD ---
-  const handleCreateAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAccCode || !newAccName) {
-      alert('Account code and account name are required.');
+  // --- EXPORT TRIAL BALANCE EXCEL ---
+  const handleExportTrialBalanceExcel = () => {
+    if (!trialBalanceReport) return;
+    try {
+      const rows: any[] = [];
+      rows.push(['BHATIGAL BHANU - TRIAL BALANCE REPORT (કાચું સરવૈયું)']);
+      rows.push([`As of Date: ${trialBalanceReport.asOfDate}`]);
+      rows.push([`Status: ${trialBalanceReport.isBalanced ? 'BALANCED' : 'UNBALANCED'}`]);
+      rows.push([]);
+      rows.push(['Account Code', 'Account Name', 'Group', 'Sub Type', 'Debit (₹)', 'Credit (₹)']);
+
+      trialBalanceReport.rows.forEach(r => {
+        rows.push([
+          r.accountCode,
+          r.accountName,
+          r.accountType,
+          r.subType || '-',
+          r.debitBalance || 0,
+          r.creditBalance || 0
+        ]);
+      });
+
+      rows.push([]);
+      rows.push(['GRAND TOTAL', '', '', '', trialBalanceReport.grandDebit, trialBalanceReport.grandCredit]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Trial_Balance');
+      XLSX.writeFile(wb, `Trial_Balance_${trialBalanceReport.asOfDate}.xlsx`);
+    } catch (err: any) {
+      alert('Failed to export Trial Balance: ' + err.message);
+    }
+  };
+
+  // --- JOURNAL MODAL HELPERS ---
+  const handleAddJournalLine = () => {
+    setJournalItems(prev => [...prev, { accountId: '', debit: 0, credit: 0, description: '' }]);
+  };
+
+  const handleRemoveJournalLine = (index: number) => {
+    if (journalItems.length <= 2) {
+      alert('A double-entry voucher must contain at least 2 lines (Debit and Credit).');
       return;
     }
+    setJournalItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateJournalLine = (index: number, field: keyof JournalFormItem, value: any) => {
+    setJournalItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const journalTotals = useMemo(() => {
+    let debitSum = 0;
+    let creditSum = 0;
+    journalItems.forEach(it => {
+      debitSum += Number(it.debit || 0);
+      creditSum += Number(it.credit || 0);
+    });
+    const diff = Math.abs(debitSum - creditSum);
+    const isBalanced = debitSum > 0 && debitSum === creditSum;
+    return { debitSum, creditSum, diff, isBalanced };
+  }, [journalItems]);
+
+  // --- CREATE ACCOUNT HEAD ---
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccCode.trim() || !newAccName.trim()) {
+      alert('Account code and account title are required.');
+      return;
+    }
+
     try {
-      const res: any = await apiClient.post('/accounts/chart', {
-        accountCode: newAccCode.trim(),
+      const payload = {
+        accountCode: newAccCode.trim().toUpperCase(),
         accountName: newAccName.trim(),
         accountType: newAccType,
-        subType: newAccSubType,
+        subType: newAccSubType.trim() || undefined,
         openingBalance: Number(newAccOpeningBal || 0),
-        description: newAccDesc
-      });
+        description: newAccDesc.trim() || undefined
+      };
+
+      const res: any = await apiClient.post('/accounts/chart', payload);
       if (res?.success) {
-        alert(`Account head "${newAccName}" created successfully!`);
+        alert('New account head registered successfully!');
         setIsAddAccountModalOpen(false);
         setNewAccCode('');
         setNewAccName('');
@@ -568,14 +607,9 @@ export const AccountsPage: React.FC = () => {
         alert(`Journal Voucher posted successfully! Voucher #${res.data?.entryNumber || ''}`);
         setIsJournalModalOpen(false);
         setJournalNarration('');
-        setJournalRefId('');
-        setJournalItems([
-          { accountId: accounts[0]?.id || '', debit: 0, credit: 0, description: '' },
-          { accountId: accounts[1]?.id || '', debit: 0, credit: 0, description: '' }
-        ]);
-        loadJournals();
         loadAccounts();
-        if (selectedAccountId) loadLedgerStatement();
+        if (activeTab === 'ledger') loadLedgerStatement();
+        if (activeTab === 'journal') loadJournals();
       }
     } catch (err: any) {
       alert(err.message || 'Failed to post journal voucher.');
@@ -586,16 +620,23 @@ export const AccountsPage: React.FC = () => {
   const handleExecuteDayClosing = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/accounts/day-closing', {
-        actualCash: actualCashInput,
-        notes: closingNotes,
-        closingDate: getTodayStr()
-      });
-      alert('Day Closing executed and shift finalized successfully!');
-      setIsDayClosingModalOpen(false);
-      loadOtherData();
+      const payload = {
+        closingDate,
+        actualCash: Number(countedCash || 0),
+        notes: closingNotes.trim() || undefined,
+        denominations: totalDenominationCash > 0 ? denominations : undefined
+      };
+
+      const res: any = await apiClient.post('/accounts/dayclosing', payload);
+      if (res?.success) {
+        alert(`Day Closing finalized successfully for date ${closingDate}!`);
+        setIsDayClosingModalOpen(false);
+        setClosingNotes('');
+        loadDayClosings();
+        loadFinancialSummary();
+      }
     } catch (err: any) {
-      alert(err.message || 'Day closing failed.');
+      alert(err.message || 'Failed to finalize day closing.');
     }
   };
 
@@ -641,46 +682,66 @@ export const AccountsPage: React.FC = () => {
     );
   }, [ledgerStatement, ledgerSearch]);
 
+  // Quick Preset Setter
+  const setPresetRange = (type: 'today' | 'yesterday' | 'week' | 'month' | 'fy') => {
+    if (type === 'today') {
+      setLedgerStartDate(getTodayStr());
+      setLedgerEndDate(getTodayStr());
+    } else if (type === 'yesterday') {
+      setLedgerStartDate(getYesterdayStr());
+      setLedgerEndDate(getYesterdayStr());
+    } else if (type === 'week') {
+      setLedgerStartDate(getWeekStartStr());
+      setLedgerEndDate(getTodayStr());
+    } else if (type === 'month') {
+      setLedgerStartDate(getMonthStartStr());
+      setLedgerEndDate(getTodayStr());
+    } else if (type === 'fy') {
+      setLedgerStartDate(getFYStartStr());
+      setLedgerEndDate(getTodayStr());
+    }
+  };
+
   return (
     <div className="d-flex flex-column gap-3 p-1 p-md-2" style={{ fontSize: '0.85rem' }}>
-      {/* 1. TOP HEADER BAR: Box Type Layout */}
-      <div className="card shadow-sm border rounded-3 mb-1 bg-white">
-        <div className="card-body p-3 px-sm-3.5 py-sm-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+      {/* 1. TOP HEADER BAR: Box Type Layout with Bhatigal Maroon Accents */}
+      <div className="card shadow-sm border rounded-3 mb-1 bg-white" style={{ borderLeft: '4px solid #7A1B28' }}>
+        <div className="card-body p-3 px-sm-3.5 py-sm-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
           <div className="d-flex align-items-center gap-3">
             {/* Header Icon Box */}
             <div
-              className="bg-primary-subtle text-primary border border-primary-subtle rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
-              style={{ width: 44, height: 44 }}
+              className="rounded-3 d-flex align-items-center justify-content-center shadow-sm flex-shrink-0 text-white"
+              style={{ width: 44, height: 44, background: 'linear-gradient(135deg, #7A1B28 0%, #4A0E17 100%)' }}
             >
-              <BookOpen size={22} className="text-primary" />
+              <BookOpen size={22} className="text-white" />
             </div>
 
             {/* Title & Metadata Badges */}
             <div className="d-flex flex-column">
               <div className="d-flex align-items-center gap-2 flex-wrap">
-                <h6 className="fw-bold mb-0 text-dark fs-6">
+                <h5 className="fw-bold mb-0 text-dark fs-6">
                   Account & Ledger Management
-                </h6>
-                <span className="badge bg-light text-secondary border px-2 py-0.5 rounded-pill fw-medium" style={{ fontSize: '0.72rem' }}>
+                </h5>
+                <span className="badge px-2 py-0.5 rounded-pill fw-bold" style={{ background: '#FDF2E9', color: '#7A1B28', border: '1px solid #F5C6CB', fontSize: '0.72rem' }}>
                   નામા ખાતાવહી અને હિસાબ
                 </span>
                 <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill fw-bold" style={{ fontSize: '0.72rem' }}>
                   Double-Entry Central System
                 </span>
               </div>
-              <div className="text-muted small mt-1" style={{ fontSize: '0.74rem' }}>
+              <div className="text-muted small mt-0.5" style={{ fontSize: '0.74rem' }}>
                 Chart of accounts, real-time ledger statements, balanced journal vouchers, trial balance & day closing
               </div>
             </div>
           </div>
 
-          {/* Action Buttons Box */}
-          <div className="d-flex align-items-center gap-2 flex-wrap flex-shrink-0 align-self-start align-self-sm-center">
+          {/* Action Buttons Box - Responsive for Web & Mobile */}
+          <div className="d-flex align-items-center gap-2 flex-wrap w-100 w-md-auto justify-content-start justify-content-md-end">
             {can('accounts.chart.create') && (
               <button
                 type="button"
-                className="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-1.5 px-3 py-1.5 rounded-2 shadow-sm fw-bold text-nowrap"
-                style={{ fontSize: '0.82rem', height: 38 }}
+                className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 px-2.5 py-1.5 rounded-2 shadow-xs fw-bold flex-fill flex-md-grow-0"
+                style={{ fontSize: '0.78rem', height: 36 }}
                 onClick={() => {
                   setNewAccCode(`ACC-${Math.floor(1000 + Math.random() * 9000)}`);
                   setNewAccName('');
@@ -689,15 +750,15 @@ export const AccountsPage: React.FC = () => {
                   setIsAddAccountModalOpen(true);
                 }}
               >
-                <Plus size={16} strokeWidth={2.5} /> Add Account Head
+                <Plus size={15} strokeWidth={2.5} /> <span className="text-nowrap">Add Account</span>
               </button>
             )}
 
             {can('accounts.journal.create') && (
               <button
                 type="button"
-                className="btn btn-primary d-inline-flex align-items-center justify-content-center gap-1.5 px-3 py-1.5 rounded-2 shadow-sm fw-bold text-nowrap"
-                style={{ fontSize: '0.82rem', height: 38 }}
+                className="btn btn-sm text-white d-inline-flex align-items-center justify-content-center gap-1.5 px-3 py-1.5 rounded-2 shadow-xs fw-bold flex-fill flex-md-grow-0"
+                style={{ backgroundColor: '#7A1B28', borderColor: '#7A1B28', fontSize: '0.78rem', height: 36 }}
                 onClick={() => {
                   setJournalNarration('');
                   setJournalDate(getTodayStr());
@@ -709,80 +770,98 @@ export const AccountsPage: React.FC = () => {
                   setIsJournalModalOpen(true);
                 }}
               >
-                <Plus size={16} strokeWidth={2.5} /> Post Journal Voucher
+                <Plus size={15} strokeWidth={2.5} /> <span className="text-nowrap">Post Journal</span>
               </button>
             )}
 
             {can('accounts.dayclosing.execute') && (
               <button
                 type="button"
-                className="btn btn-warning text-dark d-inline-flex align-items-center justify-content-center gap-1.5 px-3 py-1.5 rounded-2 shadow-sm fw-bold text-nowrap"
-                style={{ fontSize: '0.82rem', height: 38 }}
+                className="btn btn-warning text-dark btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 px-3 py-1.5 rounded-2 shadow-xs fw-bold flex-fill flex-md-grow-0"
+                style={{ fontSize: '0.78rem', height: 36 }}
                 onClick={() => setIsDayClosingModalOpen(true)}
               >
-                <CalendarCheck size={16} strokeWidth={2.2} /> Day Closing
+                <CalendarCheck size={15} strokeWidth={2.2} /> <span className="text-nowrap">Day Closing</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* 2. NAVIGATION TABS */}
-      <div className="card shadow-sm border rounded-3 bg-white p-2">
-        <ul className="nav nav-pills gap-1 flex-nowrap overflow-auto" style={{ scrollbarWidth: 'none' }}>
-          <li className="nav-item">
+      {/* 2. NAVIGATION TABS: Horizontal Touch Scroll for Mobile & Web */}
+      <div className="card shadow-sm border rounded-3 bg-white p-1.5">
+        <ul className="nav nav-pills gap-1 flex-nowrap overflow-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+          <li className="nav-item flex-shrink-0">
             <button
-              className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 ${activeTab === 'ledger' ? 'active fw-bold' : 'text-dark'}`}
+              className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 text-nowrap ${
+                activeTab === 'ledger' ? 'text-white fw-bold shadow-xs' : 'text-dark bg-light'
+              }`}
+              style={activeTab === 'ledger' ? { backgroundColor: '#7A1B28', borderColor: '#7A1B28' } : {}}
               onClick={() => setActiveTab('ledger')}
             >
-              <BookOpen size={16} /> Account Ledger Statement (ખાતાવહી)
+              <BookOpen size={15} /> Account Ledger Statement (ખાતાવહી)
             </button>
           </li>
           {can('accounts.chart.view') && (
-            <li className="nav-item">
+            <li className="nav-item flex-shrink-0">
               <button
-                className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 ${activeTab === 'chart' ? 'active fw-bold' : 'text-dark'}`}
+                className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 text-nowrap ${
+                  activeTab === 'chart' ? 'text-white fw-bold shadow-xs' : 'text-dark bg-light'
+                }`}
+                style={activeTab === 'chart' ? { backgroundColor: '#7A1B28', borderColor: '#7A1B28' } : {}}
                 onClick={() => setActiveTab('chart')}
               >
-                <ListTree size={16} /> Chart of Accounts ({accounts.length})
+                <ListTree size={15} /> Chart of Accounts ({accounts.length})
               </button>
             </li>
           )}
           {(can('accounts.journal.view') || can('accounts.ledger.view')) && (
-            <li className="nav-item">
+            <li className="nav-item flex-shrink-0">
               <button
-                className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 ${activeTab === 'journal' ? 'active fw-bold' : 'text-dark'}`}
+                className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 text-nowrap ${
+                  activeTab === 'journal' ? 'text-white fw-bold shadow-xs' : 'text-dark bg-light'
+                }`}
+                style={activeTab === 'journal' ? { backgroundColor: '#7A1B28', borderColor: '#7A1B28' } : {}}
                 onClick={() => setActiveTab('journal')}
               >
-                <FileText size={16} /> Journal Entries Ledger ({journals.length})
+                <FileText size={15} /> Journal Entries ({journals.length})
               </button>
             </li>
           )}
-          <li className="nav-item">
+          <li className="nav-item flex-shrink-0">
             <button
-              className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 ${activeTab === 'trialbalance' ? 'active fw-bold' : 'text-dark'}`}
+              className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 text-nowrap ${
+                activeTab === 'trialbalance' ? 'text-white fw-bold shadow-xs' : 'text-dark bg-light'
+              }`}
+              style={activeTab === 'trialbalance' ? { backgroundColor: '#7A1B28', borderColor: '#7A1B28' } : {}}
               onClick={() => setActiveTab('trialbalance')}
             >
-              <Scale size={16} /> Trial Balance (કાચું સરવૈયું)
+              <Scale size={15} /> Trial Balance (કાચું સરવૈયું)
             </button>
           </li>
           {(can('accounts.dashboard.view') || can('accounts.report.view')) && (
-            <li className="nav-item">
+            <li className="nav-item flex-shrink-0">
               <button
-                className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 ${activeTab === 'summary' ? 'active fw-bold' : 'text-dark'}`}
+                className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 text-nowrap ${
+                  activeTab === 'summary' ? 'text-white fw-bold shadow-xs' : 'text-dark bg-light'
+                }`}
+                style={activeTab === 'summary' ? { backgroundColor: '#7A1B28', borderColor: '#7A1B28' } : {}}
                 onClick={() => setActiveTab('summary')}
               >
-                <TrendingUp size={16} /> Financial Statements (P&L)
+                <TrendingUp size={15} /> Financial Statements (P&L)
               </button>
             </li>
           )}
           {can('accounts.dayclosing.view') && (
-            <li className="nav-item">
+            <li className="nav-item flex-shrink-0">
               <button
-                className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 ${activeTab === 'dayclosing' ? 'active fw-bold' : 'text-dark'}`}
+                className={`nav-link btn-sm d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 text-nowrap ${
+                  activeTab === 'dayclosing' ? 'text-white fw-bold shadow-xs' : 'text-dark bg-light'
+                }`}
+                style={activeTab === 'dayclosing' ? { backgroundColor: '#7A1B28', borderColor: '#7A1B28' } : {}}
                 onClick={() => setActiveTab('dayclosing')}
               >
-                <CalendarCheck size={16} /> Day Closing Register ({dayClosings.length})
+                <CalendarCheck size={15} /> Day Closing Register ({dayClosings.length})
               </button>
             </li>
           )}
@@ -790,20 +869,21 @@ export const AccountsPage: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* TAB 1: INDIVIDUAL ACCOUNT LEDGER STATEMENT (ખાતાવહી) */}
+      {/* TAB 1: INDIVIDUAL ACCOUNT LEDGER STATEMENT (ખાતાવહી)     */}
       {/* ======================================================== */}
       {activeTab === 'ledger' && (
         <div className="d-flex flex-column gap-3">
-          {/* Top Control Bar: Account Selector & Date Range Filter */}
+          {/* Top Filter & Toolbar Card - Perfectly Structured for Mobile & Web */}
           <div className="card shadow-sm border rounded-3 bg-white p-3">
-            <div className="row g-3 align-items-end">
-              {/* Account Dropdown */}
-              <div className="col-12 col-md-4">
-                <label className="form-label small fw-bold text-dark d-flex align-items-center gap-1 mb-1">
-                  <BookOpen size={14} className="text-primary" /> Select Account Head (ખાતું પસંદ કરો)
+            <div className="row g-3">
+              {/* Row A: Account Selector (Left) + Export & Refresh Buttons (Right) */}
+              <div className="col-12 col-lg-7">
+                <label className="form-label small fw-bold text-dark d-flex align-items-center gap-1 mb-1.5">
+                  <BookOpen size={14} style={{ color: '#7A1B28' }} /> Select Account Head (નામા ખાતું પસંદ કરો)
                 </label>
                 <select
-                  className="form-select form-select-sm fw-bold border-primary-subtle shadow-xs"
+                  className="form-select form-select-sm fw-bold shadow-xs"
+                  style={{ borderColor: '#F5C6CB', backgroundColor: '#FFFDFD' }}
                   value={selectedAccountId}
                   onChange={(e) => setSelectedAccountId(e.target.value)}
                   disabled={isLoadingAccounts}
@@ -846,220 +926,219 @@ export const AccountsPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* Date Presets & Inputs */}
-              <div className="col-12 col-md-5">
-                <label className="form-label small fw-bold text-dark d-flex align-items-center gap-1 mb-1">
-                  <Calendar size={14} className="text-secondary" /> Statement Period (સમયગાળો)
-                </label>
-                <div className="d-flex flex-wrap gap-2 align-items-center">
-                  <div className="btn-group btn-group-sm" role="group">
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => {
-                        setLedgerStartDate(getTodayStr());
-                        setLedgerEndDate(getTodayStr());
-                      }}
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => {
-                        setLedgerStartDate(getYesterdayStr());
-                        setLedgerEndDate(getYesterdayStr());
-                      }}
-                    >
-                      Yesterday
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => {
-                        setLedgerStartDate(getWeekStartStr());
-                        setLedgerEndDate(getTodayStr());
-                      }}
-                    >
-                      This Week
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => {
-                        setLedgerStartDate(getMonthStartStr());
-                        setLedgerEndDate(getTodayStr());
-                      }}
-                    >
-                      This Month
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => {
-                        setLedgerStartDate(getFYStartStr());
-                        setLedgerEndDate(getTodayStr());
-                      }}
-                    >
-                      This FY
-                    </button>
+              <div className="col-12 col-lg-5 d-flex align-items-end justify-content-start justify-content-lg-end">
+                <div className="d-flex align-items-center gap-1.5 w-100 w-lg-auto justify-content-between justify-content-lg-end flex-wrap">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center gap-1 shadow-xs px-2.5 py-1.5 flex-fill flex-lg-grow-0"
+                    onClick={() => loadLedgerStatement()}
+                    title="Refresh Statement"
+                  >
+                    <RefreshCw size={14} className={isLoadingLedger ? 'spin' : ''} /> <span className="d-none d-sm-inline">Reload</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-success btn-sm d-inline-flex align-items-center justify-content-center gap-1 shadow-xs fw-bold px-3 py-1.5 flex-fill flex-lg-grow-0"
+                    onClick={handleExportLedgerExcel}
+                    title="Export to Excel (.xlsx)"
+                  >
+                    <FileSpreadsheet size={15} /> Excel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm d-inline-flex align-items-center justify-content-center gap-1 shadow-xs fw-bold px-3 py-1.5 flex-fill flex-lg-grow-0"
+                    onClick={handleExportLedgerPDF}
+                    title="Export to PDF"
+                  >
+                    <Download size={15} /> PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-dark btn-sm d-inline-flex align-items-center justify-content-center gap-1 shadow-xs px-2.5 py-1.5 flex-fill flex-lg-grow-0"
+                    onClick={handlePrintLedger}
+                    title="Print Ledger"
+                  >
+                    <Printer size={15} /> Print
+                  </button>
+                </div>
+              </div>
+
+              {/* Row B: Date Presets & Date Inputs */}
+              <div className="col-12 pt-2 border-top">
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                  {/* Preset Pills */}
+                  <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                    <span className="small text-secondary fw-bold me-1 d-none d-sm-inline">
+                      <Calendar size={13} className="me-1" /> Quick Presets:
+                    </span>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-2 py-1"
+                        onClick={() => setPresetRange('today')}
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-2 py-1"
+                        onClick={() => setPresetRange('yesterday')}
+                      >
+                        Yesterday
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-2 py-1"
+                        onClick={() => setPresetRange('week')}
+                      >
+                        This Week
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-2 py-1"
+                        onClick={() => setPresetRange('month')}
+                      >
+                        This Month
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-2 py-1"
+                        onClick={() => setPresetRange('fy')}
+                      >
+                        This FY
+                      </button>
+                    </div>
                   </div>
-                  <div className="d-flex align-items-center gap-1">
+
+                  {/* Date Input Pickers */}
+                  <div className="d-flex align-items-center gap-1.5 w-100 w-md-auto justify-content-between justify-content-md-end">
+                    <span className="small text-muted text-nowrap">From:</span>
                     <input
                       type="date"
-                      className="form-control form-control-sm"
-                      style={{ width: 130 }}
+                      className="form-control form-control-sm shadow-xs"
+                      style={{ maxWidth: 140 }}
                       value={ledgerStartDate}
                       onChange={e => setLedgerStartDate(e.target.value)}
                     />
-                    <span className="text-muted small">to</span>
+                    <span className="small text-muted text-nowrap">To:</span>
                     <input
                       type="date"
-                      className="form-control form-control-sm"
-                      style={{ width: 130 }}
+                      className="form-control form-control-sm shadow-xs"
+                      style={{ maxWidth: 140 }}
                       value={ledgerEndDate}
                       onChange={e => setLedgerEndDate(e.target.value)}
                     />
                   </div>
                 </div>
               </div>
-
-              {/* Action Buttons: Refresh, Excel, PDF, Print */}
-              <div className="col-12 col-md-3 d-flex justify-content-md-end gap-1.5 flex-wrap">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
-                  onClick={() => loadLedgerStatement()}
-                  title="Refresh Statement"
-                >
-                  <RefreshCw size={14} className={isLoadingLedger ? 'spin' : ''} />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-1 fw-bold"
-                  onClick={handleExportLedgerExcel}
-                  title="Export to Excel (.xlsx)"
-                >
-                  <FileSpreadsheet size={15} /> Excel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-1 fw-bold"
-                  onClick={handleExportLedgerPDF}
-                  title="Export to PDF"
-                >
-                  <Download size={15} /> PDF
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-dark btn-sm d-inline-flex align-items-center gap-1"
-                  onClick={handlePrintLedger}
-                  title="Print Ledger"
-                >
-                  <Printer size={15} /> Print
-                </button>
-              </div>
             </div>
           </div>
 
-          {/* 5 KPI Summary Cards */}
+          {/* 3. 5 KPI Summary Cards - Perfectly Proportioned Box Type */}
           {ledgerStatement && (
-            <div className="row g-2">
+            <div className="row g-2 g-md-3">
               {/* Card 1: Opening Balance */}
-              <div className="col-12 col-sm-6 col-md-2" style={{ flex: '1 0 18%' }}>
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100">
+              <div className="col-6 col-md-4 col-xl">
+                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #64748B' }}>
                   <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.68rem' }}>
+                    <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
                       Opening Balance
                     </span>
-                    <span className={`badge ${ledgerStatement.openingBalanceType === 'Dr' ? 'bg-primary-subtle text-primary' : 'bg-warning-subtle text-warning-emphasis'} px-1.5 py-0.5`} style={{ fontSize: '0.65rem' }}>
+                    <span className={`badge ${ledgerStatement.openingBalanceType === 'Dr' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'} px-1.5 py-0.5`} style={{ fontSize: '0.65rem' }}>
                       {ledgerStatement.openingBalanceType}
                     </span>
                   </div>
-                  <h5 className="fw-bold mb-0 text-dark">
+                  <h5 className="fw-bold mb-0 text-dark fs-5">
                     ₹{ledgerStatement.openingBalance.toLocaleString()}
                   </h5>
-                  <span className="text-muted small mt-1" style={{ fontSize: '0.68rem' }}>
+                  <span className="text-muted small mt-1 text-truncate" style={{ fontSize: '0.68rem' }}>
                     As of {ledgerStatement.period.startDate || 'Start'}
                   </span>
                 </div>
               </div>
 
               {/* Card 2: Period Debits */}
-              <div className="col-12 col-sm-6 col-md-2" style={{ flex: '1 0 18%' }}>
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100">
+              <div className="col-6 col-md-4 col-xl">
+                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #2563EB' }}>
                   <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.68rem' }}>
+                    <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
                       Total Debits (Dr)
                     </span>
-                    <span className="badge bg-primary-subtle text-primary px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
-                      Inflow/Expense
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
+                      Inflow
                     </span>
                   </div>
-                  <h5 className="fw-bold mb-0 text-primary">
+                  <h5 className="fw-bold mb-0 text-primary fs-5">
                     ₹{ledgerStatement.totalDebit.toLocaleString()}
                   </h5>
-                  <span className="text-muted small mt-1" style={{ fontSize: '0.68rem' }}>
+                  <span className="text-muted small mt-1 text-truncate" style={{ fontSize: '0.68rem' }}>
                     {ledgerStatement.transactions.filter(t => t.debit > 0).length} Debit Postings
                   </span>
                 </div>
               </div>
 
               {/* Card 3: Period Credits */}
-              <div className="col-12 col-sm-6 col-md-2" style={{ flex: '1 0 18%' }}>
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100">
+              <div className="col-6 col-md-4 col-xl">
+                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #16A34A' }}>
                   <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.68rem' }}>
+                    <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
                       Total Credits (Cr)
                     </span>
-                    <span className="badge bg-success-subtle text-success px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
-                      Outflow/Revenue
+                    <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
+                      Outflow
                     </span>
                   </div>
-                  <h5 className="fw-bold mb-0 text-success">
+                  <h5 className="fw-bold mb-0 text-success fs-5">
                     ₹{ledgerStatement.totalCredit.toLocaleString()}
                   </h5>
-                  <span className="text-muted small mt-1" style={{ fontSize: '0.68rem' }}>
+                  <span className="text-muted small mt-1 text-truncate" style={{ fontSize: '0.68rem' }}>
                     {ledgerStatement.transactions.filter(t => t.credit > 0).length} Credit Postings
                   </span>
                 </div>
               </div>
 
               {/* Card 4: Net Movement */}
-              <div className="col-12 col-sm-6 col-md-2" style={{ flex: '1 0 18%' }}>
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100">
+              <div className="col-6 col-md-6 col-xl">
+                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #D97706' }}>
                   <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.68rem' }}>
+                    <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
                       Net Movement
                     </span>
                     <span className="badge bg-light text-secondary border px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
                       Activity
                     </span>
                   </div>
-                  <h5 className={`fw-bold mb-0 ${ledgerStatement.netChange >= 0 ? 'text-primary' : 'text-danger'}`}>
+                  <h5 className={`fw-bold mb-0 fs-5 ${ledgerStatement.netChange >= 0 ? 'text-primary' : 'text-danger'}`}>
                     {ledgerStatement.netChange >= 0 ? '+' : '-'}₹{Math.abs(ledgerStatement.netChange).toLocaleString()}
                   </h5>
-                  <span className="text-muted small mt-1" style={{ fontSize: '0.68rem' }}>
-                    In selected period
+                  <span className="text-muted small mt-1 text-truncate" style={{ fontSize: '0.68rem' }}>
+                    Net change in period
                   </span>
                 </div>
               </div>
 
-              {/* Card 5: Closing Balance */}
-              <div className="col-12 col-sm-6 col-md-3" style={{ flex: '1 0 24%' }}>
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-primary-subtle border-primary-subtle h-100">
+              {/* Card 5: Closing Balance (Hero Card) */}
+              <div className="col-12 col-md-6 col-xl">
+                <div
+                  className="card shadow-sm border rounded-3 p-2.5 h-100"
+                  style={{
+                    borderTop: '3px solid #7A1B28',
+                    backgroundColor: '#FFF9F5',
+                    borderColor: '#F5C6CB'
+                  }}
+                >
                   <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-primary fw-bold" style={{ fontSize: '0.68rem' }}>
+                    <span className="text-uppercase fw-bold" style={{ color: '#7A1B28', fontSize: '0.68rem', letterSpacing: '0.5px' }}>
                       Closing Balance (આખર બાકી)
                     </span>
-                    <span className="badge bg-primary text-white px-2 py-0.5 fw-bold" style={{ fontSize: '0.7rem' }}>
+                    <span className="badge text-white px-2 py-0.5 fw-bold" style={{ backgroundColor: '#7A1B28', fontSize: '0.68rem' }}>
                       {ledgerStatement.closingBalanceType}
                     </span>
                   </div>
-                  <h4 className="fw-bold mb-0 text-dark">
+                  <h4 className="fw-bold mb-0 text-dark fs-5">
                     ₹{ledgerStatement.closingBalance.toLocaleString()}
                   </h4>
-                  <span className="text-primary small mt-1 fw-medium" style={{ fontSize: '0.7rem' }}>
+                  <span className="small mt-1 fw-medium text-truncate" style={{ color: '#7A1B28', fontSize: '0.7rem' }}>
                     As of {ledgerStatement.period.endDate || 'Today'}
                   </span>
                 </div>
@@ -1067,24 +1146,24 @@ export const AccountsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Ledger Transactions Statement Table */}
+          {/* 4. Ledger Transactions Statement Table */}
           <div className="card shadow-sm border rounded-3 bg-white">
-            <div className="card-header bg-white py-2.5 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+            <div className="card-header bg-white py-2.5 px-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 border-bottom">
               <div className="d-flex align-items-center gap-2">
                 <span className="fw-bold text-dark fs-6">
                   {ledgerStatement?.account.accountName || 'Account'} Statement
                 </span>
                 <span className="badge bg-light text-secondary border">
-                  {filteredLedgerTx.length} Transactions
+                  {filteredLedgerTx.length} Entries
                 </span>
               </div>
-              <div className="d-flex align-items-center gap-2">
-                <div className="input-group input-group-sm" style={{ width: 220 }}>
-                  <span className="input-group-text bg-light border-end-0"><Search size={14} /></span>
+              <div className="d-flex align-items-center gap-2 w-100 w-sm-auto">
+                <div className="input-group input-group-sm w-100" style={{ maxWidth: 260 }}>
+                  <span className="input-group-text bg-light border-end-0"><Search size={14} className="text-muted" /></span>
                   <input
                     type="text"
                     className="form-control form-control-sm border-start-0"
-                    placeholder="Search voucher, particulars..."
+                    placeholder="Search voucher, narration..."
                     value={ledgerSearch}
                     onChange={e => setLedgerSearch(e.target.value)}
                   />
@@ -1092,32 +1171,42 @@ export const AccountsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="table-responsive">
-              <table className="table table-hover table-striped mb-0 align-middle" style={{ fontSize: '0.82rem' }}>
-                <thead className="table-light">
+            {/* Mobile Scroll Hint Banner */}
+            <div className="d-block d-md-none bg-light border-bottom px-3 py-1 text-secondary text-center small" style={{ fontSize: '0.72rem' }}>
+              <Smartphone size={12} className="me-1" /> આડી સ્ક્રોલ કરીને તમામ વિગતો જોઈ શકો છો (Swipe horizontally)
+            </div>
+
+            <div className="table-responsive" style={{ maxHeight: 600, overflowY: 'auto' }}>
+              <table className="table table-hover table-striped mb-0 align-middle" style={{ fontSize: '0.82rem', minWidth: 720 }}>
+                <thead className="table-light sticky-top" style={{ zIndex: 10 }}>
                   <tr>
-                    <th style={{ width: '10%' }}>Date</th>
-                    <th style={{ width: '13%' }}>Voucher #</th>
-                    <th style={{ width: '22%' }}>Particulars / Contra Account</th>
-                    <th style={{ width: '12%' }}>Ref Type</th>
-                    <th style={{ width: '15%' }}>Narration</th>
-                    <th className="text-end" style={{ width: '9%' }}>Debit (₹ Dr)</th>
-                    <th className="text-end" style={{ width: '9%' }}>Credit (₹ Cr)</th>
-                    <th className="text-end" style={{ width: '10%' }}>Running Balance</th>
+                    <th className="text-nowrap ps-3" style={{ width: '11%' }}>Date</th>
+                    <th className="text-nowrap" style={{ width: '14%' }}>Voucher #</th>
+                    <th style={{ width: '28%' }}>Particulars / Contra Account</th>
+                    <th className="text-nowrap" style={{ width: '12%' }}>Ref Type</th>
+                    <th className="text-end text-nowrap" style={{ width: '11%' }}>Debit (₹ Dr)</th>
+                    <th className="text-end text-nowrap" style={{ width: '11%' }}>Credit (₹ Cr)</th>
+                    <th className="text-end text-nowrap pe-3" style={{ width: '13%' }}>Running Balance</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Row for Opening Balance */}
+                  {/* Opening Balance Row */}
                   {ledgerStatement && (
-                    <tr className="table-warning-subtle fw-bold">
-                      <td>{ledgerStatement.period.startDate || '-'}</td>
-                      <td>-</td>
-                      <td colSpan={3}>
-                        <em>Opening Balance Brought Forward (શરૂઆતની બાકી આગળ લાવ્યા)</em>
+                    <tr className="table-light fw-semibold">
+                      <td className="ps-3 text-nowrap">{ledgerStatement.period.startDate}</td>
+                      <td className="text-muted text-nowrap">-</td>
+                      <td>
+                        <div className="text-dark fw-bold">Opening Balance Brought Forward</div>
+                        <small className="text-muted">શરૂઆતની બાકી લાવ્યા</small>
                       </td>
-                      <td className="text-end">{ledgerStatement.openingBalanceType === 'Dr' ? `₹${ledgerStatement.openingBalance.toLocaleString()}` : '-'}</td>
-                      <td className="text-end">{ledgerStatement.openingBalanceType === 'Cr' ? `₹${ledgerStatement.openingBalance.toLocaleString()}` : '-'}</td>
-                      <td className="text-end text-primary">
+                      <td><span className="badge bg-secondary-subtle text-secondary border">OPENING</span></td>
+                      <td className="text-end font-monospace text-primary">
+                        {ledgerStatement.openingBalanceType === 'Dr' ? `₹${ledgerStatement.openingBalance.toLocaleString()}` : '-'}
+                      </td>
+                      <td className="text-end font-monospace text-success">
+                        {ledgerStatement.openingBalanceType === 'Cr' ? `₹${ledgerStatement.openingBalance.toLocaleString()}` : '-'}
+                      </td>
+                      <td className="text-end font-monospace fw-bold pe-3" style={{ color: '#7A1B28' }}>
                         ₹{ledgerStatement.openingBalance.toLocaleString()} <span className="small text-muted">{ledgerStatement.openingBalanceType}</span>
                       </td>
                     </tr>
@@ -1125,71 +1214,68 @@ export const AccountsPage: React.FC = () => {
 
                   {isLoadingLedger ? (
                     <tr>
-                      <td colSpan={8} className="text-center py-4 text-muted">
+                      <td colSpan={7} className="text-center py-4 text-muted">
                         <div className="spinner-border spinner-border-sm text-primary me-2" role="status" />
                         Loading ledger transactions...
                       </td>
                     </tr>
                   ) : filteredLedgerTx.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center py-4 text-muted">
-                        No transactions recorded for this account in the selected date range.
+                      <td colSpan={7} className="text-center py-4 text-muted">
+                        No transactions recorded in this date period.
                       </td>
                     </tr>
                   ) : (
                     filteredLedgerTx.map((tx) => (
                       <tr key={tx.id}>
-                        <td className="text-nowrap">{tx.entryDate}</td>
-                        <td>
+                        <td className="ps-3 text-nowrap text-secondary font-monospace" style={{ fontSize: '0.8rem' }}>
+                          {tx.entryDate}
+                        </td>
+                        <td className="text-nowrap">
                           <button
                             type="button"
-                            className="btn btn-link btn-sm p-0 fw-bold text-primary text-decoration-none text-nowrap"
-                            onClick={async () => {
-                              const v = journals.find(j => j.id === tx.entryId) || (await apiClient.get('/accounts/journal').then((r: any) => r.data?.find((j: any) => j.id === tx.entryId)));
-                              if (v) setSelectedVoucherForSlip(v);
+                            className="btn btn-link p-0 text-decoration-none font-monospace fw-bold text-primary"
+                            style={{ fontSize: '0.8rem' }}
+                            title="Click to view journal voucher slip"
+                            onClick={() => {
+                              const j = journals.find(x => x.entryNumber === tx.entryNumber);
+                              if (j) setSelectedVoucherForSlip(j);
                             }}
                           >
                             {tx.entryNumber}
                           </button>
                         </td>
                         <td>
-                          <span className="fw-medium text-dark">{tx.particulars}</span>
+                          <div className="fw-bold text-dark text-truncate" style={{ maxWidth: 280 }} title={tx.particulars}>
+                            {tx.particulars}
+                          </div>
+                          {tx.narration && (
+                            <small className="text-muted d-block text-truncate" style={{ maxWidth: 280 }} title={tx.narration}>
+                              {tx.narration}
+                            </small>
+                          )}
                         </td>
-                        <td>
-                          <span className="badge bg-light text-secondary border">
-                            {tx.referenceType || 'MANUAL'} {tx.referenceId ? `#${tx.referenceId}` : ''}
+                        <td className="text-nowrap">
+                          <span className="badge bg-light text-secondary border" style={{ fontSize: '0.68rem' }}>
+                            {tx.referenceType || 'MANUAL'}
                           </span>
+                          {tx.referenceId && (
+                            <small className="text-muted ms-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+                              #{tx.referenceId}
+                            </small>
+                          )}
                         </td>
-                        <td className="text-truncate text-secondary" style={{ maxWidth: 180 }}>
-                          {tx.narration || '-'}
-                        </td>
-                        <td className="text-end fw-bold text-primary">
+                        <td className="text-end font-monospace fw-bold text-nowrap" style={{ color: tx.debit > 0 ? '#1D4ED8' : '#94A3B8' }}>
                           {tx.debit > 0 ? `₹${tx.debit.toLocaleString()}` : '-'}
                         </td>
-                        <td className="text-end fw-bold text-success">
+                        <td className="text-end font-monospace fw-bold text-nowrap" style={{ color: tx.credit > 0 ? '#15803D' : '#94A3B8' }}>
                           {tx.credit > 0 ? `₹${tx.credit.toLocaleString()}` : '-'}
                         </td>
-                        <td className="text-end fw-bold text-dark">
-                          ₹{tx.runningBalance.toLocaleString()} <span className="badge bg-light text-secondary border px-1 py-0" style={{ fontSize: '0.65rem' }}>{tx.balanceType}</span>
+                        <td className="text-end font-monospace fw-bold pe-3 text-nowrap" style={{ color: '#7A1B28' }}>
+                          ₹{((tx as any).balance ?? tx.runningBalance ?? 0).toLocaleString()} <span className="small text-secondary" style={{ fontSize: '0.7rem' }}>{tx.balanceType}</span>
                         </td>
                       </tr>
                     ))
-                  )}
-
-                  {/* Closing Balance Row */}
-                  {ledgerStatement && (
-                    <tr className="table-primary-subtle fw-bold border-top border-2">
-                      <td>{ledgerStatement.period.endDate || '-'}</td>
-                      <td>-</td>
-                      <td colSpan={3}>
-                        <em>Closing Balance Carried Down (આખર બાકી આગળ લઈ ગયા)</em>
-                      </td>
-                      <td className="text-end text-primary">₹{ledgerStatement.totalDebit.toLocaleString()}</td>
-                      <td className="text-end text-success">₹{ledgerStatement.totalCredit.toLocaleString()}</td>
-                      <td className="text-end text-primary fs-6">
-                        ₹{ledgerStatement.closingBalance.toLocaleString()} <span className="small">{ledgerStatement.closingBalanceType}</span>
-                      </td>
-                    </tr>
                   )}
                 </tbody>
               </table>
@@ -1199,55 +1285,55 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 2: CHART OF ACCOUNTS (ખાતાવહી યાદી) */}
+      {/* TAB 2: CHART OF ACCOUNTS (ખાતાવહી યાદી)                  */}
       {/* ======================================================== */}
       {activeTab === 'chart' && (
         <div className="d-flex flex-column gap-3">
-          {/* Summary Strip */}
+          {/* Summary Strip - Responsive Cards */}
           <div className="row g-2">
-            <div className="col-6 col-md-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
+            <div className="col-6 col-md-4 col-xl-2">
+              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100">
                 <span className="text-muted small fw-bold" style={{ fontSize: '0.68rem' }}>Total Accounts</span>
-                <h6 className="fw-bold mb-0 text-dark">{accounts.length} Heads</h6>
+                <h6 className="fw-bold mb-0 text-dark fs-5">{accounts.length} Heads</h6>
               </div>
             </div>
-            <div className="col-6 col-md-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
+            <div className="col-6 col-md-4 col-xl-2">
+              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #2563EB' }}>
                 <span className="text-primary small fw-bold" style={{ fontSize: '0.68rem' }}>Assets (મિલકતો)</span>
-                <h6 className="fw-bold mb-0 text-primary">₹{coaSummary.assets.toLocaleString()}</h6>
+                <h6 className="fw-bold mb-0 text-primary fs-5">₹{coaSummary.assets.toLocaleString()}</h6>
               </div>
             </div>
-            <div className="col-6 col-md-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
+            <div className="col-6 col-md-4 col-xl-2">
+              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #D97706' }}>
                 <span className="text-warning-emphasis small fw-bold" style={{ fontSize: '0.68rem' }}>Liabilities (દેવાં)</span>
-                <h6 className="fw-bold mb-0 text-warning-emphasis">₹{coaSummary.liabilities.toLocaleString()}</h6>
+                <h6 className="fw-bold mb-0 text-warning-emphasis fs-5">₹{coaSummary.liabilities.toLocaleString()}</h6>
               </div>
             </div>
-            <div className="col-6 col-md-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
+            <div className="col-6 col-md-4 col-xl-2">
+              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #475569' }}>
                 <span className="text-dark small fw-bold" style={{ fontSize: '0.68rem' }}>Equity (મૂડી)</span>
-                <h6 className="fw-bold mb-0 text-dark">₹{coaSummary.equity.toLocaleString()}</h6>
+                <h6 className="fw-bold mb-0 text-dark fs-5">₹{coaSummary.equity.toLocaleString()}</h6>
               </div>
             </div>
-            <div className="col-6 col-md-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
+            <div className="col-6 col-md-4 col-xl-2">
+              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #16A34A' }}>
                 <span className="text-success small fw-bold" style={{ fontSize: '0.68rem' }}>Revenue (આવક)</span>
-                <h6 className="fw-bold mb-0 text-success">₹{coaSummary.revenue.toLocaleString()}</h6>
+                <h6 className="fw-bold mb-0 text-success fs-5">₹{coaSummary.revenue.toLocaleString()}</h6>
               </div>
             </div>
-            <div className="col-6 col-md-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center">
+            <div className="col-6 col-md-4 col-xl-2">
+              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #DC2626' }}>
                 <span className="text-danger small fw-bold" style={{ fontSize: '0.68rem' }}>Expenses (ખર્ચ)</span>
-                <h6 className="fw-bold mb-0 text-danger">₹{coaSummary.expenses.toLocaleString()}</h6>
+                <h6 className="fw-bold mb-0 text-danger fs-5">₹{coaSummary.expenses.toLocaleString()}</h6>
               </div>
             </div>
           </div>
 
           {/* Filter Bar */}
           <div className="card shadow-sm border rounded-3 bg-white p-3">
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
               {/* Type Pills */}
-              <div className="btn-group btn-group-sm" role="group">
+              <div className="btn-group btn-group-sm flex-wrap" role="group">
                 {(['ALL', 'ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'] as CoaTypeFilter[]).map((t) => (
                   <button
                     key={t}
@@ -1261,12 +1347,12 @@ export const AccountsPage: React.FC = () => {
               </div>
 
               {/* Search Box */}
-              <div className="input-group input-group-sm" style={{ width: 260 }}>
-                <span className="input-group-text bg-light border-end-0"><Search size={14} /></span>
+              <div className="input-group input-group-sm w-100 w-md-auto" style={{ maxWidth: 280 }}>
+                <span className="input-group-text bg-light border-end-0"><Search size={14} className="text-muted" /></span>
                 <input
                   type="text"
                   className="form-control form-control-sm border-start-0"
-                  placeholder="Search code, account title..."
+                  placeholder="Search code, title..."
                   value={coaSearch}
                   onChange={e => setCoaSearch(e.target.value)}
                 />
@@ -1277,15 +1363,15 @@ export const AccountsPage: React.FC = () => {
           {/* Accounts List Table */}
           <div className="card shadow-sm border rounded-3 bg-white">
             <div className="table-responsive">
-              <table className="table table-hover table-striped mb-0 align-middle" style={{ fontSize: '0.83rem' }}>
+              <table className="table table-hover table-striped mb-0 align-middle" style={{ fontSize: '0.83rem', minWidth: 640 }}>
                 <thead className="table-light">
                   <tr>
-                    <th style={{ width: '12%' }}>Account Code</th>
-                    <th style={{ width: '28%' }}>Account Title</th>
-                    <th style={{ width: '14%' }}>Type</th>
-                    <th style={{ width: '16%' }}>Sub-Type</th>
-                    <th className="text-end" style={{ width: '15%' }}>Current Balance</th>
-                    <th className="text-center" style={{ width: '15%' }}>Actions</th>
+                    <th className="ps-3 text-nowrap" style={{ width: '13%' }}>Code</th>
+                    <th style={{ width: '30%' }}>Account Title</th>
+                    <th className="text-nowrap" style={{ width: '14%' }}>Type</th>
+                    <th className="text-nowrap" style={{ width: '15%' }}>Sub-Type</th>
+                    <th className="text-end text-nowrap" style={{ width: '15%' }}>Current Balance</th>
+                    <th className="text-center text-nowrap pe-3" style={{ width: '13%' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1298,7 +1384,7 @@ export const AccountsPage: React.FC = () => {
                   ) : (
                     filteredAccounts.map((acc) => (
                       <tr key={acc.id}>
-                        <td>
+                        <td className="ps-3 text-nowrap">
                           <span className="badge bg-light text-dark border font-monospace px-2 py-1">
                             {acc.accountCode}
                           </span>
@@ -1307,7 +1393,7 @@ export const AccountsPage: React.FC = () => {
                           <div className="fw-bold text-dark">{acc.accountName}</div>
                           {acc.description && <small className="text-muted">{acc.description}</small>}
                         </td>
-                        <td>
+                        <td className="text-nowrap">
                           <span
                             className={`badge ${
                               acc.accountType === 'ASSET'
@@ -1324,18 +1410,18 @@ export const AccountsPage: React.FC = () => {
                             {acc.accountType}
                           </span>
                         </td>
-                        <td>
+                        <td className="text-nowrap">
                           <span className="badge bg-light text-secondary border">
                             {acc.subType || '-'}
                           </span>
                         </td>
-                        <td className="text-end">
+                        <td className="text-end font-monospace text-nowrap">
                           <span className="fw-bold fs-6">₹{acc.currentBalance.toLocaleString()}</span>{' '}
                           <span className="small text-muted">
                             {acc.accountType === 'ASSET' || acc.accountType === 'EXPENSE' ? 'Dr' : 'Cr'}
                           </span>
                         </td>
-                        <td className="text-center">
+                        <td className="text-center pe-3 text-nowrap">
                           <div className="d-inline-flex gap-1.5">
                             <button
                               type="button"
@@ -1377,7 +1463,7 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 3: JOURNAL ENTRIES (જર્નલ વાઉચર્સ) */}
+      {/* TAB 3: JOURNAL ENTRIES (જર્નલ વાઉચર્સ)                   */}
       {/* ======================================================== */}
       {activeTab === 'journal' && (
         <div className="d-flex flex-column gap-3">
@@ -1386,7 +1472,7 @@ export const AccountsPage: React.FC = () => {
             <div className="row g-2 align-items-center">
               <div className="col-12 col-md-4">
                 <div className="input-group input-group-sm">
-                  <span className="input-group-text bg-light border-end-0"><Search size={14} /></span>
+                  <span className="input-group-text bg-light border-end-0"><Search size={14} className="text-muted" /></span>
                   <input
                     type="text"
                     className="form-control form-control-sm border-start-0"
@@ -1396,20 +1482,20 @@ export const AccountsPage: React.FC = () => {
                   />
                 </div>
               </div>
-              <div className="col-12 col-md-5 d-flex align-items-center gap-1">
-                <span className="small text-muted">From:</span>
+              <div className="col-12 col-md-5 d-flex align-items-center gap-1.5 flex-wrap">
+                <span className="small text-muted text-nowrap">From:</span>
                 <input
                   type="date"
-                  className="form-control form-control-sm"
-                  style={{ width: 130 }}
+                  className="form-control form-control-sm shadow-xs"
+                  style={{ maxWidth: 140 }}
                   value={journalStartDate}
                   onChange={e => setJournalStartDate(e.target.value)}
                 />
-                <span className="small text-muted">To:</span>
+                <span className="small text-muted text-nowrap">To:</span>
                 <input
                   type="date"
-                  className="form-control form-control-sm"
-                  style={{ width: 130 }}
+                  className="form-control form-control-sm shadow-xs"
+                  style={{ maxWidth: 140 }}
                   value={journalEndDate}
                   onChange={e => setJournalEndDate(e.target.value)}
                 />
@@ -1425,7 +1511,7 @@ export const AccountsPage: React.FC = () => {
                 {can('accounts.journal.create') && (
                   <button
                     type="button"
-                    className="btn btn-primary btn-sm d-inline-flex align-items-center gap-1 fw-bold"
+                    className="btn btn-primary btn-sm d-inline-flex align-items-center gap-1 fw-bold w-100 w-md-auto justify-content-center"
                     onClick={() => {
                       setJournalNarration('');
                       setJournalDate(getTodayStr());
@@ -1443,16 +1529,16 @@ export const AccountsPage: React.FC = () => {
           {/* Journal Entries Table */}
           <div className="card shadow-sm border rounded-3 bg-white">
             <div className="table-responsive">
-              <table className="table table-hover table-striped mb-0 align-middle" style={{ fontSize: '0.82rem' }}>
+              <table className="table table-hover table-striped mb-0 align-middle" style={{ fontSize: '0.82rem', minWidth: 680 }}>
                 <thead className="table-light">
                   <tr>
-                    <th style={{ width: '13%' }}>Voucher #</th>
-                    <th style={{ width: '11%' }}>Date</th>
+                    <th className="ps-3 text-nowrap" style={{ width: '13%' }}>Voucher #</th>
+                    <th className="text-nowrap" style={{ width: '11%' }}>Date</th>
                     <th style={{ width: '30%' }}>Narration / Particulars</th>
-                    <th style={{ width: '15%' }}>Reference</th>
-                    <th className="text-end" style={{ width: '13%' }}>Total Amount</th>
-                    <th className="text-center" style={{ width: '9%' }}>Status</th>
-                    <th className="text-center" style={{ width: '9%' }}>Action</th>
+                    <th className="text-nowrap" style={{ width: '15%' }}>Reference</th>
+                    <th className="text-end text-nowrap" style={{ width: '13%' }}>Total Amount</th>
+                    <th className="text-center text-nowrap" style={{ width: '9%' }}>Status</th>
+                    <th className="text-center text-nowrap pe-3" style={{ width: '9%' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1472,10 +1558,10 @@ export const AccountsPage: React.FC = () => {
                   ) : (
                     journals.map((j) => (
                       <tr key={j.id}>
-                        <td>
+                        <td className="ps-3 text-nowrap">
                           <span className="fw-bold text-primary font-monospace">{j.entryNumber}</span>
                         </td>
-                        <td>{j.entryDate}</td>
+                        <td className="text-nowrap">{j.entryDate}</td>
                         <td>
                           <div className="fw-bold text-dark">{j.narration}</div>
                           <div className="d-flex flex-wrap gap-1 mt-1">
@@ -1486,20 +1572,20 @@ export const AccountsPage: React.FC = () => {
                             ))}
                           </div>
                         </td>
-                        <td>
+                        <td className="text-nowrap">
                           <span className="badge bg-light text-secondary border">
                             {j.referenceType || 'MANUAL'} {j.referenceId ? `#${j.referenceId}` : ''}
                           </span>
                         </td>
-                        <td className="text-end fw-bold text-success fs-6">
+                        <td className="text-end fw-bold text-success fs-6 font-monospace text-nowrap">
                           ₹{j.totalDebit.toLocaleString()}
                         </td>
-                        <td className="text-center">
+                        <td className="text-center text-nowrap">
                           <span className="badge bg-success-subtle text-success border border-success-subtle">
                             {j.status || 'POSTED'}
                           </span>
                         </td>
-                        <td className="text-center">
+                        <td className="text-center pe-3 text-nowrap">
                           <button
                             type="button"
                             className="btn btn-outline-primary btn-sm py-0.5 px-2"
@@ -1520,18 +1606,18 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 4: TRIAL BALANCE (કાચું સરવૈયું) */}
+      {/* TAB 4: TRIAL BALANCE (કાચું સરવૈયું)                      */}
       {/* ======================================================== */}
       {activeTab === 'trialbalance' && (
         <div className="d-flex flex-column gap-3">
           {/* Trial Balance Control Bar */}
           <div className="card shadow-sm border rounded-3 bg-white p-3">
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <div className="d-flex align-items-center gap-2">
-                <label className="form-label small fw-bold text-dark mb-0">As of Date (આ તારીખ સુધીનું):</label>
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+              <div className="d-flex align-items-center gap-2 flex-wrap w-100 w-md-auto">
+                <label className="form-label small fw-bold text-dark mb-0 text-nowrap">As of Date (આ તારીખ સુધીનું):</label>
                 <input
                   type="date"
-                  className="form-control form-control-sm"
+                  className="form-control form-control-sm shadow-xs"
                   style={{ width: 140 }}
                   value={trialAsOfDate}
                   onChange={e => setTrialAsOfDate(e.target.value)}
@@ -1545,7 +1631,7 @@ export const AccountsPage: React.FC = () => {
                 </button>
               </div>
 
-              <div className="d-flex align-items-center gap-2">
+              <div className="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-end">
                 <button
                   type="button"
                   className="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-1 fw-bold"
@@ -1560,14 +1646,14 @@ export const AccountsPage: React.FC = () => {
           {/* Trial Balance Table */}
           <div className="card shadow-sm border rounded-3 bg-white">
             <div className="table-responsive">
-              <table className="table table-hover table-bordered mb-0 align-middle" style={{ fontSize: '0.83rem' }}>
+              <table className="table table-hover table-bordered mb-0 align-middle" style={{ fontSize: '0.83rem', minWidth: 600 }}>
                 <thead className="table-light">
                   <tr>
-                    <th style={{ width: '12%' }}>Account Code</th>
+                    <th className="ps-3 text-nowrap" style={{ width: '12%' }}>Account Code</th>
                     <th style={{ width: '38%' }}>Account Head Title</th>
-                    <th style={{ width: '18%' }}>Account Group / Type</th>
-                    <th className="text-end" style={{ width: '16%' }}>Debit Balance (₹ Dr)</th>
-                    <th className="text-end" style={{ width: '16%' }}>Credit Balance (₹ Cr)</th>
+                    <th className="text-nowrap" style={{ width: '18%' }}>Account Group / Type</th>
+                    <th className="text-end text-nowrap" style={{ width: '16%' }}>Debit Balance (₹ Dr)</th>
+                    <th className="text-end text-nowrap pe-3" style={{ width: '16%' }}>Credit Balance (₹ Cr)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1587,21 +1673,21 @@ export const AccountsPage: React.FC = () => {
                   ) : (
                     trialBalanceReport.rows.map(row => (
                       <tr key={row.id}>
-                        <td>
+                        <td className="ps-3 text-nowrap">
                           <span className="badge bg-light text-dark border font-monospace">
                             {row.accountCode}
                           </span>
                         </td>
                         <td className="fw-bold text-dark">{row.accountName}</td>
-                        <td>
+                        <td className="text-nowrap">
                           <span className="badge bg-light text-secondary border">
                             {row.accountType} {row.subType ? `• ${row.subType}` : ''}
                           </span>
                         </td>
-                        <td className="text-end fw-bold text-primary">
+                        <td className="text-end font-monospace fw-bold text-primary text-nowrap">
                           {row.debitBalance > 0 ? `₹${row.debitBalance.toLocaleString()}` : '-'}
                         </td>
-                        <td className="text-end fw-bold text-success">
+                        <td className="text-end font-monospace fw-bold text-success pe-3 text-nowrap">
                           {row.creditBalance > 0 ? `₹${row.creditBalance.toLocaleString()}` : '-'}
                         </td>
                       </tr>
@@ -1611,8 +1697,8 @@ export const AccountsPage: React.FC = () => {
                   {/* Grand Totals & Verification Row */}
                   {trialBalanceReport && (
                     <tr className="table-warning-subtle fw-bold fs-6 border-top border-2">
-                      <td colSpan={3} className="text-uppercase">
-                        <div className="d-flex align-items-center justify-content-between">
+                      <td colSpan={3} className="text-uppercase ps-3">
+                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                           <span>Total Trial Balance (કાચું સરવૈયું કુલ)</span>
                           {trialBalanceReport.isBalanced ? (
                             <span className="badge bg-success text-white d-inline-flex align-items-center gap-1 px-2.5 py-1">
@@ -1625,10 +1711,10 @@ export const AccountsPage: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="text-end text-primary">
+                      <td className="text-end font-monospace text-primary text-nowrap">
                         ₹{trialBalanceReport.grandDebit.toLocaleString()}
                       </td>
-                      <td className="text-end text-success">
+                      <td className="text-end font-monospace text-success pe-3 text-nowrap">
                         ₹{trialBalanceReport.grandCredit.toLocaleString()}
                       </td>
                     </tr>
@@ -1641,44 +1727,44 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 5: FINANCIAL STATEMENTS (P&L & BALANCE SHEET) */}
+      {/* TAB 5: FINANCIAL STATEMENTS (P&L & BALANCE SHEET)         */}
       {/* ======================================================== */}
       {activeTab === 'summary' && financialSummary && (
         <div className="d-flex flex-column gap-3">
           {/* P&L 4 Metric Cards */}
           <div className="row g-3">
-            <div className="col-12 col-md-3">
-              <div className="card border-0 shadow-sm p-3 bg-white rounded-3">
+            <div className="col-12 col-sm-6 col-md-3">
+              <div className="card border-0 shadow-sm p-3 bg-white rounded-3 h-100" style={{ borderTop: '3px solid #16A34A' }}>
                 <span className="small text-uppercase text-muted fw-bold">Total Sales Revenue</span>
-                <h3 className="fw-bold text-success mt-1">₹{(financialSummary.profitAndLoss?.totalRevenue || 0).toLocaleString()}</h3>
-                <span className="text-muted small">Food & Chaas Dining Collections</span>
+                <h4 className="fw-bold text-success mt-1">₹{(financialSummary.profitAndLoss?.totalRevenue || 0).toLocaleString()}</h4>
+                <span className="text-muted small">Food & Dining Collections</span>
               </div>
             </div>
-            <div className="col-12 col-md-3">
-              <div className="card border-0 shadow-sm p-3 bg-white rounded-3">
+            <div className="col-12 col-sm-6 col-md-3">
+              <div className="card border-0 shadow-sm p-3 bg-white rounded-3 h-100" style={{ borderTop: '3px solid #DC2626' }}>
                 <span className="small text-uppercase text-muted fw-bold">Cost of Goods Sold (COGS)</span>
-                <h3 className="fw-bold text-danger mt-1">₹{(financialSummary.profitAndLoss?.totalCOGS || 0).toLocaleString()}</h3>
-                <span className="text-muted small">Deshi Provisions & Ingredients</span>
+                <h4 className="fw-bold text-danger mt-1">₹{(financialSummary.profitAndLoss?.totalCOGS || 0).toLocaleString()}</h4>
+                <span className="text-muted small">Provisions & Ingredients</span>
               </div>
             </div>
-            <div className="col-12 col-md-3">
-              <div className="card border-0 shadow-sm p-3 bg-white rounded-3">
+            <div className="col-12 col-sm-6 col-md-3">
+              <div className="card border-0 shadow-sm p-3 bg-white rounded-3 h-100" style={{ borderTop: '3px solid #D97706' }}>
                 <span className="small text-uppercase text-muted fw-bold">Operating Expenses (OPEX)</span>
-                <h3 className="fw-bold text-warning-emphasis mt-1">₹{(financialSummary.profitAndLoss?.totalOperatingExpense || 0).toLocaleString()}</h3>
-                <span className="text-muted small">Rent, Electricity, Cook Salaries</span>
+                <h4 className="fw-bold text-warning-emphasis mt-1">₹{(financialSummary.profitAndLoss?.totalOperatingExpense || 0).toLocaleString()}</h4>
+                <span className="text-muted small">Rent, Electricity, Salaries</span>
               </div>
             </div>
-            <div className="col-12 col-md-3">
-              <div className="card border-0 shadow-sm p-3 bg-white rounded-3">
+            <div className="col-12 col-sm-6 col-md-3">
+              <div className="card border-0 shadow-sm p-3 bg-white rounded-3 h-100" style={{ borderTop: '3px solid #7A1B28' }}>
                 <div className="d-flex justify-content-between align-items-center">
                   <span className="small text-uppercase text-muted fw-bold">Net Operating Income</span>
                   <span className="badge bg-primary-subtle text-primary fw-bold">
                     Margin: {financialSummary.profitAndLoss?.profitMarginPercentage || 0}%
                   </span>
                 </div>
-                <h3 className={`fw-bold mt-1 ${(financialSummary.profitAndLoss?.netProfit || 0) >= 0 ? 'text-primary' : 'text-danger'}`}>
+                <h4 className={`fw-bold mt-1 ${(financialSummary.profitAndLoss?.netProfit || 0) >= 0 ? 'text-primary' : 'text-danger'}`}>
                   ₹{(financialSummary.profitAndLoss?.netProfit || 0).toLocaleString()}
-                </h3>
+                </h4>
                 <span className="text-muted small">Net Restaurant Earnings</span>
               </div>
             </div>
@@ -1692,21 +1778,21 @@ export const AccountsPage: React.FC = () => {
                 <div className="col-12 col-md-4">
                   <div className="p-3 bg-light rounded-3">
                     <span className="text-muted small fw-bold">Total Assets (મિલકતો)</span>
-                    <h4 className="fw-bold text-primary mt-1">₹{financialSummary.balanceSheet.totalAssets.toLocaleString()}</h4>
-                    <span className="small text-secondary">Cash in drawer, Bank, Inventory</span>
+                    <h5 className="fw-bold text-primary mt-1">₹{financialSummary.balanceSheet.totalAssets.toLocaleString()}</h5>
+                    <span className="small text-secondary">Cash in drawer, Bank, Stock</span>
                   </div>
                 </div>
                 <div className="col-12 col-md-4">
                   <div className="p-3 bg-light rounded-3">
                     <span className="text-muted small fw-bold">Total Liabilities (દેવાં)</span>
-                    <h4 className="fw-bold text-warning-emphasis mt-1">₹{financialSummary.balanceSheet.totalLiabilities.toLocaleString()}</h4>
+                    <h5 className="fw-bold text-warning-emphasis mt-1">₹{financialSummary.balanceSheet.totalLiabilities.toLocaleString()}</h5>
                     <span className="small text-secondary">Vendor payables, GST payable</span>
                   </div>
                 </div>
                 <div className="col-12 col-md-4">
                   <div className="p-3 bg-light rounded-3">
                     <span className="text-muted small fw-bold">Total Equity & Capital (મૂડી)</span>
-                    <h4 className="fw-bold text-dark mt-1">₹{financialSummary.balanceSheet.totalEquity.toLocaleString()}</h4>
+                    <h5 className="fw-bold text-dark mt-1">₹{financialSummary.balanceSheet.totalEquity.toLocaleString()}</h5>
                     <span className="small text-secondary">Owner capital & retained earnings</span>
                   </div>
                 </div>
@@ -1717,18 +1803,18 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 6: DAY CLOSING REGISTER (રોજમેળ બંધ) */}
+      {/* TAB 6: DAY CLOSING REGISTER (રોજમેળ બંધ)                  */}
       {/* ======================================================== */}
       {activeTab === 'dayclosing' && (
         <DataTable<DayClosing>
           columns={[
             { header: 'Closing Date', accessor: 'closingDate', width: 120 },
             { header: 'Opening Cash', accessor: (row) => `₹${row.openingCash.toLocaleString()}` },
-            { header: 'Total Sales', accessor: (row) => <span className="fw-bold text-success">₹{row.totalSales.toLocaleString()}</span> },
+            { header: 'Total Sales', accessor: (row) => <span className="fw-bold text-success">₹${row.totalSales.toLocaleString()}</span> },
             { header: 'Cash Collected', accessor: (row) => `₹${row.cashSales.toLocaleString()}` },
             { header: 'UPI & Card', accessor: (row) => `₹${(row.upiSales + row.cardSales).toLocaleString()}` },
             { header: 'Expenses', accessor: (row) => `₹${row.cashExpenses.toLocaleString()}` },
-            { header: 'Actual Cash Counted', accessor: (row) => <span className="fw-bold">₹{row.actualCash.toLocaleString()}</span> },
+            { header: 'Actual Cash Counted', accessor: (row) => <span className="fw-bold">₹${row.actualCash.toLocaleString()}</span> },
             {
               header: 'Cash Variance',
               accessor: (row) => (
@@ -1744,7 +1830,7 @@ export const AccountsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* MODALS */}
+      {/* MODALS                                                   */}
       {/* ======================================================== */}
 
       {/* MODAL 1: ADD NEW ACCOUNT HEAD */}
@@ -1755,7 +1841,7 @@ export const AccountsPage: React.FC = () => {
       >
         <form onSubmit={handleCreateAccount} className="d-flex flex-column gap-3">
           <div className="row g-2">
-            <div className="col-4">
+            <div className="col-12 col-sm-4">
               <label className="form-label small fw-bold">Account Code</label>
               <input
                 type="text"
@@ -1765,7 +1851,7 @@ export const AccountsPage: React.FC = () => {
                 onChange={e => setNewAccCode(e.target.value)}
               />
             </div>
-            <div className="col-8">
+            <div className="col-12 col-sm-8">
               <label className="form-label small fw-bold">Account Title / Name</label>
               <input
                 type="text"
@@ -1779,7 +1865,7 @@ export const AccountsPage: React.FC = () => {
           </div>
 
           <div className="row g-2">
-            <div className="col-6">
+            <div className="col-12 col-sm-6">
               <label className="form-label small fw-bold">Account Type</label>
               <select
                 className="form-select form-select-sm"
@@ -1793,7 +1879,7 @@ export const AccountsPage: React.FC = () => {
                 <option value="EXPENSE">EXPENSE (ખર્ચ)</option>
               </select>
             </div>
-            <div className="col-6">
+            <div className="col-12 col-sm-6">
               <label className="form-label small fw-bold">Sub-Type Category</label>
               <input
                 type="text"
@@ -1899,36 +1985,37 @@ export const AccountsPage: React.FC = () => {
       >
         <form onSubmit={handlePostJournalVoucher} className="d-flex flex-column gap-3">
           <div className="row g-2">
-            <div className="col-4">
+            <div className="col-12 col-sm-4">
               <label className="form-label small fw-bold">Voucher Date</label>
               <input
                 type="date"
-                className="form-control form-control-sm"
                 required
+                className="form-control form-control-sm"
                 value={journalDate}
                 onChange={e => setJournalDate(e.target.value)}
               />
             </div>
-            <div className="col-4">
-              <label className="form-label small fw-bold">Ref Type</label>
+            <div className="col-12 col-sm-4">
+              <label className="form-label small fw-bold">Reference Type</label>
               <select
                 className="form-select form-select-sm"
                 value={journalRefType}
                 onChange={e => setJournalRefType(e.target.value)}
               >
-                <option value="MANUAL">MANUAL (સામાન્ય)</option>
+                <option value="MANUAL">MANUAL (સામાન્ય વાઉચર)</option>
+                <option value="CONTRA">CONTRA (બેંક-રોકડ ટ્રાન્સફર)</option>
+                <option value="PURCHASE">PURCHASE (ખરીદી)</option>
                 <option value="EXPENSE">EXPENSE (ખર્ચ)</option>
                 <option value="SALES">SALES (વેચાણ)</option>
-                <option value="PAYROLL">PAYROLL (પગાર)</option>
-                <option value="ADJUSTMENT">ADJUSTMENT (હવાલા)</option>
+                <option value="ADJUSTMENT">ADJUSTMENT (સુધારો)</option>
               </select>
             </div>
-            <div className="col-4">
-              <label className="form-label small fw-bold">Ref # (Optional)</label>
+            <div className="col-12 col-sm-4">
+              <label className="form-label small fw-bold">Reference Doc #</label>
               <input
                 type="text"
-                className="form-control form-control-sm"
-                placeholder="e.g. BILL-9921"
+                className="form-control form-control-sm font-monospace"
+                placeholder="Bill # or PO #"
                 value={journalRefId}
                 onChange={e => setJournalRefId(e.target.value)}
               />
@@ -1936,118 +2023,120 @@ export const AccountsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="form-label small fw-bold">Voucher Narration / Particulars (વિગત / વર્ણન)</label>
+            <label className="form-label small fw-bold">Voucher Narration (લખાણ / વર્ણન)</label>
             <input
               type="text"
-              className="form-control form-control-sm"
-              placeholder="e.g. Month-end depreciation on kitchen stove burners"
               required
+              className="form-control form-control-sm"
+              placeholder="e.g. Cash withdrawn from Bank for daily expenses"
               value={journalNarration}
               onChange={e => setJournalNarration(e.target.value)}
             />
           </div>
 
           {/* Dynamic Lines Table */}
-          <div className="border rounded-3 p-3 bg-light">
+          <div className="border rounded-3 p-2 bg-light">
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="small fw-bold text-dark">Debit & Credit Ledger Lines</span>
+              <span className="small fw-bold text-dark">Debit & Credit Entry Lines</span>
               <button
                 type="button"
-                className="btn btn-outline-primary btn-sm py-0.5 px-2 d-inline-flex align-items-center gap-1"
-                onClick={() => {
-                  setJournalItems([...journalItems, { accountId: accounts[0]?.id || '', debit: 0, credit: 0, description: '' }]);
-                }}
+                className="btn btn-outline-primary btn-sm py-0.5 px-2"
+                onClick={handleAddJournalLine}
               >
-                <Plus size={13} /> Add Line
+                <Plus size={13} className="me-1" /> Add Line
               </button>
             </div>
 
-            {journalItems.map((it, idx) => (
-              <div key={idx} className="row g-2 align-items-center mb-2">
-                <div className="col-12 col-md-5">
-                  <select
-                    className="form-select form-select-sm"
-                    value={it.accountId}
-                    onChange={e => {
-                      const updated = [...journalItems];
-                      updated[idx].accountId = e.target.value;
-                      setJournalItems(updated);
-                    }}
-                  >
-                    <option value="">-- Select Account Head --</option>
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>
-                        [{acc.accountCode}] {acc.accountName} ({acc.accountType})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="col-5 col-md-3">
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text">Dr ₹</span>
-                    <input
-                      type="number"
-                      className="form-control form-control-sm text-end"
-                      placeholder="0.00"
-                      value={it.debit || ''}
-                      onChange={e => {
-                        const val = Number(e.target.value);
-                        const updated = [...journalItems];
-                        updated[idx].debit = val;
-                        if (val > 0) updated[idx].credit = 0; // mutually exclusive per line
-                        setJournalItems(updated);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="col-5 col-md-3">
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text">Cr ₹</span>
-                    <input
-                      type="number"
-                      className="form-control form-control-sm text-end"
-                      placeholder="0.00"
-                      value={it.credit || ''}
-                      onChange={e => {
-                        const val = Number(e.target.value);
-                        const updated = [...journalItems];
-                        updated[idx].credit = val;
-                        if (val > 0) updated[idx].debit = 0; // mutually exclusive per line
-                        setJournalItems(updated);
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="col-2 col-md-1 text-center">
-                  {journalItems.length > 2 && (
-                    <button
-                      type="button"
-                      className="btn btn-outline-danger btn-sm p-1"
-                      onClick={() => {
-                        setJournalItems(journalItems.filter((_, i) => i !== idx));
-                      }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+            <div className="table-responsive">
+              <table className="table table-sm table-bordered bg-white mb-1 align-middle" style={{ fontSize: '0.8rem', minWidth: 500 }}>
+                <thead className="table-light">
+                  <tr>
+                    <th style={{ width: '45%' }}>Account Head</th>
+                    <th style={{ width: '25%' }}>Debit Amount (₹ Dr)</th>
+                    <th style={{ width: '25%' }}>Credit Amount (₹ Cr)</th>
+                    <th style={{ width: '5%' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {journalItems.map((item, index) => (
+                    <tr key={index}>
+                      <td>
+                        <select
+                          className="form-select form-select-sm"
+                          required
+                          value={item.accountId}
+                          onChange={e => handleUpdateJournalLine(index, 'accountId', e.target.value)}
+                        >
+                          <option value="">-- Select Account --</option>
+                          {accounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>
+                              [{acc.accountCode}] {acc.accountName} ({acc.accountType})
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          step="any"
+                          className="form-control form-control-sm font-monospace"
+                          placeholder="0.00"
+                          value={item.debit || ''}
+                          onChange={e => {
+                            const val = parseFloat(e.target.value) || 0;
+                            handleUpdateJournalLine(index, 'debit', val);
+                            if (val > 0) handleUpdateJournalLine(index, 'credit', 0);
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          step="any"
+                          className="form-control form-control-sm font-monospace"
+                          placeholder="0.00"
+                          value={item.credit || ''}
+                          onChange={e => {
+                            const val = parseFloat(e.target.value) || 0;
+                            handleUpdateJournalLine(index, 'credit', val);
+                            if (val > 0) handleUpdateJournalLine(index, 'debit', 0);
+                          }}
+                        />
+                      </td>
+                      <td className="text-center">
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm p-1 border-0"
+                          onClick={() => handleRemoveJournalLine(index)}
+                          title="Remove Line"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-            {/* Auto-balancing Indicator */}
-            <div className="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-2 border-top bg-white p-2 rounded-2">
-              <div className="d-flex gap-3">
-                <span className="small">Total Debits: <strong className="text-primary">₹{journalTotals.debitSum.toLocaleString()}</strong></span>
-                <span className="small">Total Credits: <strong className="text-success">₹{journalTotals.creditSum.toLocaleString()}</strong></span>
+            {/* Auto-Balancing Indicator Strip */}
+            <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center p-2 rounded-2 mt-2 bg-white border">
+              <div className="d-flex align-items-center gap-3">
+                <span className="small">
+                  Total Debits: <strong className="text-primary font-monospace">₹{journalTotals.debitSum.toLocaleString()}</strong>
+                </span>
+                <span className="small">
+                  Total Credits: <strong className="text-success font-monospace">₹{journalTotals.creditSum.toLocaleString()}</strong>
+                </span>
               </div>
               <div>
                 {journalTotals.isBalanced ? (
-                  <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1 px-2 py-1">
+                  <span className="badge bg-success d-inline-flex align-items-center gap-1 px-2 py-1">
                     <CheckCircle2 size={13} /> Balanced (Dr = Cr)
                   </span>
                 ) : (
-                  <span className="badge bg-danger-subtle text-danger border border-danger-subtle d-inline-flex align-items-center gap-1 px-2 py-1">
-                    <AlertTriangle size={13} /> Unbalanced Diff: ₹{journalTotals.diff.toLocaleString()}
+                  <span className="badge bg-danger d-inline-flex align-items-center gap-1 px-2 py-1">
+                    <AlertTriangle size={13} /> Difference: ₹{journalTotals.diff.toLocaleString()}
                   </span>
                 )}
               </div>
@@ -2061,7 +2150,7 @@ export const AccountsPage: React.FC = () => {
               className="btn btn-primary btn-sm fw-bold"
               disabled={!journalTotals.isBalanced}
             >
-              Post Journal Voucher
+              Post Balanced Voucher
             </button>
           </div>
         </form>
@@ -2071,68 +2160,59 @@ export const AccountsPage: React.FC = () => {
       <Modal
         isOpen={!!selectedVoucherForSlip}
         onClose={() => setSelectedVoucherForSlip(null)}
-        title={`Journal Voucher Slip: #${selectedVoucherForSlip?.entryNumber || ''}`}
-        size="lg"
+        title={`Voucher Slip: #${selectedVoucherForSlip?.entryNumber || ''}`}
       >
         {selectedVoucherForSlip && (
           <div className="d-flex flex-column gap-3">
-            <div ref={printSlipRef} className="border rounded-3 p-4 bg-white">
-              {/* Slip Header */}
-              <div className="text-center border-bottom pb-3 mb-3">
-                <h5 className="fw-bold mb-0 text-dark">ભાતીગળ ભાણું - BHATIGAL BHANU RESTAURANT</h5>
-                <small className="text-muted">Double-Entry Journal Voucher Slip</small>
-                <div className="d-flex justify-content-between align-items-center mt-3 small">
-                  <span><strong>Voucher #:</strong> {selectedVoucherForSlip.entryNumber}</span>
-                  <span><strong>Date:</strong> {selectedVoucherForSlip.entryDate}</span>
-                  <span><strong>Ref:</strong> {selectedVoucherForSlip.referenceType} {selectedVoucherForSlip.referenceId || ''}</span>
-                </div>
-              </div>
+            <div className="p-3 border rounded-3 bg-light text-center">
+              <h5 className="fw-bold mb-0" style={{ color: '#7A1B28' }}>BHATIGAL BHANU</h5>
+              <div className="text-muted small">Double-Entry Journal Voucher</div>
+              <div className="mt-2 font-monospace fw-bold fs-6">{selectedVoucherForSlip.entryNumber}</div>
+              <div className="small text-secondary">Date: {selectedVoucherForSlip.entryDate} | Ref: {selectedVoucherForSlip.referenceType || 'MANUAL'} {selectedVoucherForSlip.referenceId ? `#${selectedVoucherForSlip.referenceId}` : ''}</div>
+            </div>
 
-              {/* Narration */}
-              <div className="mb-3 p-2 bg-light rounded">
-                <small className="text-muted d-block">Narration / Description:</small>
-                <span className="fw-medium text-dark">{selectedVoucherForSlip.narration}</span>
+            <div>
+              <div className="small text-muted mb-1">Narration:</div>
+              <div className="p-2 border rounded-2 bg-white fw-semibold text-dark">
+                {selectedVoucherForSlip.narration}
               </div>
+            </div>
 
-              {/* Items Table */}
-              <table className="table table-bordered table-sm mb-3 align-middle" style={{ fontSize: '0.82rem' }}>
+            <div className="table-responsive">
+              <table className="table table-sm table-bordered bg-white mb-0 align-middle" style={{ fontSize: '0.8rem' }}>
                 <thead className="table-light">
                   <tr>
                     <th>Account Title</th>
-                    <th>Line Note</th>
-                    <th className="text-end" style={{ width: '20%' }}>Debit (₹)</th>
-                    <th className="text-end" style={{ width: '20%' }}>Credit (₹)</th>
+                    <th className="text-end" style={{ width: '30%' }}>Debit (₹ Dr)</th>
+                    <th className="text-end" style={{ width: '30%' }}>Credit (₹ Cr)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedVoucherForSlip.items?.map((it, idx) => (
+                  {selectedVoucherForSlip.items.map((it, idx) => (
                     <tr key={idx}>
-                      <td className="fw-bold">{it.accountName}</td>
-                      <td className="text-muted small">{it.description || '-'}</td>
-                      <td className="text-end text-primary fw-bold">
+                      <td>
+                        <div className="fw-bold">{it.accountName}</div>
+                        {it.description && <small className="text-muted">{it.description}</small>}
+                      </td>
+                      <td className="text-end font-monospace text-primary fw-bold">
                         {it.debit > 0 ? `₹${it.debit.toLocaleString()}` : '-'}
                       </td>
-                      <td className="text-end text-success fw-bold">
+                      <td className="text-end font-monospace text-success fw-bold">
                         {it.credit > 0 ? `₹${it.credit.toLocaleString()}` : '-'}
                       </td>
                     </tr>
                   ))}
-                  <tr className="table-light fw-bold border-top border-2">
-                    <td colSpan={2} className="text-end">Total Amount</td>
-                    <td className="text-end text-primary">₹{selectedVoucherForSlip.totalDebit.toLocaleString()}</td>
-                    <td className="text-end text-success">₹{selectedVoucherForSlip.totalCredit.toLocaleString()}</td>
+                  <tr className="table-light fw-bold">
+                    <td>TOTAL</td>
+                    <td className="text-end font-monospace text-primary">₹{selectedVoucherForSlip.totalDebit.toLocaleString()}</td>
+                    <td className="text-end font-monospace text-success">₹{selectedVoucherForSlip.totalCredit.toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
-
-              <div className="d-flex justify-content-between align-items-center text-muted small pt-4">
-                <span>Prepared By: Admin</span>
-                <span>Status: {selectedVoucherForSlip.status}</span>
-                <span>Authorized Signatory</span>
-              </div>
             </div>
 
-            <div className="d-flex justify-content-end gap-2 border-top pt-2">
+            <div className="d-flex justify-content-between align-items-center pt-2 border-top">
+              <span className="small text-muted">Created by: {(selectedVoucherForSlip as any).createdByName || (selectedVoucherForSlip as any).createdBy || 'System'}</span>
               <button
                 type="button"
                 className="btn btn-outline-dark btn-sm d-inline-flex align-items-center gap-1"
@@ -2140,7 +2220,6 @@ export const AccountsPage: React.FC = () => {
               >
                 <Printer size={14} /> Print Slip
               </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedVoucherForSlip(null)}>Close</button>
             </div>
           </div>
         )}
@@ -2150,22 +2229,123 @@ export const AccountsPage: React.FC = () => {
       <Modal
         isOpen={isDayClosingModalOpen}
         onClose={() => setIsDayClosingModalOpen(false)}
-        title="Daily Register & Shift Closing Summary (રોજમેળ બંધ)"
+        title="Execute Day Closing (દૈનિક રોજમેળ બંધ કરો)"
+        size="lg"
       >
         <form onSubmit={handleExecuteDayClosing} className="d-flex flex-column gap-3">
-          <p className="small text-secondary mb-1">
-            Reconcile all POS orders, customer tender payments, cash drawer balance, and expenses for today:
-          </p>
-          <div>
-            <label className="form-label small fw-bold">Actual Physical Cash Counted in Drawer (₹)</label>
-            <input
-              type="number"
-              className="form-control"
-              required
-              value={actualCashInput || ''}
-              onChange={e => setActualCashInput(Number(e.target.value))}
-            />
+          <div className="row g-2">
+            <div className="col-12 col-sm-6">
+              <label className="form-label small fw-bold">Closing Date</label>
+              <input
+                type="date"
+                required
+                className="form-control form-control-sm"
+                value={closingDate}
+                onChange={e => setClosingDate(e.target.value)}
+              />
+            </div>
+            <div className="col-12 col-sm-6">
+              <label className="form-label small fw-bold">Total Physical Cash in Drawer (₹)</label>
+              <input
+                type="number"
+                step="any"
+                required
+                className="form-control form-control-sm font-monospace fs-6 fw-bold"
+                value={countedCash || ''}
+                onChange={e => setCountedCash(Number(e.target.value))}
+              />
+            </div>
           </div>
+
+          {/* Physical Currency Denominations Box */}
+          <div className="border rounded-3 p-3 bg-light">
+            <h6 className="fw-bold mb-2 small text-dark">Physical Currency Denomination Counter (ચલણી નોટોની ગણતરી)</h6>
+            <div className="row g-2">
+              <div className="col-6 col-sm-4 col-md-3">
+                <label className="small text-muted mb-0">₹500 Notes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-control form-control-sm"
+                  value={denominations['500'] || ''}
+                  onChange={e => setDenominations({ ...denominations, '500': parseInt(e.target.value) || 0 })}
+                />
+                <small className="text-secondary font-monospace">= ₹{(denominations['500'] || 0) * 500}</small>
+              </div>
+              <div className="col-6 col-sm-4 col-md-3">
+                <label className="small text-muted mb-0">₹200 Notes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-control form-control-sm"
+                  value={denominations['200'] || ''}
+                  onChange={e => setDenominations({ ...denominations, '200': parseInt(e.target.value) || 0 })}
+                />
+                <small className="text-secondary font-monospace">= ₹{(denominations['200'] || 0) * 200}</small>
+              </div>
+              <div className="col-6 col-sm-4 col-md-3">
+                <label className="small text-muted mb-0">₹100 Notes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-control form-control-sm"
+                  value={denominations['100'] || ''}
+                  onChange={e => setDenominations({ ...denominations, '100': parseInt(e.target.value) || 0 })}
+                />
+                <small className="text-secondary font-monospace">= ₹{(denominations['100'] || 0) * 100}</small>
+              </div>
+              <div className="col-6 col-sm-4 col-md-3">
+                <label className="small text-muted mb-0">₹50 Notes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-control form-control-sm"
+                  value={denominations['50'] || ''}
+                  onChange={e => setDenominations({ ...denominations, '50': parseInt(e.target.value) || 0 })}
+                />
+                <small className="text-secondary font-monospace">= ₹{(denominations['50'] || 0) * 50}</small>
+              </div>
+              <div className="col-6 col-sm-4 col-md-3">
+                <label className="small text-muted mb-0">₹20 Notes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-control form-control-sm"
+                  value={denominations['20'] || ''}
+                  onChange={e => setDenominations({ ...denominations, '20': parseInt(e.target.value) || 0 })}
+                />
+                <small className="text-secondary font-monospace">= ₹{(denominations['20'] || 0) * 20}</small>
+              </div>
+              <div className="col-6 col-sm-4 col-md-3">
+                <label className="small text-muted mb-0">₹10 Notes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-control form-control-sm"
+                  value={denominations['10'] || ''}
+                  onChange={e => setDenominations({ ...denominations, '10': parseInt(e.target.value) || 0 })}
+                />
+                <small className="text-secondary font-monospace">= ₹{(denominations['10'] || 0) * 10}</small>
+              </div>
+              <div className="col-12 col-sm-4 col-md-6">
+                <label className="small text-muted mb-0">Coins / Other Cash (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-control form-control-sm"
+                  value={denominations['coins'] || ''}
+                  onChange={e => setDenominations({ ...denominations, 'coins': parseInt(e.target.value) || 0 })}
+                />
+                <small className="text-secondary font-monospace">= ₹{denominations['coins'] || 0}</small>
+              </div>
+            </div>
+
+            <div className="mt-2 text-end">
+              <span className="fw-bold small text-dark">Denominations Calculated Total: </span>
+              <span className="fw-bold fs-6 text-primary font-monospace">₹{totalDenominationCash.toLocaleString()}</span>
+            </div>
+          </div>
+
           <div>
             <label className="form-label small fw-bold">Manager Closing Notes (Optional)</label>
             <textarea
@@ -2185,3 +2365,5 @@ export const AccountsPage: React.FC = () => {
     </div>
   );
 };
+
+export default AccountsPage;
