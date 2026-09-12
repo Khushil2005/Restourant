@@ -594,43 +594,52 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
   return (
     <div className="d-flex flex-column gap-3 p-1 p-md-2" style={{ fontSize: '0.85rem' }}>
       {/* Top Header Bar */}
-      <div className="card shadow-sm border-0 mb-1">
-        <div className="card-body p-3 px-sm-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
-          <div className="d-flex align-items-center gap-2.5">
-            <div className="bg-primary-subtle text-primary p-2 rounded-2 d-flex align-items-center justify-content-center shadow-sm" style={{ width: 36, height: 36 }}>
-              <Receipt size={20} />
+      <div className="card shadow-sm border rounded-3 mb-1 bg-white">
+        <div className="card-body p-3 px-sm-3.5 py-sm-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+          <div className="d-flex align-items-center gap-3">
+            {/* Header Icon Box */}
+            <div
+              className="bg-primary-subtle text-primary border border-primary-subtle rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
+              style={{ width: 44, height: 44 }}
+            >
+              <Receipt size={22} className="text-primary" />
             </div>
-            <div>
+
+            {/* Title & Metadata */}
+            <div className="d-flex flex-column">
               <div className="d-flex align-items-center gap-2 flex-wrap">
-                <h6 className="fw-bold mb-0 text-dark">Billing & Payments Register</h6>
-                <span className="badge bg-light text-secondary border px-1.5 py-0.5" style={{ fontSize: '0.7rem' }}>
+                <h6 className="fw-bold mb-0 text-dark fs-6">
+                  Billing & Payments Register
+                </h6>
+                <span className="badge bg-light text-secondary border px-2 py-0.5 rounded-pill fw-medium" style={{ fontSize: '0.72rem' }}>
                   Unified POS & Settlements
                 </span>
-                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style={{ fontSize: '0.7rem' }}>
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill fw-bold" style={{ fontSize: '0.72rem' }}>
                   {getActiveFilterLabel()}
                 </span>
               </div>
-              <div className="text-muted small mt-0.5" style={{ fontSize: '0.72rem' }}>
+              <div className="text-muted small mt-1" style={{ fontSize: '0.74rem' }}>
                 Single-window tax invoices, instant settlement, receipts & 80mm slip printing
               </div>
             </div>
           </div>
 
-          <div className="d-flex align-items-center gap-2 w-100 w-sm-auto justify-content-end">
-            {/* Quick Bill Active Table */}
-            {can('billing.create') && (
+          {/* Action Box */}
+          {can('billing.create') && (
+            <div className="d-flex align-items-center gap-2 flex-shrink-0 align-self-start align-self-sm-center">
               <button
-                className="btn btn-primary btn-sm py-1.5 px-3 d-flex align-items-center justify-content-center gap-1.5 shadow-sm fw-bold w-100 w-sm-auto"
-                style={{ fontSize: '0.8rem' }}
+                type="button"
+                className="btn btn-primary d-inline-flex align-items-center justify-content-center gap-1.5 px-3 py-2 rounded-2 shadow-sm fw-bold text-nowrap"
+                style={{ fontSize: '0.82rem', height: 38 }}
                 onClick={() => {
                   loadActiveTables();
                   setIsBillTableModalOpen(true);
                 }}
               >
-                <Plus size={15} /> Bill Active Table
+                <Plus size={16} strokeWidth={2.5} /> Bill Active Table
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
