@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../api/client';
 import { usePermission } from '../../context/PermissionContext';
 import { MenuItem, MenuCategory, DayOfWeek, DailyMenu } from '../../types';
@@ -48,8 +48,23 @@ export const DailyMenuPage: React.FC = () => {
   const [activeOverrideDay, setActiveOverrideDay] = useState<DayOfWeek | null>(() => cachedDaily?.activeOverrideDay || null);
 
   // Selected Day's active item IDs (editable state)
-  const [activeItemIds, setActiveItemIds] = useState<string[]>([]);
-  const [notes, setNotes] = useState<string>('');
+  const [activeItemIds, setActiveItemIds] = useState<string[]>(() => {
+    const initDay = cachedDaily?.currentDay || 'MONDAY';
+    const currentMenu = cachedDaily?.menus?.find((m: any) => m.dayOfWeek === initDay);
+    return currentMenu?.itemIds || [];
+  });
+  const [notes, setNotes] = useState<string>(() => {
+    const initDay = cachedDaily?.currentDay || 'MONDAY';
+    const currentMenu = cachedDaily?.menus?.find((m: any) => m.dayOfWeek === initDay);
+    return currentMenu?.notes || '';
+  });
+
+  // Track unsaved changes
+  const [isDirty, setIsDirty] = useState(false);
+  const isDirtyRef = useRef(false);
+  const isInitialLoadRef = useRef(true);
+  const prevSelectedDayRef = useRef<DayOfWeek>(selectedDay);
+  const hasInitializedRef = useRef(Boolean(cachedDaily?.menus && cachedDaily.menus.length > 0));
 
   // Filtering states for Master Catalog (Left column)
   const [catalogSearch, setCatalogSearch] = useState('');
@@ -85,9 +100,12 @@ export const DailyMenuPage: React.FC = () => {
         setIsStrictEnforced(dailyRes.data.isStrictEnforced !== false);
         setActiveOverrideDay(dailyRes.data.activeOverrideDay || null);
 
-        // Default active day to today on initial load
-        const todayKey = dailyRes.data.currentDay || 'MONDAY';
-        setSelectedDay(prev => prev === 'MONDAY' ? todayKey : prev);
+        // Default active day to today ONLY on initial load
+        if (isInitialLoadRef.current) {
+          isInitialLoadRef.current = false;
+          const todayKey = dailyRes.data.currentDay || 'MONDAY';
+          setSelectedDay(todayKey);
+        }
       }
     } catch (err) {
       console.error('Failed to load Daily Menu data:', err);
@@ -102,25 +120,60 @@ export const DailyMenuPage: React.FC = () => {
 
   useAutoRefresh(() => loadAllData(false, true), {
     entities: ['daily-menu', 'masters', 'menu', 'categories'],
-    intervalMs: 4000,
+    intervalMs: 8000,
     refreshOnFocus: true
   });
 
-  // When selectedDay changes or dailyMenus is reloaded, sync activeItemIds and notes
+  // When selectedDay changes or dailyMenus is reloaded, sync activeItemIds and notes safely
   useEffect(() => {
-    const currentMenu = dailyMenus.find(m => m.dayOfWeek === selectedDay);
-    if (currentMenu) {
-      setActiveItemIds(currentMenu.itemIds || []);
-      setNotes(currentMenu.notes || '');
-    } else {
-      setActiveItemIds([]);
-      setNotes('');
+    const dayChanged = prevSelectedDayRef.current !== selectedDay;
+    prevSelectedDayRef.current = selectedDay;
+
+    // 1. If day changed: always load the newly selected day's saved menu
+    if (dayChanged) {
+      const currentMenu = dailyMenus.find(m => m.dayOfWeek === selectedDay);
+      setActiveItemIds(currentMenu?.itemIds || []);
+      setNotes(currentMenu?.notes || '');
+      setIsDirty(false);
+      isDirtyRef.current = false;
+      setSaveSuccessMsg(null);
+      return;
     }
-    setSaveSuccessMsg(null);
+
+    // 2. If user has unsaved modifications on current day, NEVER let background sync wipe them out
+    if (isDirtyRef.current) {
+      return;
+    }
+
+    // 3. Initial load when dailyMenus becomes available
+    if (!hasInitializedRef.current && dailyMenus.length > 0) {
+      const currentMenu = dailyMenus.find(m => m.dayOfWeek === selectedDay);
+      setActiveItemIds(currentMenu?.itemIds || []);
+      setNotes(currentMenu?.notes || '');
+      hasInitializedRef.current = true;
+      return;
+    }
+
+    // 4. Background refresh when NOT dirty: only update if server actually has different data
+    const currentMenu = dailyMenus.find(m => m.dayOfWeek === selectedDay);
+    const serverItemIds = currentMenu?.itemIds || [];
+    const serverNotes = currentMenu?.notes || '';
+
+    const isSame =
+      activeItemIds.length === serverItemIds.length &&
+      activeItemIds.every((id, idx) => serverItemIds[idx] === id) &&
+      notes === serverNotes;
+
+    if (!isSame) {
+      setActiveItemIds(serverItemIds);
+      setNotes(serverNotes);
+    }
   }, [selectedDay, dailyMenus]);
 
   // Toggle single item in today's menu
   const handleToggleItem = (itemId: string) => {
+    setIsDirty(true);
+    isDirtyRef.current = true;
     setActiveItemIds(prev =>
       prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
     );
@@ -129,12 +182,16 @@ export const DailyMenuPage: React.FC = () => {
   // Add all dishes of a category
   const handleAddCategoryItems = (catId: string) => {
     const itemsInCat = allMenuItems.filter(m => m.categoryId === catId).map(m => m.id);
+    setIsDirty(true);
+    isDirtyRef.current = true;
     setActiveItemIds(prev => Array.from(new Set([...prev, ...itemsInCat])));
   };
 
   // Remove all dishes of a category
   const handleRemoveCategoryItems = (catId: string) => {
     const itemsInCat = new Set(allMenuItems.filter(m => m.categoryId === catId).map(m => m.id));
+    setIsDirty(true);
+    isDirtyRef.current = true;
     setActiveItemIds(prev => prev.filter(id => !itemsInCat.has(id)));
   };
 
@@ -142,7 +199,30 @@ export const DailyMenuPage: React.FC = () => {
   const handleClearDay = () => {
     if (window.confirm(`Are you sure you want to clear all dishes scheduled for ${selectedDay}?`)) {
       setActiveItemIds([]);
+      setIsDirty(true);
+      isDirtyRef.current = true;
     }
+  };
+
+  // Discard changes & reset to last saved state
+  const handleResetChanges = () => {
+    const currentMenu = dailyMenus.find(m => m.dayOfWeek === selectedDay);
+    setActiveItemIds(currentMenu?.itemIds || []);
+    setNotes(currentMenu?.notes || '');
+    setIsDirty(false);
+    isDirtyRef.current = false;
+  };
+
+  // Day selector change with unsaved changes prompt
+  const handleSelectDay = (dayKey: DayOfWeek) => {
+    if (dayKey === selectedDay) return;
+    if (isDirtyRef.current) {
+      const confirmDiscard = window.confirm(
+        `You have unsaved changes for ${selectedDay}. Do you want to discard them and switch to ${dayKey}?`
+      );
+      if (!confirmDiscard) return;
+    }
+    setSelectedDay(dayKey);
   };
 
   // Save current day's menu
@@ -158,6 +238,8 @@ export const DailyMenuPage: React.FC = () => {
       });
 
       if (res.success) {
+        setIsDirty(false);
+        isDirtyRef.current = false;
         setSaveSuccessMsg(`✓ ${selectedDay} Daily Menu saved with ${activeItemIds.length} items.`);
         // Update local dailyMenus list
         setDailyMenus(prev =>
@@ -202,6 +284,8 @@ export const DailyMenuPage: React.FC = () => {
       if (res.success) {
         setIsCopyModalOpen(false);
         setCopyTargetDays([]);
+        setIsDirty(false);
+        isDirtyRef.current = false;
         alert(`Successfully copied ${selectedDay} menu to ${copyTargetDays.join(', ')}!`);
         await loadAllData();
       }
@@ -280,9 +364,9 @@ export const DailyMenuPage: React.FC = () => {
               <div className="scrollable-pills-container gap-1 py-1 flex-grow-1" style={{ minWidth: 0 }}>
                 {DAYS_LIST.map(day => {
                   const menuObj = dailyMenus.find(m => m.dayOfWeek === day.key);
-                  const count = menuObj?.itemIds?.length || 0;
                   const isToday = day.key === systemToday;
                   const isSelected = day.key === selectedDay;
+                  const count = isSelected ? activeItemIds.length : (menuObj?.itemIds?.length || 0);
 
                   return (
                     <button
@@ -292,7 +376,7 @@ export const DailyMenuPage: React.FC = () => {
                           ? 'btn-primary shadow-sm fw-bold'
                           : 'btn-white border text-dark hover-bg-light'
                       }`}
-                      onClick={() => setSelectedDay(day.key)}
+                      onClick={() => handleSelectDay(day.key)}
                     >
                       <span className="d-none d-sm-inline">{day.label}</span>
                       <span className="d-sm-none">{day.short}</span>
@@ -575,30 +659,57 @@ export const DailyMenuPage: React.FC = () => {
                   className="form-control form-control-sm"
                   placeholder="e.g. Tuesday Kathiyawadi Thali Special, Ringan No Olo"
                   value={notes}
-                  onChange={e => setNotes(e.target.value)}
+                  onChange={e => {
+                    setIsDirty(true);
+                    isDirtyRef.current = true;
+                    setNotes(e.target.value);
+                  }}
                 />
               </div>
 
-              <div className="d-flex justify-content-between align-items-center pt-2">
-                <div className="small text-muted">
-                  Total <strong>{activeItemIds.length}</strong> items fixed
-                </div>
-                <button
-                  className="btn btn-primary btn-sm px-4 fw-bold d-flex align-items-center gap-2 shadow-sm"
-                  onClick={handleSaveMenu}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm" role="status" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} /> Save {selectedDay} Menu
-                    </>
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="small text-muted">
+                    Total <strong>{activeItemIds.length}</strong> items fixed
+                  </div>
+                  {isDirty && (
+                    <span className="badge bg-warning text-dark border border-warning-subtle d-inline-flex align-items-center gap-1">
+                      <span className="spinner-grow spinner-grow-sm" style={{ width: '0.45rem', height: '0.45rem' }} />
+                      Unsaved
+                    </span>
                   )}
-                </button>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  {isDirty && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={handleResetChanges}
+                      disabled={saving}
+                      title="Discard unsaved changes and reload saved state"
+                    >
+                      Discard
+                    </button>
+                  )}
+                  <button
+                    className={`btn btn-sm px-4 fw-bold d-flex align-items-center gap-2 shadow-sm ${
+                      isDirty ? 'btn-success' : 'btn-primary'
+                    }`}
+                    onClick={handleSaveMenu}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" role="status" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} /> Save {selectedDay} Menu
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
