@@ -124,40 +124,43 @@ const StandardStatCard: React.FC<StandardStatCardProps> = ({
   accentColor = '#7A1B28',
   onClick,
   isActive = false,
-  colClass = 'col-6 col-md-6 col-xl-3'
+  colClass = 'col-12 col-sm-6 col-xl-3'
 }) => (
   <div className={colClass}>
     <div
-      className={`card shadow-sm border border-light-subtle rounded-3 p-3 bg-white h-100 transition-all ${
+      className={`card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between transition-all ${
         onClick ? 'cursor-pointer' : ''
       }`}
       style={{
         borderTop: `3px solid ${accentColor}`,
+        borderLeft: '1px solid #E2E8F0',
         backgroundColor: isActive ? '#FFFDF8' : '#FFFFFF',
         cursor: onClick ? 'pointer' : 'default'
       }}
       onClick={onClick}
     >
-      <div className="d-flex justify-content-between align-items-center mb-1.5">
-        <span
-          className="text-uppercase fw-bold text-muted d-flex align-items-center gap-1.5 text-truncate"
-          style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}
-        >
-          {icon} {title}
-        </span>
-        {badge && (
-          <span className={`badge ${badgeClass} px-2 py-0.5 rounded-pill fw-bold text-nowrap`} style={{ fontSize: '0.65rem' }}>
-            {badge}
+      <div>
+        <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+          <span
+            className="text-uppercase fw-bold text-muted d-flex align-items-center gap-1.5"
+            style={{ fontSize: '0.72rem', letterSpacing: '0.3px', lineHeight: '1.25' }}
+          >
+            {icon} <span>{title}</span>
           </span>
-        )}
+          {badge && (
+            <span className={`badge ${badgeClass} px-2 py-0.5 rounded-pill fw-bold text-nowrap flex-shrink-0`} style={{ fontSize: '0.65rem' }}>
+              {badge}
+            </span>
+          )}
+        </div>
+        <div className={`fs-4 fw-bold font-monospace mb-1 ${valueColor}`}>
+          {typeof value === 'number' ? `₹${value.toLocaleString()}` : value}
+        </div>
       </div>
-      <h4 className={`fw-bold mb-1 font-monospace fs-5 ${valueColor}`}>
-        {typeof value === 'number' ? `₹${value.toLocaleString()}` : value}
-      </h4>
       {subtext && (
-        <span className="small text-muted text-truncate d-block" style={{ fontSize: '0.7rem' }}>
+        <div className="small text-muted pt-1.5 border-top border-light-subtle mt-2" style={{ fontSize: '0.72rem', lineHeight: '1.25' }}>
           {subtext}
-        </span>
+        </div>
       )}
     </div>
   </div>
@@ -1076,14 +1079,15 @@ export const AccountsPage: React.FC = () => {
         )}
       </div>
 
-      {/* 4 LIVE RESTAURANT FINANCE PULSE CARDS (1-CLICK DIRECT NAVIGATION) */}
-      <div className="row g-2">
+      {/* 4 LIVE RESTAURANT FINANCE PULSE CARDS (1-CLICK DIRECT NAVIGATION - NO CROPPING) */}
+      <div className="row g-2.5">
         {/* Pulse Card 1: Cash in Counter */}
-        <div className="col-6 col-lg-3">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div
-            className="card shadow-sm border rounded-3 p-2.5 bg-white h-100 transition-all"
+            className="card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between transition-all"
             style={{
-              borderLeft: '4px solid #16A34A',
+              borderTop: '3px solid #16A34A',
+              borderLeft: '1px solid #E2E8F0',
               cursor: 'pointer',
               backgroundColor: selectedAccountId === quickStats.cashAccountId && activeTab === 'ledger' ? '#F0FDF4' : '#FFFFFF'
             }}
@@ -1095,22 +1099,25 @@ export const AccountsPage: React.FC = () => {
             }}
             title="ક્લિક કરીને રોકડ ગલ્લાની ખાતાવહી જુઓ"
           >
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="small fw-bold text-success d-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
-                <Wallet size={14} /> રોકડ ગલ્લો (Cash in Hand)
-              </span>
-              <span className="badge bg-success text-white px-1.5 py-0.5 rounded-pill" style={{ fontSize: '0.65rem' }}>
-                લાઇવ
-              </span>
+            <div>
+              <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                <span className="fw-bold text-success d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.76rem', lineHeight: '1.25' }}>
+                  <Wallet size={16} className="flex-shrink-0" />
+                  <span>રોકડ ગલ્લો (Cash in Hand)</span>
+                </span>
+                <span className="badge bg-success text-white px-2 py-0.5 rounded-pill fw-bold text-nowrap flex-shrink-0" style={{ fontSize: '0.65rem' }}>
+                  લાઇવ
+                </span>
+              </div>
+              <div className="fs-4 fw-bold text-dark font-monospace mb-1">
+                ₹{quickStats.cash.toLocaleString()}
+              </div>
             </div>
-            <h5 className="fw-bold mb-0 text-dark fs-5">
-              ₹{quickStats.cash.toLocaleString()}
-            </h5>
-            <div className="d-flex justify-content-between align-items-center mt-1">
-              <span className="text-muted small text-truncate" style={{ fontSize: '0.68rem' }}>
+            <div className="d-flex justify-content-between align-items-center gap-2 pt-1.5 border-top border-light-subtle mt-2">
+              <span className="text-muted small" style={{ fontSize: '0.73rem', lineHeight: '1.25' }}>
                 કાઉન્ટર ડ્રોઅરમાં રોકડ
               </span>
-              <span className="text-success fw-bold small text-nowrap" style={{ fontSize: '0.68rem' }}>
+              <span className="text-success fw-bold small text-nowrap flex-shrink-0" style={{ fontSize: '0.73rem' }}>
                 હિસાબ જુઓ ➔
               </span>
             </div>
@@ -1118,11 +1125,12 @@ export const AccountsPage: React.FC = () => {
         </div>
 
         {/* Pulse Card 2: Bank Balance */}
-        <div className="col-6 col-lg-3">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div
-            className="card shadow-sm border rounded-3 p-2.5 bg-white h-100 transition-all"
+            className="card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between transition-all"
             style={{
-              borderLeft: '4px solid #2563EB',
+              borderTop: '3px solid #2563EB',
+              borderLeft: '1px solid #E2E8F0',
               cursor: 'pointer',
               backgroundColor: selectedAccountId === quickStats.bankAccountId && activeTab === 'ledger' ? '#EFF6FF' : '#FFFFFF'
             }}
@@ -1134,22 +1142,25 @@ export const AccountsPage: React.FC = () => {
             }}
             title="ક્લિક કરીને બેંક ખાતાની ખાતાવહી જુઓ"
           >
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="small fw-bold text-primary d-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
-                <Building2 size={14} /> બેંક એકાઉન્ટ (Bank Balance)
-              </span>
-              <span className="badge bg-primary text-white px-1.5 py-0.5 rounded-pill" style={{ fontSize: '0.65rem' }}>
-                કરંટ ખાતું
-              </span>
+            <div>
+              <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                <span className="fw-bold text-primary d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.76rem', lineHeight: '1.25' }}>
+                  <Building2 size={16} className="flex-shrink-0" />
+                  <span>બેંક એકાઉન્ટ (Bank Balance)</span>
+                </span>
+                <span className="badge bg-primary text-white px-2 py-0.5 rounded-pill fw-bold text-nowrap flex-shrink-0" style={{ fontSize: '0.65rem' }}>
+                  કરંટ ખાતું
+                </span>
+              </div>
+              <div className="fs-4 fw-bold text-primary font-monospace mb-1">
+                ₹{quickStats.bank.toLocaleString()}
+              </div>
             </div>
-            <h5 className="fw-bold mb-0 text-primary fs-5">
-              ₹{quickStats.bank.toLocaleString()}
-            </h5>
-            <div className="d-flex justify-content-between align-items-center mt-1">
-              <span className="text-muted small text-truncate" style={{ fontSize: '0.68rem' }}>
+            <div className="d-flex justify-content-between align-items-center gap-2 pt-1.5 border-top border-light-subtle mt-2">
+              <span className="text-muted small" style={{ fontSize: '0.73rem', lineHeight: '1.25' }}>
                 SBI / HDFC બેંક જમા
               </span>
-              <span className="text-primary fw-bold small text-nowrap" style={{ fontSize: '0.68rem' }}>
+              <span className="text-primary fw-bold small text-nowrap flex-shrink-0" style={{ fontSize: '0.73rem' }}>
                 સ્ટેટમેન્ટ ➔
               </span>
             </div>
@@ -1157,11 +1168,12 @@ export const AccountsPage: React.FC = () => {
         </div>
 
         {/* Pulse Card 3: Supplier Payables */}
-        <div className="col-6 col-lg-3">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div
-            className="card shadow-sm border rounded-3 p-2.5 bg-white h-100 transition-all"
+            className="card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between transition-all"
             style={{
-              borderLeft: '4px solid #DC2626',
+              borderTop: '3px solid #DC2626',
+              borderLeft: '1px solid #E2E8F0',
               cursor: 'pointer',
               backgroundColor: selectedAccountId === quickStats.payableAccountId && activeTab === 'ledger' ? '#FEF2F2' : '#FFFFFF'
             }}
@@ -1173,22 +1185,25 @@ export const AccountsPage: React.FC = () => {
             }}
             title="ક્લિક કરીને વેપારીઓના ચૂકવવાના દેવાં જુઓ"
           >
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="small fw-bold text-danger d-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
-                <Users size={14} /> વેપારી દેવાં (To Pay / Suppliers)
-              </span>
-              <span className="badge bg-danger text-white px-1.5 py-0.5 rounded-pill" style={{ fontSize: '0.65rem' }}>
-                ચૂકવવાના
-              </span>
+            <div>
+              <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                <span className="fw-bold text-danger d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.76rem', lineHeight: '1.25' }}>
+                  <Users size={16} className="flex-shrink-0" />
+                  <span>વેપારી દેવાં (To Pay / Suppliers)</span>
+                </span>
+                <span className="badge bg-danger text-white px-2 py-0.5 rounded-pill fw-bold text-nowrap flex-shrink-0" style={{ fontSize: '0.65rem' }}>
+                  ચૂકવવાના
+                </span>
+              </div>
+              <div className="fs-4 fw-bold text-danger font-monospace mb-1">
+                ₹{quickStats.payables.toLocaleString()}
+              </div>
             </div>
-            <h5 className="fw-bold mb-0 text-danger fs-5">
-              ₹{quickStats.payables.toLocaleString()}
-            </h5>
-            <div className="d-flex justify-content-between align-items-center mt-1">
-              <span className="text-muted small text-truncate" style={{ fontSize: '0.68rem' }}>
+            <div className="d-flex justify-content-between align-items-center gap-2 pt-1.5 border-top border-light-subtle mt-2">
+              <span className="text-muted small" style={{ fontSize: '0.73rem', lineHeight: '1.25' }}>
                 શાકભાજી & કરિયાણા વેપારીઓ
               </span>
-              <span className="text-danger fw-bold small text-nowrap" style={{ fontSize: '0.68rem' }}>
+              <span className="text-danger fw-bold small text-nowrap flex-shrink-0" style={{ fontSize: '0.73rem' }}>
                 વિગત ➔
               </span>
             </div>
@@ -1196,11 +1211,12 @@ export const AccountsPage: React.FC = () => {
         </div>
 
         {/* Pulse Card 4: Customer Receivables */}
-        <div className="col-6 col-lg-3">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div
-            className="card shadow-sm border rounded-3 p-2.5 bg-white h-100 transition-all"
+            className="card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between transition-all"
             style={{
-              borderLeft: '4px solid #D97706',
+              borderTop: '3px solid #D97706',
+              borderLeft: '1px solid #E2E8F0',
               cursor: 'pointer',
               backgroundColor: selectedAccountId === quickStats.receivableAccountId && activeTab === 'ledger' ? '#FFFBEB' : '#FFFFFF'
             }}
@@ -1212,22 +1228,25 @@ export const AccountsPage: React.FC = () => {
             }}
             title="ક્લિક કરીને ગ્રાહક ઉધાર લેણાં જુઓ"
           >
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="small fw-bold text-warning-emphasis d-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
-                <ArrowDownLeft size={14} /> માર્કેટ લેણાં (To Receive / Udhar)
-              </span>
-              <span className="badge bg-warning text-dark px-1.5 py-0.5 rounded-pill" style={{ fontSize: '0.65rem' }}>
-                આવવાના
-              </span>
+            <div>
+              <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                <span className="fw-bold text-warning-emphasis d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.76rem', lineHeight: '1.25' }}>
+                  <ArrowDownLeft size={16} className="flex-shrink-0" />
+                  <span>માર્કેટ લેણાં (To Receive / Udhar)</span>
+                </span>
+                <span className="badge bg-warning text-dark px-2 py-0.5 rounded-pill fw-bold text-nowrap flex-shrink-0" style={{ fontSize: '0.65rem' }}>
+                  આવવાના
+                </span>
+              </div>
+              <div className="fs-4 fw-bold text-warning-emphasis font-monospace mb-1">
+                ₹{quickStats.receivables.toLocaleString()}
+              </div>
             </div>
-            <h5 className="fw-bold mb-0 text-warning-emphasis fs-5">
-              ₹{quickStats.receivables.toLocaleString()}
-            </h5>
-            <div className="d-flex justify-content-between align-items-center mt-1">
-              <span className="text-muted small text-truncate" style={{ fontSize: '0.68rem' }}>
+            <div className="d-flex justify-content-between align-items-center gap-2 pt-1.5 border-top border-light-subtle mt-2">
+              <span className="text-muted small" style={{ fontSize: '0.73rem', lineHeight: '1.25' }}>
                 ગ્રાહકો પાસેથી લેવાના
               </span>
-              <span className="text-warning-emphasis fw-bold small text-nowrap" style={{ fontSize: '0.68rem' }}>
+              <span className="text-warning-emphasis fw-bold small text-nowrap flex-shrink-0" style={{ fontSize: '0.73rem' }}>
                 વિગત ➔
               </span>
             </div>
@@ -1352,7 +1371,7 @@ export const AccountsPage: React.FC = () => {
               )}
 
               {/* Row A: Account Selector (Left) + Export & Refresh Buttons (Right) */}
-              <div className="col-12 col-lg-7">
+              <div className="col-12 col-xl-7">
                 <label className="form-label small fw-bold text-dark d-flex align-items-center gap-1 mb-1.5">
                   <BookOpen size={14} style={{ color: '#7A1B28' }} /> Select Account Head (નામા ખાતું પસંદ કરો)
                 </label>
@@ -1401,8 +1420,8 @@ export const AccountsPage: React.FC = () => {
                 </select>
               </div>
 
-              <div className="col-12 col-lg-5 d-flex align-items-end justify-content-start justify-content-lg-end">
-                <div className="d-flex align-items-center gap-1.5 w-100 w-lg-auto justify-content-between justify-content-lg-end flex-wrap">
+              <div className="col-12 col-xl-5 d-flex align-items-end justify-content-start justify-content-xl-end">
+                <div className="d-flex align-items-center gap-1.5 w-100 w-xl-auto justify-content-between justify-content-xl-end flex-wrap">
                   <button
                     type="button"
                     className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center gap-1 shadow-xs px-2.5 py-1.5 flex-fill flex-lg-grow-0"
@@ -1509,113 +1528,123 @@ export const AccountsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. 5 KPI Summary Cards - Perfectly Proportioned Box Type */}
+          {/* 3. 5 KPI Summary Cards - Perfectly Proportioned Box Type (No Side Clipping) */}
           {ledgerStatement && (
-            <div className="row g-2 g-md-3">
+            <div className="row g-2.5">
               {/* Card 1: Opening Balance */}
-              <div className="col-6 col-md-4 col-xl">
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #64748B' }}>
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-                      Opening Balance
-                    </span>
-                    <span className={`badge ${ledgerStatement.openingBalanceType === 'Dr' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'} px-1.5 py-0.5`} style={{ fontSize: '0.65rem' }}>
-                      {ledgerStatement.openingBalanceType}
-                    </span>
+              <div className="col-12 col-sm-6 col-md-4 col-xl">
+                <div className="card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between" style={{ borderTop: '3px solid #64748B' }}>
+                  <div>
+                    <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                      <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.72rem', letterSpacing: '0.4px', lineHeight: '1.25' }}>
+                        Opening Balance (શરૂઆત બાકી)
+                      </span>
+                      <span className={`badge ${ledgerStatement.openingBalanceType === 'Dr' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'} px-2 py-0.5 rounded-pill flex-shrink-0 fw-bold`} style={{ fontSize: '0.65rem' }}>
+                        {ledgerStatement.openingBalanceType}
+                      </span>
+                    </div>
+                    <div className="fs-5 fw-bold text-dark font-monospace mb-1">
+                      ₹{ledgerStatement.openingBalance.toLocaleString()}
+                    </div>
                   </div>
-                  <h5 className="fw-bold mb-0 text-dark fs-5">
-                    ₹{ledgerStatement.openingBalance.toLocaleString()}
-                  </h5>
-                  <span className="text-muted small mt-1 text-truncate" style={{ fontSize: '0.68rem' }}>
+                  <div className="text-muted small pt-1.5 border-top border-light-subtle mt-2" style={{ fontSize: '0.72rem', lineHeight: '1.25' }}>
                     As of {ledgerStatement.period.startDate || 'Start'}
-                  </span>
+                  </div>
                 </div>
               </div>
 
               {/* Card 2: Period Debits */}
-              <div className="col-6 col-md-4 col-xl">
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #2563EB' }}>
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-                      કુલ આવ્યા / ઉધાર (Dr ⬇️)
-                    </span>
-                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
-                      Inflow
-                    </span>
+              <div className="col-12 col-sm-6 col-md-4 col-xl">
+                <div className="card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between" style={{ borderTop: '3px solid #2563EB' }}>
+                  <div>
+                    <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                      <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.72rem', letterSpacing: '0.4px', lineHeight: '1.25' }}>
+                        કુલ આવ્યા / ઉધાર (Dr ⬇️)
+                      </span>
+                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill flex-shrink-0 fw-bold" style={{ fontSize: '0.65rem' }}>
+                        Inflow
+                      </span>
+                    </div>
+                    <div className="fs-5 fw-bold text-primary font-monospace mb-1">
+                      ₹{ledgerStatement.totalDebit.toLocaleString()}
+                    </div>
                   </div>
-                  <h5 className="fw-bold mb-0 text-primary fs-5">
-                    ₹{ledgerStatement.totalDebit.toLocaleString()}
-                  </h5>
-                  <span className="text-muted small mt-1 text-truncate" style={{ fontSize: '0.68rem' }}>
+                  <div className="text-muted small pt-1.5 border-top border-light-subtle mt-2" style={{ fontSize: '0.72rem', lineHeight: '1.25' }}>
                     {ledgerStatement.transactions.filter(t => t.debit > 0).length} Debit Postings
-                  </span>
+                  </div>
                 </div>
               </div>
 
               {/* Card 3: Period Credits */}
-              <div className="col-6 col-md-4 col-xl">
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #16A34A' }}>
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-                      કુલ ગયા / જમા (Cr ⬆️)
-                    </span>
-                    <span className="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
-                      Outflow
-                    </span>
+              <div className="col-12 col-sm-6 col-md-4 col-xl">
+                <div className="card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between" style={{ borderTop: '3px solid #16A34A' }}>
+                  <div>
+                    <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                      <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.72rem', letterSpacing: '0.4px', lineHeight: '1.25' }}>
+                        કુલ ગયા / જમા (Cr ⬆️)
+                      </span>
+                      <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill flex-shrink-0 fw-bold" style={{ fontSize: '0.65rem' }}>
+                        Outflow
+                      </span>
+                    </div>
+                    <div className="fs-5 fw-bold text-success font-monospace mb-1">
+                      ₹{ledgerStatement.totalCredit.toLocaleString()}
+                    </div>
                   </div>
-                  <h5 className="fw-bold mb-0 text-success fs-5">
-                    ₹{ledgerStatement.totalCredit.toLocaleString()}
-                  </h5>
-                  <span className="text-muted small mt-1 text-truncate" style={{ fontSize: '0.68rem' }}>
+                  <div className="text-muted small pt-1.5 border-top border-light-subtle mt-2" style={{ fontSize: '0.72rem', lineHeight: '1.25' }}>
                     {ledgerStatement.transactions.filter(t => t.credit > 0).length} Credit Postings
-                  </span>
+                  </div>
                 </div>
               </div>
 
               {/* Card 4: Net Movement */}
-              <div className="col-6 col-md-6 col-xl">
-                <div className="card shadow-sm border rounded-3 p-2.5 bg-white h-100" style={{ borderTop: '3px solid #D97706' }}>
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-                      ચોખ્ખો ફેરફાર (Net Change)
-                    </span>
-                    <span className="badge bg-light text-secondary border px-1.5 py-0.5" style={{ fontSize: '0.65rem' }}>
-                      Activity
-                    </span>
+              <div className="col-12 col-sm-6 col-md-6 col-xl">
+                <div className="card shadow-sm border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-between" style={{ borderTop: '3px solid #D97706' }}>
+                  <div>
+                    <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                      <span className="text-uppercase text-secondary fw-bold" style={{ fontSize: '0.72rem', letterSpacing: '0.4px', lineHeight: '1.25' }}>
+                        ચોખ્ખો ફેરફાર (Net Movement)
+                      </span>
+                      <span className="badge bg-light text-secondary border px-2 py-0.5 rounded-pill flex-shrink-0 fw-bold" style={{ fontSize: '0.65rem' }}>
+                        Activity
+                      </span>
+                    </div>
+                    <div className={`fs-5 fw-bold font-monospace mb-1 ${ledgerStatement.netChange >= 0 ? 'text-primary' : 'text-danger'}`}>
+                      {ledgerStatement.netChange >= 0 ? '+' : '-'}₹{Math.abs(ledgerStatement.netChange).toLocaleString()}
+                    </div>
                   </div>
-                  <h5 className={`fw-bold mb-0 fs-5 ${ledgerStatement.netChange >= 0 ? 'text-primary' : 'text-danger'}`}>
-                    {ledgerStatement.netChange >= 0 ? '+' : '-'}₹{Math.abs(ledgerStatement.netChange).toLocaleString()}
-                  </h5>
-                  <span className="text-muted small mt-1 text-truncate" style={{ fontSize: '0.68rem' }}>
+                  <div className="text-muted small pt-1.5 border-top border-light-subtle mt-2" style={{ fontSize: '0.72rem', lineHeight: '1.25' }}>
                     Net change in period
-                  </span>
+                  </div>
                 </div>
               </div>
 
               {/* Card 5: Closing Balance (Hero Card) */}
-              <div className="col-12 col-md-6 col-xl">
+              <div className="col-12 col-sm-12 col-md-6 col-xl">
                 <div
-                  className="card shadow-sm border rounded-3 p-2.5 h-100"
+                  className="card shadow-sm border rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                   style={{
                     borderTop: '3px solid #7A1B28',
                     backgroundColor: '#FFF9F5',
                     borderColor: '#F5C6CB'
                   }}
                 >
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="text-uppercase fw-bold" style={{ color: '#7A1B28', fontSize: '0.68rem', letterSpacing: '0.5px' }}>
-                      Closing Balance (આખર બાકી)
-                    </span>
-                    <span className="badge text-white px-2 py-0.5 fw-bold" style={{ backgroundColor: '#7A1B28', fontSize: '0.68rem' }}>
-                      {ledgerStatement.closingBalanceType}
-                    </span>
+                  <div>
+                    <div className="d-flex justify-content-between align-items-start gap-1.5 mb-2">
+                      <span className="text-uppercase fw-bold" style={{ color: '#7A1B28', fontSize: '0.72rem', letterSpacing: '0.4px', lineHeight: '1.25' }}>
+                        Closing Balance (આખર બાકી)
+                      </span>
+                      <span className="badge text-white px-2 py-0.5 rounded-pill fw-bold flex-shrink-0" style={{ backgroundColor: '#7A1B28', fontSize: '0.68rem' }}>
+                        {ledgerStatement.closingBalanceType}
+                      </span>
+                    </div>
+                    <div className="fs-5 fw-bold text-dark font-monospace mb-1">
+                      ₹{ledgerStatement.closingBalance.toLocaleString()}
+                    </div>
                   </div>
-                  <h4 className="fw-bold mb-0 text-dark fs-5">
-                    ₹{ledgerStatement.closingBalance.toLocaleString()}
-                  </h4>
-                  <span className="small mt-1 fw-medium text-truncate" style={{ color: '#7A1B28', fontSize: '0.7rem' }}>
+                  <div className="small pt-1.5 border-top border-light-subtle mt-2 fw-medium" style={{ color: '#7A1B28', fontSize: '0.72rem', lineHeight: '1.25' }}>
                     As of {ledgerStatement.period.endDate || 'Today'}
-                  </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1655,19 +1684,19 @@ export const AccountsPage: React.FC = () => {
               <table className="table table-hover table-striped mb-0 align-middle" style={{ fontSize: '0.82rem', minWidth: 720 }}>
                 <thead className="table-light sticky-top" style={{ zIndex: 10 }}>
                   <tr>
-                    <th className="text-nowrap ps-3" style={{ width: '11%' }}>Date</th>
-                    <th className="text-nowrap" style={{ width: '14%' }}>Voucher #</th>
-                    <th style={{ width: '28%' }}>Particulars / Contra Account</th>
-                    <th className="text-nowrap" style={{ width: '12%' }}>Ref Type</th>
-                    <th className="text-end text-nowrap" style={{ width: '12%' }}>
+                    <th className="text-nowrap ps-3" style={{ minWidth: 100 }}>Date</th>
+                    <th className="text-nowrap" style={{ minWidth: 110 }}>Voucher #</th>
+                    <th style={{ minWidth: 260 }}>Particulars / Contra Account</th>
+                    <th className="text-nowrap" style={{ minWidth: 110 }}>Ref Type</th>
+                    <th className="text-end text-nowrap" style={{ minWidth: 120 }}>
                       <span className="badge bg-success-subtle text-success border border-success-subtle me-1" style={{ fontSize: '0.65rem' }}>⬇️ આવ્યા</span>
                       <span>ઉધાર (Dr)</span>
                     </th>
-                    <th className="text-end text-nowrap" style={{ width: '12%' }}>
+                    <th className="text-end text-nowrap" style={{ minWidth: 120 }}>
                       <span className="badge bg-danger-subtle text-danger border border-danger-subtle me-1" style={{ fontSize: '0.65rem' }}>⬆️ ગયા</span>
                       <span>જમા (Cr)</span>
                     </th>
-                    <th className="text-end text-nowrap pe-3" style={{ width: '13%' }}>Running Balance</th>
+                    <th className="text-end text-nowrap pe-3" style={{ minWidth: 130 }}>Running Balance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1726,14 +1755,14 @@ export const AccountsPage: React.FC = () => {
                             {tx.entryNumber}
                           </button>
                         </td>
-                        <td>
-                          <div className="fw-bold text-dark text-truncate" style={{ maxWidth: 280 }} title={tx.particulars}>
+                        <td style={{ minWidth: 260 }}>
+                          <div className="fw-bold text-dark" style={{ wordBreak: 'break-word', lineHeight: '1.3' }}>
                             {tx.particulars}
                           </div>
                           {tx.narration && (
-                            <small className="text-muted d-block text-truncate" style={{ maxWidth: 280 }} title={tx.narration}>
+                            <div className="text-muted small mt-0.5" style={{ wordBreak: 'break-word', fontSize: '0.74rem', lineHeight: '1.25' }}>
                               {tx.narration}
-                            </small>
+                            </div>
                           )}
                         </td>
                         <td className="text-nowrap">
@@ -1770,42 +1799,42 @@ export const AccountsPage: React.FC = () => {
       {/* ======================================================== */}
       {activeTab === 'chart' && (
         <div className="d-flex flex-column gap-3">
-          {/* Summary Strip - Responsive Cards */}
-          <div className="row g-2">
-            <div className="col-6 col-md-4 col-xl-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100">
-                <span className="text-muted small fw-bold" style={{ fontSize: '0.68rem' }}>Total Accounts</span>
-                <h6 className="fw-bold mb-0 text-dark fs-5">{accounts.length} Heads</h6>
+          {/* Summary Strip - Responsive Cards (No Side Cropping) */}
+          <div className="row g-2.5">
+            <div className="col-6 col-sm-4 col-lg-2">
+              <div className="card shadow-sm border rounded-3 p-2.5 bg-white text-center h-100 d-flex flex-column justify-content-center" style={{ borderTop: '3px solid #64748B' }}>
+                <span className="text-muted small fw-bold text-uppercase" style={{ fontSize: '0.68rem', letterSpacing: '0.3px' }}>Total Accounts</span>
+                <div className="fw-bold text-dark font-monospace fs-5 mt-1">{accounts.length} <span className="small fw-normal text-muted" style={{ fontSize: '0.72rem' }}>Heads</span></div>
               </div>
             </div>
-            <div className="col-6 col-md-4 col-xl-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #2563EB' }}>
-                <span className="text-primary small fw-bold" style={{ fontSize: '0.68rem' }}>Assets (મિલકતો)</span>
-                <h6 className="fw-bold mb-0 text-primary fs-5">₹{coaSummary.assets.toLocaleString()}</h6>
+            <div className="col-6 col-sm-4 col-lg-2">
+              <div className="card shadow-sm border rounded-3 p-2.5 bg-white text-center h-100 d-flex flex-column justify-content-center" style={{ borderTop: '3px solid #2563EB' }}>
+                <span className="text-primary small fw-bold text-uppercase" style={{ fontSize: '0.68rem', letterSpacing: '0.3px' }}>Assets (મિલકતો)</span>
+                <div className="fw-bold text-primary font-monospace fs-5 mt-1">₹{coaSummary.assets.toLocaleString()}</div>
               </div>
             </div>
-            <div className="col-6 col-md-4 col-xl-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #D97706' }}>
-                <span className="text-warning-emphasis small fw-bold" style={{ fontSize: '0.68rem' }}>Liabilities (દેવાં)</span>
-                <h6 className="fw-bold mb-0 text-warning-emphasis fs-5">₹{coaSummary.liabilities.toLocaleString()}</h6>
+            <div className="col-6 col-sm-4 col-lg-2">
+              <div className="card shadow-sm border rounded-3 p-2.5 bg-white text-center h-100 d-flex flex-column justify-content-center" style={{ borderTop: '3px solid #D97706' }}>
+                <span className="text-warning-emphasis small fw-bold text-uppercase" style={{ fontSize: '0.68rem', letterSpacing: '0.3px' }}>Liabilities (દેવાં)</span>
+                <div className="fw-bold text-warning-emphasis font-monospace fs-5 mt-1">₹{coaSummary.liabilities.toLocaleString()}</div>
               </div>
             </div>
-            <div className="col-6 col-md-4 col-xl-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #475569' }}>
-                <span className="text-dark small fw-bold" style={{ fontSize: '0.68rem' }}>Equity (મૂડી)</span>
-                <h6 className="fw-bold mb-0 text-dark fs-5">₹{coaSummary.equity.toLocaleString()}</h6>
+            <div className="col-6 col-sm-4 col-lg-2">
+              <div className="card shadow-sm border rounded-3 p-2.5 bg-white text-center h-100 d-flex flex-column justify-content-center" style={{ borderTop: '3px solid #475569' }}>
+                <span className="text-dark small fw-bold text-uppercase" style={{ fontSize: '0.68rem', letterSpacing: '0.3px' }}>Equity (મૂડી)</span>
+                <div className="fw-bold text-dark font-monospace fs-5 mt-1">₹{coaSummary.equity.toLocaleString()}</div>
               </div>
             </div>
-            <div className="col-6 col-md-4 col-xl-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #16A34A' }}>
-                <span className="text-success small fw-bold" style={{ fontSize: '0.68rem' }}>Revenue (આવક)</span>
-                <h6 className="fw-bold mb-0 text-success fs-5">₹{coaSummary.revenue.toLocaleString()}</h6>
+            <div className="col-6 col-sm-4 col-lg-2">
+              <div className="card shadow-sm border rounded-3 p-2.5 bg-white text-center h-100 d-flex flex-column justify-content-center" style={{ borderTop: '3px solid #16A34A' }}>
+                <span className="text-success small fw-bold text-uppercase" style={{ fontSize: '0.68rem', letterSpacing: '0.3px' }}>Revenue (આવક)</span>
+                <div className="fw-bold text-success font-monospace fs-5 mt-1">₹{coaSummary.revenue.toLocaleString()}</div>
               </div>
             </div>
-            <div className="col-6 col-md-4 col-xl-2">
-              <div className="card shadow-sm border rounded-3 p-2 bg-white text-center h-100" style={{ borderTop: '3px solid #DC2626' }}>
-                <span className="text-danger small fw-bold" style={{ fontSize: '0.68rem' }}>Expenses (ખર્ચ)</span>
-                <h6 className="fw-bold mb-0 text-danger fs-5">₹{coaSummary.expenses.toLocaleString()}</h6>
+            <div className="col-6 col-sm-4 col-lg-2">
+              <div className="card shadow-sm border rounded-3 p-2.5 bg-white text-center h-100 d-flex flex-column justify-content-center" style={{ borderTop: '3px solid #DC2626' }}>
+                <span className="text-danger small fw-bold text-uppercase" style={{ fontSize: '0.68rem', letterSpacing: '0.3px' }}>Expenses (ખર્ચ)</span>
+                <div className="fw-bold text-danger font-monospace fs-5 mt-1">₹{coaSummary.expenses.toLocaleString()}</div>
               </div>
             </div>
           </div>
@@ -1870,9 +1899,9 @@ export const AccountsPage: React.FC = () => {
                             {acc.accountCode}
                           </span>
                         </td>
-                        <td>
-                          <div className="fw-bold text-dark">{acc.accountName}</div>
-                          {acc.description && <small className="text-muted">{acc.description}</small>}
+                        <td style={{ minWidth: 240 }}>
+                          <div className="fw-bold text-dark" style={{ wordBreak: 'break-word', lineHeight: '1.3' }}>{acc.accountName}</div>
+                          {acc.description && <small className="text-muted d-block mt-0.5" style={{ wordBreak: 'break-word', fontSize: '0.74rem' }}>{acc.description}</small>}
                         </td>
                         <td className="text-nowrap">
                           <span
@@ -2043,11 +2072,11 @@ export const AccountsPage: React.FC = () => {
                           <span className="fw-bold text-primary font-monospace">{j.entryNumber}</span>
                         </td>
                         <td className="text-nowrap">{j.entryDate}</td>
-                        <td>
-                          <div className="fw-bold text-dark">{j.narration}</div>
+                        <td style={{ minWidth: 260 }}>
+                          <div className="fw-bold text-dark" style={{ wordBreak: 'break-word', lineHeight: '1.3' }}>{j.narration}</div>
                           <div className="d-flex flex-wrap gap-1 mt-1">
                             {j.items?.map((it, idx) => (
-                              <span key={idx} className="badge bg-light text-dark border" style={{ fontSize: '0.68rem' }}>
+                              <span key={idx} className="badge bg-light text-dark border" style={{ fontSize: '0.68rem', wordBreak: 'break-word', whiteSpace: 'normal', textAlign: 'left' }}>
                                 {it.accountName}: {it.debit > 0 ? `Dr ₹${it.debit}` : `Cr ₹${it.credit}`}
                               </span>
                             ))}
