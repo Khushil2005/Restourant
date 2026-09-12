@@ -99,6 +99,70 @@ interface JournalFormItem {
   description?: string;
 }
 
+interface StandardStatCardProps {
+  icon?: React.ReactNode;
+  title: string;
+  badge?: string;
+  badgeClass?: string;
+  value: string | number;
+  valueColor?: string;
+  subtext?: string;
+  accentColor?: string;
+  onClick?: () => void;
+  isActive?: boolean;
+  colClass?: string;
+}
+
+const StandardStatCard: React.FC<StandardStatCardProps> = ({
+  icon,
+  title,
+  badge,
+  badgeClass = 'bg-light text-secondary border',
+  value,
+  valueColor = 'text-dark',
+  subtext,
+  accentColor = '#7A1B28',
+  onClick,
+  isActive = false,
+  colClass = 'col-6 col-md-6 col-xl-3'
+}) => (
+  <div className={colClass}>
+    <div
+      className={`card shadow-sm border border-light-subtle rounded-3 p-3 bg-white h-100 transition-all ${
+        onClick ? 'cursor-pointer' : ''
+      }`}
+      style={{
+        borderTop: `3px solid ${accentColor}`,
+        backgroundColor: isActive ? '#FFFDF8' : '#FFFFFF',
+        cursor: onClick ? 'pointer' : 'default'
+      }}
+      onClick={onClick}
+    >
+      <div className="d-flex justify-content-between align-items-center mb-1.5">
+        <span
+          className="text-uppercase fw-bold text-muted d-flex align-items-center gap-1.5 text-truncate"
+          style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}
+        >
+          {icon} {title}
+        </span>
+        {badge && (
+          <span className={`badge ${badgeClass} px-2 py-0.5 rounded-pill fw-bold text-nowrap`} style={{ fontSize: '0.65rem' }}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <h4 className={`fw-bold mb-1 font-monospace fs-5 ${valueColor}`}>
+        {typeof value === 'number' ? `₹${value.toLocaleString()}` : value}
+      </h4>
+      {subtext && (
+        <span className="small text-muted text-truncate d-block" style={{ fontSize: '0.7rem' }}>
+          {subtext}
+        </span>
+      )}
+    </div>
+  </div>
+);
+
 export const AccountsPage: React.FC = () => {
   const { can } = usePermission();
   const [activeTab, setActiveTab] = useState<AccountTab>('ledger');
@@ -279,7 +343,7 @@ export const AccountsPage: React.FC = () => {
 
   const loadDayClosings = async () => {
     try {
-      const res: any = await apiClient.get('/accounts/dayclosing/history');
+      const res: any = await apiClient.get('/accounts/day-closing');
       if (res?.success && Array.isArray(res.data)) {
         setDayClosings(res.data);
       }
@@ -290,7 +354,7 @@ export const AccountsPage: React.FC = () => {
 
   const loadFinancialSummary = async () => {
     try {
-      const res: any = await apiClient.get('/accounts/reports/summary');
+      const res: any = await apiClient.get('/accounts/financial-summary');
       if (res?.success && res.data) {
         setFinancialSummary(res.data);
       }

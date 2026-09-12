@@ -68,6 +68,17 @@ accountRouter.get('/ledger', authenticate, authorize('accounts.ledger.view'), as
   }
 });
 
+accountRouter.get('/ledger/:accountId', authenticate, authorize('accounts.ledger.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const accountId = req.params.accountId;
+    const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+    const statement = await AccountService.getAccountLedger(accountId, startDate, endDate);
+    return ApiResponse.success(res, statement, 'Account ledger statement loaded.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, err.statusCode || 500);
+  }
+});
+
 // --- TRIAL BALANCE ---
 accountRouter.get('/trial-balance', authenticate, authorize('accounts.dashboard.view'), async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -89,6 +100,15 @@ accountRouter.get('/day-closing', authenticate, authorize('accounts.dayclosing.v
   }
 });
 
+accountRouter.get('/dayclosing/history', authenticate, authorize('accounts.dayclosing.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const closings = await AccountService.getDayClosings();
+    return ApiResponse.success(res, closings, 'Day closings retrieved.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
 accountRouter.post('/day-closing', authenticate, authorize('accounts.dayclosing.execute'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const closing = await AccountService.executeDayClosing(req.body, req.user!.userId, req.user!.username);
@@ -100,6 +120,15 @@ accountRouter.post('/day-closing', authenticate, authorize('accounts.dayclosing.
 
 // --- FINANCIAL SUMMARY ---
 accountRouter.get('/financial-summary', authenticate, authorize('accounts.dashboard.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const summary = await AccountService.getFinancialSummary();
+    return ApiResponse.success(res, summary, 'Financial summary loaded.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+accountRouter.get('/reports/summary', authenticate, authorize('accounts.dashboard.view'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const summary = await AccountService.getFinancialSummary();
     return ApiResponse.success(res, summary, 'Financial summary loaded.');
