@@ -30,7 +30,7 @@ export interface PrintAndBillSettings {
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintAndBillSettings = {
-  autoPrintOnPayment: true,
+  autoPrintOnPayment: false,
   autoDownloadPdfOnPayment: false,
   printReceiptFormat: '80MM',
   copiesCount: 1,

@@ -1101,7 +1101,7 @@ export const StoreSettingsPage: React.FC = () => {
                           type="checkbox"
                           role="switch"
                           id="payment_auto_print_receipt"
-                          checked={getBool('payment_auto_print_receipt', true)}
+                          checked={getBool('payment_auto_print_receipt', false)}
                           onChange={e => handleUpdate('payment_auto_print_receipt', e.target.checked)}
                         />
                         <label className="form-check-label fw-bold text-dark" htmlFor="payment_auto_print_receipt">

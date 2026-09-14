@@ -445,35 +445,17 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
       if (res?.success) {
         setIsPayModalOpen(false);
 
-        // Fetch refreshed bill
-        let settledBill: Bill = { ...payingBill, status: 'PAID', paidAmount: payAmount, balanceAmount: 0 };
-        try {
-          const bRes: any = await apiClient.get(`/billing/${payingBill.id}`);
-          if (bRes?.success && bRes.data) {
-            settledBill = bRes.data;
-          }
-        } catch (_) {}
-
-        // 1. Check Auto-Print on Payment Setting
-        if (settings.autoPrintOnPayment) {
-          printInvoiceReceipt(settledBill, settings);
-        }
-
-        // 2. Check Auto-Download PDF on Payment Setting
-        if (settings.autoDownloadPdfOnPayment) {
-          generateInvoicePdf(settledBill, { download: true, customSettings: settings });
-        }
-
-        // 3. Audio Chime Confirmation
+        // 1. Audio Chime Confirmation (if enabled)
         if (settings.playPaymentSound) {
           playPaymentChime();
         }
 
-        // 4. Directly show the 80mm Realistic Slip with Success Banner (Eliminates redundant popup modal!)
-        setJustSettledBillId(settledBill.id);
-        setSelectedBill(settledBill);
+        // 2. Clear modal states (Do NOT auto-open PDF or print menu!)
+        setSelectedBill(null);
+        setJustSettledBillId(null);
+        setPayingBill(null);
 
-        // 5. Refresh lists
+        // 3. Refresh lists
         loadBills(true);
         loadPayments();
 
