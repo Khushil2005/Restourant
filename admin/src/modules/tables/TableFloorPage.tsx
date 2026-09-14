@@ -4,7 +4,7 @@ import { usePermission } from '../../context/PermissionContext';
 import { useSocket } from '../../context/SocketContext';
 import { Modal } from '../../components/PermissionGate';
 import { DiningTable, FloorZone, Bill } from '../../types';
-import { Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2, Receipt, Download, Printer, CreditCard } from 'lucide-react';
+import { Users, ArrowRightLeft, ShoppingBag, CheckCircle, RefreshCw, Plus, Trash2, Receipt, Download, Printer, CreditCard, Link2, Unlink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateInvoicePdf, printInvoiceReceipt } from '../../utils/invoicePdf';
 
@@ -23,6 +23,13 @@ export const TableFloorPage: React.FC = () => {
   const [floorZones, setFloorZones] = useState<FloorZone[]>(() => Array.isArray(cachedZones) ? cachedZones : []);
   const [selectedZone, setSelectedZone] = useState<string>('ALL');
   const [loading, setLoading] = useState(() => !Array.isArray(cachedTables) || cachedTables.length === 0);
+
+  // Table Merge Modal State
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [mergePrimaryTableId, setMergePrimaryTableId] = useState('');
+  const [mergeSecondaryTableIds, setMergeSecondaryTableIds] = useState<string[]>([]);
+  const [savingMerge, setSavingMerge] = useState(false);
+  const [unmergingTableId, setUnmergingTableId] = useState<string | null>(null);
 
   // Manage / Delete Zones Modal
   const [isManageZonesModalOpen, setIsManageZonesModalOpen] = useState(false);
@@ -124,6 +131,63 @@ export const TableFloorPage: React.FC = () => {
     }
   };
 
+  const handleMergeTables = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mergePrimaryTableId || mergeSecondaryTableIds.length === 0) {
+      alert('Please select a primary table and at least one secondary table to merge.');
+      return;
+    }
+
+    setSavingMerge(true);
+    try {
+      const res: any = await apiClient.post('/tables/merge', {
+        primaryTableId: mergePrimaryTableId,
+        secondaryTableIds: mergeSecondaryTableIds
+      });
+
+      if (res?.success) {
+        const primTable = tables.find(t => t.id === mergePrimaryTableId);
+        setIsMergeModalOpen(false);
+        setMergePrimaryTableId('');
+        setMergeSecondaryTableIds([]);
+        await loadFloor(false, true);
+
+        if (primTable) {
+          const takeOrder = window.confirm(
+            `${res.message || 'Tables merged successfully!'}\n\nDo you want to open POS now to take the family order? (ટેબલ ${primTable.tableNumber} માટે POS માં ઓર્ડર લેવો છે?)`
+          );
+          if (takeOrder) {
+            navigate(`/pos?tableId=${primTable.id}&tableNumber=${encodeURIComponent(primTable.tableNumber)}`);
+          }
+        }
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to merge tables.');
+    } finally {
+      setSavingMerge(false);
+    }
+  };
+
+  const handleUnmergeTable = async (table: DiningTable) => {
+    const confirmMsg = table.parentTableId
+      ? `Unmerge Table ${table.tableNumber} from Primary Table ${table.parentTableNumber}? (આ ટેબલને છૂટું પાડવું છે?)`
+      : `Unmerge Primary Table ${table.tableNumber} and its linked secondary tables (${table.mergedWithTableNumbers?.join(', ')})? (બધા મર્જ થયેલા ટેબલ છૂટા પાડવા છે?)`;
+    
+    if (!window.confirm(confirmMsg)) return;
+
+    setUnmergingTableId(table.id);
+    try {
+      const res: any = await apiClient.post('/tables/split', { tableIds: [table.id] });
+      if (res?.success) {
+        await loadFloor(false, true);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to unmerge tables.');
+    } finally {
+      setUnmergingTableId(null);
+    }
+  };
+
   const handleCreateZone = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newZoneData.name.trim()) return;
@@ -220,7 +284,21 @@ export const TableFloorPage: React.FC = () => {
           <h4 className="fw-bold mb-1 text-dark">Dining Floor Map</h4>
           <p className="text-muted small mb-0">Visual seating plan, live table statuses, order turnover, and table transfers</p>
         </div>
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          {can('tables.merge') && (
+            <button
+              className="btn btn-sm d-flex align-items-center gap-1 shadow-sm text-white fw-semibold"
+              style={{ backgroundColor: '#6f42c1', borderColor: '#59359a' }}
+              onClick={() => {
+                setMergePrimaryTableId('');
+                setMergeSecondaryTableIds([]);
+                setIsMergeModalOpen(true);
+              }}
+              title="Merge Multiple Tables for Big Family / Group (ટેબલ મર્જ)"
+            >
+              <Link2 size={15} /> Merge Tables (મર્જ)
+            </button>
+          )}
           {can('masters.table.create') && (
             <button
               className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm"
@@ -309,22 +387,42 @@ export const TableFloorPage: React.FC = () => {
 
           return (
             <div key={table.id} className="col-6 col-md-4 col-xl-3">
-              <div className={`card h-100 shadow-sm border-2 border-${color} position-relative`}>
-                <div className={`card-header bg-${color}-subtle border-0 d-flex justify-content-between align-items-center p-2 px-sm-3`}>
-                  <span className="fw-bold text-dark font-monospace fs-6 fs-sm-5">{table.tableNumber}</span>
-                  <span className={`badge bg-${color} text-${color === 'warning' ? 'dark' : 'white'} text-uppercase`} style={{ fontSize: '0.62rem' }}>
-                    {table.status}
+              <div className={`card h-100 shadow-sm border-2 ${table.isMerged ? 'border-primary' : `border-${color}`} position-relative`}>
+                {/* Card Header */}
+                <div className={`card-header ${table.isMerged ? 'bg-primary-subtle' : `bg-${color}-subtle`} border-0 d-flex justify-content-between align-items-center p-2 px-sm-3`}>
+                  <div className="d-flex align-items-center gap-1.5">
+                    <span className="fw-bold text-dark font-monospace fs-6 fs-sm-5">{table.tableNumber}</span>
+                    {table.isMerged && !table.parentTableId && (
+                      <span className="badge text-white font-monospace d-inline-flex align-items-center gap-0.5" style={{ backgroundColor: '#6f42c1', fontSize: '0.62rem' }} title={`Merged with: ${table.mergedWithTableNumbers?.join(', ')}`}>
+                        <Link2 size={10} /> +{table.mergedWithTableNumbers?.join(', ')}
+                      </span>
+                    )}
+                    {table.isMerged && table.parentTableId && (
+                      <span className="badge bg-warning text-dark font-monospace d-inline-flex align-items-center gap-0.5" style={{ fontSize: '0.62rem' }} title={`Linked to primary Table ${table.parentTableNumber}`}>
+                        <Link2 size={10} /> ↳ T-{table.parentTableNumber}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`badge ${table.isMerged && !table.parentTableId ? 'text-white' : `bg-${color} text-${color === 'warning' ? 'dark' : 'white'}`} text-uppercase`} style={{ backgroundColor: table.isMerged && !table.parentTableId ? '#6f42c1' : undefined, fontSize: '0.62rem' }}>
+                    {table.isMerged ? (table.parentTableId ? 'LINKED' : 'MERGED') : table.status}
                   </span>
                 </div>
 
                 <div className="card-body p-2 p-sm-3 d-flex flex-column justify-content-between" style={{ minHeight: '130px' }}>
                   <div>
-                    {/* Capacity & Floor Zone Tag - NO "Capacity:" and NO "Persons" words */}
+                    {/* Capacity & Floor Zone Tag */}
                     <div className="d-flex align-items-center gap-1 mb-2 overflow-hidden" style={{ maxWidth: '100%' }}>
-                      <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-1.5 flex-shrink-0" style={{ fontSize: '0.72rem' }} title={`Seats ${table.capacity}`}>
-                        <Users size={11} className="text-secondary flex-shrink-0" />
-                        <span className="fw-bold">{table.capacity}</span>
-                      </span>
+                      {table.isMerged && !table.parentTableId ? (
+                        <span className="badge text-white border d-inline-flex align-items-center gap-1 py-1 px-1.5 flex-shrink-0" style={{ backgroundColor: '#6f42c1', fontSize: '0.72rem' }} title={`Combined Merged Seats: ${table.mergedCapacity || table.capacity}`}>
+                          <Users size={11} className="text-white flex-shrink-0" />
+                          <span className="fw-bold">{table.mergedCapacity || table.capacity} Seats (Merged)</span>
+                        </span>
+                      ) : (
+                        <span className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-1.5 flex-shrink-0" style={{ fontSize: '0.72rem' }} title={`Seats ${table.capacity}`}>
+                          <Users size={11} className="text-secondary flex-shrink-0" />
+                          <span className="fw-bold">{table.capacity}</span>
+                        </span>
+                      )}
                       <span
                         className="badge bg-light text-dark border py-1 px-2 scrollable-zone-tag flex-grow-1"
                         style={{
@@ -364,7 +462,7 @@ export const TableFloorPage: React.FC = () => {
 
                   {/* Actions */}
                   <div className="d-flex flex-wrap gap-1 mt-auto pt-2 border-top">
-                    {table.status === 'AVAILABLE' && can('orders.create') && (
+                    {table.status === 'AVAILABLE' && !table.isMerged && can('orders.create') && (
                       <button
                         className="btn btn-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1 px-1"
                         style={{ fontSize: '0.75rem' }}
@@ -380,19 +478,30 @@ export const TableFloorPage: React.FC = () => {
                           className="btn btn-outline-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1 px-1"
                           style={{ fontSize: '0.75rem' }}
                           onClick={() => {
+                            const targetId = table.parentTableId || table.id;
+                            const targetNum = table.parentTableNumber || table.tableNumber;
                             const orderParam = table.activeOrder?.id ? `&orderId=${table.activeOrder.id}` : '';
-                            navigate(`/pos?tableId=${table.id}&tableNumber=${encodeURIComponent(table.tableNumber)}${orderParam}`);
+                            navigate(`/pos?tableId=${targetId}&tableNumber=${encodeURIComponent(targetNum)}${orderParam}`);
                           }}
                         >
                           <ShoppingBag size={13} /> {table.activeOrder ? 'View Order' : 'Take Order'}
                         </button>
-                        {can('tables.transfer') && (
+                        {can('tables.transfer') && !table.isMerged && (
                           <button
                             className="btn btn-outline-secondary btn-sm p-1 px-1.5"
                             onClick={() => setTransferSource(table)}
                             title="Transfer Order to Table"
                           >
                             <ArrowRightLeft size={13} />
+                          </button>
+                        )}
+                        {table.isMerged && can('tables.split') && (
+                          <button
+                            className="btn btn-outline-warning btn-sm p-1 px-1.5"
+                            onClick={() => handleUnmergeTable(table)}
+                            title="Unmerge Tables (છૂટા કરો)"
+                          >
+                            <Unlink size={13} />
                           </button>
                         )}
                       </>
@@ -781,6 +890,151 @@ export const TableFloorPage: React.FC = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* MERGE TABLES MODAL (BIG FAMILY / GROUP SEATING WITH SINGLE BILL) */}
+      <Modal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        title="🔗 Merge Tables for Big Family / Group (ટેબલ મર્જ)"
+      >
+        <form onSubmit={handleMergeTables} className="d-flex flex-column gap-3">
+          <div className="alert alert-info py-2 px-3 small mb-0 d-flex flex-column gap-1" style={{ fontSize: '0.8rem' }}>
+            <span className="fw-bold">ℹ️ Big Family / Large Group Rule:</span>
+            <span>All food items ordered across the merged tables will generate <strong>ONE Single Order & Single Bill</strong>. Settling payment will automatically release all merged tables.</span>
+          </div>
+
+          {/* Primary Table Selector */}
+          <div>
+            <label className="form-label small fw-bold text-dark mb-1">
+              Select Primary (Leader) Table <span className="text-danger">*</span>
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={mergePrimaryTableId}
+              onChange={e => {
+                const val = e.target.value;
+                setMergePrimaryTableId(val);
+                setMergeSecondaryTableIds(prev => prev.filter(id => id !== val));
+              }}
+              required
+            >
+              <option value="">-- Choose Primary Table --</option>
+              {tables.filter(t => !t.parentTableId).map(t => {
+                const zone = zoneCodeMap.get(t.floorZone);
+                return (
+                  <option key={t.id} value={t.id}>
+                    Table {t.tableNumber} (Seats: {t.capacity} | {zone?.name || t.floorZone} | {t.status})
+                  </option>
+                );
+              })}
+            </select>
+            <div className="form-text small" style={{ fontSize: '0.72rem' }}>
+              The Primary Table will hold the single unified bill and order ticket in POS.
+            </div>
+          </div>
+
+          {/* Secondary Tables Multi-Select Checkboxes */}
+          <div>
+            <label className="form-label small fw-bold text-dark mb-1">
+              Select Secondary Tables to Merge with Primary <span className="text-danger">*</span>
+            </label>
+            <div className="border rounded p-2 bg-light d-flex flex-column gap-1.5" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {tables.filter(t => t.id !== mergePrimaryTableId && !t.parentTableId && t.status !== 'MAINTENANCE').length === 0 ? (
+                <div className="text-muted small p-2 text-center">No other tables available to merge.</div>
+              ) : (
+                tables
+                  .filter(t => t.id !== mergePrimaryTableId && !t.parentTableId && t.status !== 'MAINTENANCE')
+                  .map(t => {
+                    const isChecked = mergeSecondaryTableIds.includes(t.id);
+                    const zone = zoneCodeMap.get(t.floorZone);
+                    return (
+                      <div
+                        key={t.id}
+                        className={`d-flex align-items-center justify-content-between p-1.5 px-2 rounded border ${isChecked ? 'bg-white border-primary shadow-xs' : 'bg-white border-light'}`}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setMergeSecondaryTableIds(prev =>
+                            isChecked ? prev.filter(id => id !== t.id) : [...prev, t.id]
+                          );
+                        }}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="form-check-input mt-0 cursor-pointer"
+                            checked={isChecked}
+                            onChange={() => {}}
+                          />
+                          <span className="fw-bold font-monospace text-dark" style={{ fontSize: '0.85rem' }}>
+                            Table {t.tableNumber}
+                          </span>
+                          <span className="badge bg-light text-secondary border font-monospace" style={{ fontSize: '0.68rem' }}>
+                            {zone?.name || t.floorZone}
+                          </span>
+                        </div>
+                        <div className="d-flex align-items-center gap-1.5">
+                          <span className="badge bg-secondary-subtle text-secondary-emphasis" style={{ fontSize: '0.68rem' }}>
+                            <Users size={10} className="me-0.5" /> {t.capacity} Seats
+                          </span>
+                          <span className={`badge bg-${getStatusColor(t.status)} text-${getStatusColor(t.status) === 'warning' ? 'dark' : 'white'}`} style={{ fontSize: '0.62rem' }}>
+                            {t.status}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+          </div>
+
+          {/* Combined Capacity Live Tracker */}
+          {mergePrimaryTableId && (
+            <div className="p-2.5 rounded border bg-purple-subtle d-flex align-items-center justify-content-between" style={{ backgroundColor: '#F3E8FF', borderColor: '#D8B4FE' }}>
+              <div>
+                <span className="small fw-bold text-dark d-block">Combined Seating Capacity:</span>
+                <small className="text-secondary" style={{ fontSize: '0.72rem' }}>
+                  {(() => {
+                    const prim = tables.find(t => t.id === mergePrimaryTableId);
+                    const secs = tables.filter(t => mergeSecondaryTableIds.includes(t.id));
+                    const parts = [
+                      `Table ${prim?.tableNumber || ''} (${prim?.capacity || 0})`,
+                      ...secs.map(s => `Table ${s.tableNumber} (${s.capacity})`)
+                    ];
+                    return parts.join(' + ');
+                  })()}
+                </small>
+              </div>
+              <span className="fs-5 fw-bolder" style={{ color: '#6f42c1' }}>
+                {(() => {
+                  const prim = tables.find(t => t.id === mergePrimaryTableId);
+                  const secs = tables.filter(t => mergeSecondaryTableIds.includes(t.id));
+                  return (prim?.capacity || 0) + secs.reduce((acc, s) => acc + (s.capacity || 0), 0);
+                })()} Seats
+              </span>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsMergeModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm text-white fw-bold d-flex align-items-center gap-1 shadow-sm"
+              style={{ backgroundColor: '#6f42c1', borderColor: '#59359a' }}
+              disabled={savingMerge || !mergePrimaryTableId || mergeSecondaryTableIds.length === 0}
+            >
+              <Link2 size={15} />
+              {savingMerge ? 'Merging Tables...' : 'Confirm & Merge Tables'}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

@@ -22,7 +22,8 @@ import {
   AlertCircle,
   Tv,
   Printer,
-  ShoppingBag
+  ShoppingBag,
+  Link2
 } from 'lucide-react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
@@ -62,6 +63,8 @@ export const TokenPage: React.FC = () => {
   const [seatingToken, setSeatingToken] = useState<QueueToken | null>(null);
   const [tables, setTables] = useState<DiningTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string>('');
+  const [seatingSecondaryTableIds, setSeatingSecondaryTableIds] = useState<string[]>([]);
+  const [isMergingForToken, setIsMergingForToken] = useState<boolean>(false);
   const [seatingSubmitting, setSeatingSubmitting] = useState(false);
 
   // Print Token Slip Modal State
@@ -248,8 +251,15 @@ export const TokenPage: React.FC = () => {
 
   const handleOpenSeatModal = (token: QueueToken) => {
     setSeatingToken(token);
-    const suitable = tables.find(t => t.status === 'AVAILABLE' && t.capacity >= token.partySize);
-    setSelectedTableId(suitable?.id || '');
+    setSeatingSecondaryTableIds([]);
+    setIsMergingForToken(token.partySize > 4);
+    const suitable = tables.find(t => t.status === 'AVAILABLE' && !t.parentTableId && t.capacity >= token.partySize);
+    if (suitable) {
+      setSelectedTableId(suitable.id);
+    } else {
+      const firstAvail = tables.find(t => t.status === 'AVAILABLE' && !t.parentTableId);
+      setSelectedTableId(firstAvail?.id || '');
+    }
   };
 
   const handleConfirmSeat = async (e: React.FormEvent) => {
@@ -260,18 +270,28 @@ export const TokenPage: React.FC = () => {
       const assignedTableId = selectedTableId;
       const assignedTable = tables.find(t => t.id === assignedTableId);
       const currentToken = seatingToken;
+      const secondaryIds = isMergingForToken ? seatingSecondaryTableIds : [];
 
       await apiClient.patch(`/tokens/${currentToken.id}/seat`, {
-        tableId: assignedTableId || undefined
+        tableId: assignedTableId || undefined,
+        secondaryTableIds: secondaryIds.length > 0 ? secondaryIds : undefined
       });
+
       setSeatingToken(null);
       setSelectedTableId('');
+      setSeatingSecondaryTableIds([]);
+      setIsMergingForToken(false);
       loadQueue(false, true, selectedDate);
 
       // If seated at a specific table, offer immediate order taking in POS with table pre-selected
       if (assignedTable) {
+        const secTables = tables.filter(t => secondaryIds.includes(t.id));
+        const tableNameDesc = secTables.length > 0 
+          ? `Tables ${assignedTable.tableNumber} + ${secTables.map(s => s.tableNumber).join(' + ')} (Merged)`
+          : `Table ${assignedTable.tableNumber}`;
+
         const shouldTakeOrder = window.confirm(
-          `Guest "${currentToken.customerName}" seated at Table ${assignedTable.tableNumber}.\n\nDo you want to take an order now in POS? (ટેબલ ${assignedTable.tableNumber} માટે POS માં ઓર્ડર લેવો છે?)`
+          `Guest "${currentToken.customerName}" (Party of ${currentToken.partySize}) seated at ${tableNameDesc}.\n\nDo you want to take an order now in POS? (ઓર્ડર લેવા માટે POS ઓપન કરવું છે?)`
         );
         if (shouldTakeOrder) {
           navigate(
@@ -1116,24 +1136,94 @@ export const TokenPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="form-label small fw-bold">Select Dining Table</label>
+              <label className="form-label small fw-bold">Select Primary Dining Table</label>
               <select
                 className="form-select form-select-sm"
                 value={selectedTableId}
                 onChange={e => setSelectedTableId(e.target.value)}
               >
                 <option value="">-- No Specific Table (Direct Seat) --</option>
-                {tables.filter(t => t.status === 'AVAILABLE').map(t => (
+                {tables.filter(t => t.status === 'AVAILABLE' && !t.parentTableId).map(t => (
                   <option key={t.id} value={t.id}>
-                    {t.tableNumber} (Seats: {t.capacity} | Zone: {t.floorZone?.replace('_', ' ')})
+                    Table {t.tableNumber} (Seats: {t.capacity} | Zone: {t.floorZone?.replace('_', ' ')})
                   </option>
                 ))}
               </select>
-              <div className="form-text small mt-1">
-                {tables.filter(t => t.status === 'AVAILABLE').length === 0
-                  ? 'No tables are currently marked AVAILABLE. You can proceed with Direct Seat or wait for a table to be cleaned.'
-                  : 'Assigning a table will automatically mark it OCCUPIED on the Dining Floor map.'}
+            </div>
+
+            {/* Merge Tables for Large Party */}
+            {selectedTableId && tables.filter(t => t.status === 'AVAILABLE' && t.id !== selectedTableId && !t.parentTableId).length > 0 && (
+              <div className="p-2.5 rounded border bg-light">
+                <div className="form-check form-switch mb-2">
+                  <input
+                    className="form-check-input cursor-pointer"
+                    type="checkbox"
+                    id="token-merge-switch"
+                    checked={isMergingForToken}
+                    onChange={e => {
+                      setIsMergingForToken(e.target.checked);
+                      if (!e.target.checked) setSeatingSecondaryTableIds([]);
+                    }}
+                  />
+                  <label className="form-check-label small fw-bold cursor-pointer" htmlFor="token-merge-switch">
+                    🔗 Merge Multiple Tables for Large Family / Group (ટેબલ મર્જ)
+                  </label>
+                </div>
+
+                {isMergingForToken && (
+                  <div className="d-flex flex-column gap-2 mt-2 pt-2 border-top">
+                    <label className="small fw-semibold text-secondary mb-0">Select Additional Tables to Merge:</label>
+                    <div className="d-flex flex-column gap-1" style={{ maxHeight: '140px', overflowY: 'auto' }}>
+                      {tables
+                        .filter(t => t.status === 'AVAILABLE' && t.id !== selectedTableId && !t.parentTableId)
+                        .map(t => {
+                          const isChecked = seatingSecondaryTableIds.includes(t.id);
+                          return (
+                            <div
+                              key={t.id}
+                              className={`d-flex align-items-center justify-content-between p-1 px-2 rounded border bg-white cursor-pointer ${isChecked ? 'border-primary' : 'border-light'}`}
+                              onClick={() => {
+                                setSeatingSecondaryTableIds(prev =>
+                                  isChecked ? prev.filter(id => id !== t.id) : [...prev, t.id]
+                                );
+                              }}
+                            >
+                              <div className="d-flex align-items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input mt-0"
+                                  checked={isChecked}
+                                  onChange={() => {}}
+                                />
+                                <span className="fw-bold font-monospace small">Table {t.tableNumber}</span>
+                              </div>
+                              <span className="badge bg-secondary-subtle text-secondary-emphasis" style={{ fontSize: '0.68rem' }}>
+                                <Users size={10} className="me-0.5" /> {t.capacity} Seats
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {/* Live Capacity */}
+                    <div className="d-flex justify-content-between align-items-center p-1.5 rounded bg-white border mt-1">
+                      <span className="small text-secondary fw-semibold">Combined Capacity:</span>
+                      <span className="fw-bold" style={{ color: '#6f42c1', fontSize: '0.88rem' }}>
+                        {(() => {
+                          const prim = tables.find(t => t.id === selectedTableId);
+                          const secs = tables.filter(t => seatingSecondaryTableIds.includes(t.id));
+                          const total = (prim?.capacity || 0) + secs.reduce((sum, s) => sum + (s.capacity || 0), 0);
+                          return `${total} Seats for ${seatingToken.partySize} Guests`;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
+
+            <div className="form-text small" style={{ fontSize: '0.72rem' }}>
+              Assigning or merging tables will automatically mark them OCCUPIED and unify under a single POS order & bill.
             </div>
 
             <div className="d-flex justify-content-end gap-2 pt-3 border-top">
@@ -1150,7 +1240,7 @@ export const TokenPage: React.FC = () => {
                 disabled={seatingSubmitting}
               >
                 <UserCheck size={15} />
-                {seatingSubmitting ? 'Seating...' : 'Confirm Seating'}
+                {seatingSubmitting ? 'Seating...' : isMergingForToken && seatingSecondaryTableIds.length > 0 ? 'Seat & Merge Tables' : 'Confirm Seating'}
               </button>
             </div>
           </form>

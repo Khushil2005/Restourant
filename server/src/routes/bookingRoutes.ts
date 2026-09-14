@@ -133,7 +133,13 @@ tokenRouter.patch('/:id/skip', authenticate, authorize('token.skip'), async (req
 
 tokenRouter.patch('/:id/seat', authenticate, authorize('token.seat'), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const token = await TokenService.seatToken(req.params.id, req.body.tableId);
+    const token = await TokenService.seatToken(
+      req.params.id, 
+      req.body.tableId, 
+      req.body.secondaryTableIds, 
+      req.user!.userId, 
+      req.user!.username
+    );
     return ApiResponse.success(res, token, 'Guest seated.');
   } catch (err: any) {
     return ApiResponse.error(res, err.message, 400);
@@ -189,18 +195,27 @@ tableRouter.post('/transfer', authenticate, authorize('tables.transfer'), async 
 
 tableRouter.post('/merge', authenticate, authorize('tables.merge'), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const result = await TableService.mergeTables(req.body.primaryTableId, req.body.secondaryTableIds);
+    const result = await TableService.mergeTables(
+      req.body.primaryTableId, 
+      req.body.secondaryTableIds, 
+      req.user!.userId, 
+      req.user!.username
+    );
     return ApiResponse.success(res, result, result.message);
   } catch (err: any) {
-    return ApiResponse.error(res, err.message, 400);
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
   }
 });
 
 tableRouter.post('/split', authenticate, authorize('tables.split'), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const result = await TableService.splitTables(req.body.tableIds);
+    const result = await TableService.splitTables(
+      req.body.tableIds || (req.body.tableId ? [req.body.tableId] : []), 
+      req.user!.userId, 
+      req.user!.username
+    );
     return ApiResponse.success(res, result, result.message);
   } catch (err: any) {
-    return ApiResponse.error(res, err.message, 400);
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
   }
 });

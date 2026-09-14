@@ -283,11 +283,24 @@ export class OrderService {
     await order.save();
 
     if (order.tableId) {
-      await DiningTable.findOneAndUpdate(
-        { id: order.tableId },
-        { $set: { status: 'AVAILABLE', currentOrderId: undefined } }
+      const primaryTable = await DiningTable.findOne({ id: order.tableId });
+      const allTableIds = primaryTable ? [primaryTable.id, ...(primaryTable.mergedWithTableIds || [])] : [order.tableId];
+      await DiningTable.updateMany(
+        { id: { $in: allTableIds } },
+        { 
+          $set: { 
+            status: 'AVAILABLE', 
+            currentOrderId: undefined,
+            isMerged: false,
+            mergedWithTableIds: [],
+            mergedWithTableNumbers: [],
+            parentTableId: undefined,
+            parentTableNumber: undefined,
+            mergedCapacity: undefined
+          } 
+        }
       );
-      SocketEvents.emitTableUpdated({ tableId: order.tableId, status: 'AVAILABLE' });
+      allTableIds.forEach(tId => SocketEvents.emitTableUpdated({ tableId: tId, status: 'AVAILABLE' }));
     }
 
     await KOTTicket.updateMany(
@@ -321,11 +334,24 @@ export class OrderService {
     await order.save();
 
     if (order.tableId) {
-      await DiningTable.findOneAndUpdate(
-        { id: order.tableId },
-        { $set: { status: 'AVAILABLE', currentOrderId: undefined } }
+      const primaryTable = await DiningTable.findOne({ id: order.tableId });
+      const allTableIds = primaryTable ? [primaryTable.id, ...(primaryTable.mergedWithTableIds || [])] : [order.tableId];
+      await DiningTable.updateMany(
+        { id: { $in: allTableIds } },
+        { 
+          $set: { 
+            status: 'AVAILABLE', 
+            currentOrderId: undefined,
+            isMerged: false,
+            mergedWithTableIds: [],
+            mergedWithTableNumbers: [],
+            parentTableId: undefined,
+            parentTableNumber: undefined,
+            mergedCapacity: undefined
+          } 
+        }
       );
-      SocketEvents.emitTableUpdated({ tableId: order.tableId, status: 'AVAILABLE' });
+      allTableIds.forEach(tId => SocketEvents.emitTableUpdated({ tableId: tId, status: 'AVAILABLE' }));
     }
 
     // AUTOMATIC RECIPE INVENTORY CONSUMPTION

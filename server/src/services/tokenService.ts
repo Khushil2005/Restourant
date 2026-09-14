@@ -174,7 +174,7 @@ export class TokenService {
     return token;
   }
 
-  static async seatToken(id: string, tableId: string) {
+  static async seatToken(id: string, tableId?: string, secondaryTableIds?: string[], userId?: string, username?: string) {
     const token = await QueueToken.findOneAndUpdate(
       { id },
       { $set: { status: 'SEATED', tableId, seatedAt: new Date() } },
@@ -182,8 +182,14 @@ export class TokenService {
     );
 
     if (tableId) {
-      await DiningTable.findOneAndUpdate({ id: tableId }, { $set: { status: 'OCCUPIED' } });
-      SocketEvents.emitTableUpdated({ tableId, status: 'OCCUPIED' });
+      if (Array.isArray(secondaryTableIds) && secondaryTableIds.length > 0) {
+        // Auto-merge multiple tables for big family / large party
+        const { TableService } = await import('./tableService');
+        await TableService.mergeTables(tableId, secondaryTableIds, userId, username);
+      } else {
+        await DiningTable.findOneAndUpdate({ id: tableId }, { $set: { status: 'OCCUPIED' } });
+        SocketEvents.emitTableUpdated({ tableId, status: 'OCCUPIED' });
+      }
     }
 
     if (token) SocketEvents.emitTokenUpdated(token);
