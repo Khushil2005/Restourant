@@ -19,7 +19,7 @@ export class OrderService {
     if (query.orderType) filter.orderType = query.orderType;
     if (query.tableId) filter.tableId = query.tableId;
 
-    return Order.find(filter).sort({ createdAt: -1 });
+    return Order.find(filter).sort({ createdAt: -1 }).lean();
   }
 
   static async getOrderById(id: string) {

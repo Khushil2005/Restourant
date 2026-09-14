@@ -62,4 +62,10 @@ const KOTTicketSchema = new Schema<IKOTTicket>({
   createdBy: { type: String, ref: 'User' }
 }, { timestamps: true });
 
+// High-speed indexes for Kitchen Display queries
+KOTTicketSchema.index({ status: 1, createdAt: -1 });
+KOTTicketSchema.index({ orderId: 1 });
+KOTTicketSchema.index({ tableId: 1 });
+KOTTicketSchema.index({ createdAt: -1 });
+
 export const KOTTicket = model<IKOTTicket>('KOTTicket', KOTTicketSchema);

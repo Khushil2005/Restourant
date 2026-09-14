@@ -6,8 +6,11 @@ import { createAuditLog } from '../middleware/auditMiddleware';
 
 export class TableService {
   static async getFloorLayout() {
-    const tables = await DiningTable.find().sort({ tableNumber: 1 });
-    const orders = await Order.find({ status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] } });
+    const tables: any[] = await DiningTable.find().sort({ tableNumber: 1 }).lean();
+    const orders: any[] = await Order.find(
+      { status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] } },
+      { id: 1, tableId: 1, orderNumber: 1, netAmount: 1, items: 1, status: 1, createdAt: 1 }
+    ).lean();
     
     // Attach live order data to tables (and associate parent order with merged tables)
     return tables.map(t => {
@@ -17,12 +20,12 @@ export class TableService {
         (t.isMerged && t.mergedTableIds && t.mergedTableIds.includes(o.tableId || ''))
       );
       return {
-        ...t.toObject(),
+        ...t,
         activeOrder: activeOrder ? {
           id: activeOrder.id,
           orderNumber: activeOrder.orderNumber,
           netAmount: activeOrder.netAmount,
-          itemCount: activeOrder.items.length,
+          itemCount: activeOrder.items ? activeOrder.items.length : 0,
           status: activeOrder.status,
           createdAt: activeOrder.createdAt
         } : null

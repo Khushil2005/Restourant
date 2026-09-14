@@ -72,4 +72,11 @@ const BillSchema = new Schema<IBill>({
   createdBy: { type: String, ref: 'User' }
 }, { timestamps: true });
 
+// High-speed indexes for billing queries
+BillSchema.index({ orderId: 1 });
+BillSchema.index({ status: 1, createdAt: -1 });
+BillSchema.index({ tableId: 1, status: 1 });
+BillSchema.index({ customerId: 1 });
+BillSchema.index({ createdAt: -1 });
+
 export const Bill = model<IBill>('Bill', BillSchema);

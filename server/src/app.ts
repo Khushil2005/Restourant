@@ -21,9 +21,9 @@ app.use(cors(expressCorsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static uploads folder
+// Static uploads folder with browser caching
 const uploadsDir = path.resolve(__dirname, '../../uploads');
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', immutable: true }));
 
 // System Status Guard (Maintenance & Emergency Lockdown enforcement)
 app.use(systemStatusGuard);

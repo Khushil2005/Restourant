@@ -78,4 +78,10 @@ const OrderSchema = new Schema<IOrder>({
   isHeld: { type: Boolean, default: false }
 }, { timestamps: true });
 
+// High-performance compound indexes for instantaneous queries
+OrderSchema.index({ status: 1, createdAt: -1 });
+OrderSchema.index({ tableId: 1, status: 1 });
+OrderSchema.index({ customerId: 1 });
+OrderSchema.index({ createdAt: -1 });
+
 export const Order = model<IOrder>('Order', OrderSchema);

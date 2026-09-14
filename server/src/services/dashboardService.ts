@@ -15,7 +15,7 @@ export class DashboardService {
     const today = new Date().toISOString().split('T')[0];
     const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
 
-    // Gather metrics in parallel
+    // Gather metrics in parallel with ultra-fast lean projections
     const [
       todayOrders,
       pendingOrdersCount,
@@ -31,21 +31,21 @@ export class DashboardService {
       purchaseSummary,
       attendanceSummary,
       accounts
-    ] = await Promise.all([
-      Order.find({ createdAt: { $gte: startOfToday } }),
+    ]: any[] = await Promise.all([
+      Order.find({ createdAt: { $gte: startOfToday } }, { items: 1, totalAmount: 1 }).lean(),
       Order.countDocuments({ status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED'] } }),
       Order.countDocuments({ status: 'COMPLETED', createdAt: { $gte: startOfToday } }),
       Booking.countDocuments({ bookingDate: today, status: { $ne: 'CANCELLED' } }),
       QueueToken.countDocuments({ status: 'WAITING' }),
-      DiningTable.find({ isActive: true }),
+      DiningTable.find({ isActive: true }, { status: 1 }).lean(),
       KOTTicket.countDocuments({ status: { $in: ['NEW', 'ACCEPTED', 'PREPARING'] } }),
       KOTTicket.countDocuments({ status: 'READY' }),
-      Payment.find({ createdAt: { $gte: startOfToday }, status: 'COMPLETED' }),
-      Expense.find({ expenseDate: today, status: 'APPROVED' }),
-      InventoryItem.find({ $expr: { $lte: ['$currentStock', '$minimumStockLevel'] } }),
-      PurchaseOrder.find({ status: { $in: ['PENDING', 'APPROVED'] } }),
-      AttendanceRecord.find({ date: today }),
-      ChartOfAccount.find({ isActive: true })
+      Payment.find({ createdAt: { $gte: startOfToday }, status: 'COMPLETED' }, { amount: 1, paymentMethod: 1, transactions: 1 }).lean(),
+      Expense.find({ expenseDate: today, status: 'APPROVED' }, { amount: 1 }).lean(),
+      InventoryItem.find({ $expr: { $lte: ['$currentStock', '$minimumStockLevel'] } }, { id: 1, name: 1, currentStock: 1, minimumStockLevel: 1, unitSymbol: 1 }).lean(),
+      PurchaseOrder.find({ status: { $in: ['PENDING', 'APPROVED'] } }, { totalAmount: 1 }).lean(),
+      AttendanceRecord.find({ date: today }, { status: 1 }).lean(),
+      ChartOfAccount.find({ isActive: true }, { id: 1, subType: 1, currentBalance: 1 }).lean()
     ]);
 
     const todaySales = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);

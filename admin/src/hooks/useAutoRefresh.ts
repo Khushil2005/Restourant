@@ -32,23 +32,28 @@ export function useAutoRefresh(
   const onRefreshRef = useRef(onRefresh);
   onRefreshRef.current = onRefresh;
 
+  const isRefreshingRef = useRef(false);
   const debounceTimerRef = useRef<any>(null);
 
   const triggerRefresh = () => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    debounceTimerRef.current = setTimeout(() => {
+    debounceTimerRef.current = setTimeout(async () => {
+      if (isRefreshingRef.current) return;
       try {
-        onRefreshRef.current();
+        isRefreshingRef.current = true;
+        await onRefreshRef.current();
       } catch (err) {
         console.warn('[AutoRefresh] Refresh execution error:', err);
+      } finally {
+        isRefreshingRef.current = false;
       }
     }, debounceMs);
   };
 
   useEffect(() => {
-    // 1. Listen for global data change events
+    // 1. Listen for global data change events (Dispatched instantly on Socket.IO and Local mutations)
     const handleDataChange = (event: Event) => {
       const customEvent = event as CustomEvent<{ entity?: string; action?: string; url?: string }>;
       const changedEntity = customEvent.detail?.entity;
@@ -76,7 +81,7 @@ export function useAutoRefresh(
 
     window.addEventListener('erp:data-changed', handleDataChange);
 
-    // 2. Listen for Window / Tab Focus
+    // 2. Listen for Window / Tab Focus (Refresh immediately when user comes back)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         triggerRefresh();
@@ -92,14 +97,14 @@ export function useAutoRefresh(
       window.addEventListener('focus', handleWindowFocus);
     }
 
-    // 3. Periodic Background Sync
+    // 3. Periodic Background Fallback Sync (Only when visible, at relaxed intervals)
     let intervalId: any = null;
     if (intervalMs > 0) {
       intervalId = setInterval(() => {
         if (document.visibilityState === 'visible') {
           triggerRefresh();
         }
-      }, intervalMs);
+      }, Math.max(intervalMs, 8000));
     }
 
     return () => {

@@ -46,4 +46,7 @@ const BookingSchema = new Schema<IBooking>({
   createdBy: { type: String, ref: 'User' }
 }, { timestamps: true });
 
+BookingSchema.index({ bookingDate: 1, status: 1 });
+BookingSchema.index({ customerPhone: 1 });
+
 export const Booking = model<IBooking>('Booking', BookingSchema);

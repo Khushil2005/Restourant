@@ -7,7 +7,7 @@ export class KOTService {
   static async getActiveKOTs() {
     return KOTTicket.find({
       status: { $in: ['NEW', 'ACCEPTED', 'PREPARING', 'READY'] }
-    }).sort({ priority: -1, createdAt: 1 });
+    }).sort({ priority: -1, createdAt: 1 }).lean();
   }
 
   static async getKOTById(id: string) {

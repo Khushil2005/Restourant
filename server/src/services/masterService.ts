@@ -17,7 +17,7 @@ export class MasterService {
         { email: { $regex: query.search, $options: 'i' } }
       ];
     }
-    return Customer.find(filter).sort({ name: 1 });
+    return Customer.find(filter).sort({ name: 1 }).lean();
   }
 
   static async createCustomer(data: any, userId?: string, username?: string) {
@@ -128,7 +128,7 @@ export class MasterService {
 
   // --- MENU CATEGORIES & ITEMS ---
   static async getMenuCategories() {
-    return MenuCategory.find().sort({ displayOrder: 1 });
+    return MenuCategory.find().sort({ displayOrder: 1 }).lean();
   }
 
   static async createMenuCategory(data: any, userId?: string, username?: string) {
@@ -224,7 +224,7 @@ export class MasterService {
 
   static async getMenuItems(categoryId?: string) {
     const filter = categoryId ? { categoryId } : {};
-    return MenuItem.find(filter).sort({ displayOrder: 1 });
+    return MenuItem.find(filter).sort({ displayOrder: 1 }).lean();
   }
 
   static async createMenuItem(data: any, userId?: string, username?: string) {
@@ -286,7 +286,7 @@ export class MasterService {
 
   // --- TABLES ---
   static async getTables() {
-    return DiningTable.find().sort({ tableNumber: 1 });
+    return DiningTable.find().sort({ tableNumber: 1 }).lean();
   }
 
   static async createTable(data: any, userId?: string, username?: string) {
@@ -344,12 +344,12 @@ export class MasterService {
 
   // --- FLOOR ZONES ---
   static async getFloorZones() {
-    const zones = await FloorZone.find().sort({ displayOrder: 1, name: 1 });
-    const tables = await DiningTable.find();
+    const zones: any[] = await FloorZone.find().sort({ displayOrder: 1, name: 1 }).lean();
+    const tables: any[] = await DiningTable.find({}, { floorZone: 1 }).lean();
     return zones.map(z => {
       const count = tables.filter(t => t.floorZone === z.code).length;
       return {
-        ...z.toObject(),
+        ...z,
         tableCount: count
       };
     });
@@ -489,8 +489,8 @@ export class MasterService {
   }
 
   // --- DEPARTMENTS, DESIGNATIONS, UNITS, TAXES ---
-  static async getDepartments() { return Department.find(); }
-  static async getDesignations() { return Designation.find(); }
-  static async getUnits() { return Unit.find(); }
-  static async getTaxMasters() { return TaxMaster.find(); }
+  static async getDepartments() { return Department.find().lean(); }
+  static async getDesignations() { return Designation.find().lean(); }
+  static async getUnits() { return Unit.find().lean(); }
+  static async getTaxMasters() { return TaxMaster.find().lean(); }
 }

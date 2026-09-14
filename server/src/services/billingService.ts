@@ -16,7 +16,7 @@ export class BillingService {
         { customerName: { $regex: query.search, $options: 'i' } }
       ];
     }
-    return Bill.find(filter).sort({ createdAt: -1 });
+    return Bill.find(filter).sort({ createdAt: -1 }).lean();
   }
 
   static async getBillById(id: string) {

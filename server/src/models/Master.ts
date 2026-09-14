@@ -172,6 +172,10 @@ const MenuItemSchema = new Schema<IMenuItem>({
   displayOrder: { type: Number, default: 0 }
 }, { timestamps: true });
 
+MenuItemSchema.index({ categoryId: 1, isAvailable: 1 });
+MenuItemSchema.index({ isVeg: 1 });
+MenuItemSchema.index({ isAvailable: 1 });
+
 // Floor Zone
 export interface IFloorZone extends Document {
   id: string;
@@ -232,6 +236,12 @@ const DiningTableSchema = new Schema<IDiningTable>({
   isMergedChild: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
+
+DiningTableSchema.index({ status: 1 });
+DiningTableSchema.index({ floorZone: 1 });
+DiningTableSchema.index({ isMerged: 1 });
+DiningTableSchema.index({ isMergedChild: 1 });
+DiningTableSchema.index({ primaryTableId: 1 });
 
 export const Customer = model<ICustomer>('Customer', CustomerSchema);
 export const Supplier = model<ISupplier>('Supplier', SupplierSchema);

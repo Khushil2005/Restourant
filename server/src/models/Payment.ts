@@ -54,4 +54,10 @@ const PaymentSchema = new Schema<IPayment>({
   createdBy: { type: String, ref: 'User' }
 }, { timestamps: true });
 
+// High-speed indexes for payment registers and dashboard sales
+PaymentSchema.index({ billId: 1 });
+PaymentSchema.index({ orderId: 1 });
+PaymentSchema.index({ status: 1, createdAt: -1 });
+PaymentSchema.index({ createdAt: -1 });
+
 export const Payment = model<IPayment>('Payment', PaymentSchema);
