@@ -445,14 +445,22 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
       if (res?.success) {
         setIsPayModalOpen(false);
 
+        let settledBill: Bill = { ...payingBill, status: 'PAID', paidAmount: payAmount, balanceAmount: 0 };
+        try {
+          const bRes: any = await apiClient.get(`/billing/${payingBill.id}`);
+          if (bRes?.success && bRes.data) {
+            settledBill = bRes.data;
+          }
+        } catch (_) {}
+
         // 1. Audio Chime Confirmation (if enabled)
         if (settings.playPaymentSound) {
           playPaymentChime();
         }
 
-        // 2. Clear modal states (Do NOT auto-open PDF or print menu!)
-        setSelectedBill(null);
-        setJustSettledBillId(null);
+        // 2. Auto-open on-screen Tax Invoice & Slip modal (Preview receipt on screen)
+        setJustSettledBillId(settledBill.id);
+        setSelectedBill(settledBill);
         setPayingBill(null);
 
         // 3. Refresh lists
