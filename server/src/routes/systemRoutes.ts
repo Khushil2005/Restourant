@@ -280,3 +280,24 @@ systemRouter.post('/database/date-purge', authenticate, authorize(['database.too
   }
 });
 
+// 10. Direct Collection Clear / Delete All
+systemRouter.post('/database/clear-collection', authenticate, authorize(['database.tools.delete', 'database.tools.purge', 'system.control.view']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { collection, startDate, endDate, search, deleteAll } = req.body;
+    if (!collection) return ApiResponse.error(res, 'Collection key is required.', 400);
+
+    const result = await DatabaseToolService.clearCollection(String(collection), {
+      startDate,
+      endDate,
+      search,
+      deleteAll: Boolean(deleteAll)
+    }, {
+      userId: req.user!.userId,
+      username: req.user!.username
+    });
+    return ApiResponse.success(res, result, result.message);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 400);
+  }
+});
+

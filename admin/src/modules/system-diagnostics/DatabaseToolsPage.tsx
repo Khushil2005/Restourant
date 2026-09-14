@@ -73,6 +73,12 @@ export const DatabaseToolsPage: React.FC = () => {
   const [deletingRecord, setDeletingRecord] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Clear Collection / Delete All States
+  const [isClearColModalOpen, setIsClearColModalOpen] = useState(false);
+  const [isClearingCol, setIsClearingCol] = useState(false);
+  const [clearColScope, setClearColScope] = useState<'ALL' | 'FILTERED'>('ALL');
+  const [clearColInput, setClearColInput] = useState('');
+
   // Import Modal
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
@@ -283,6 +289,32 @@ export const DatabaseToolsPage: React.FC = () => {
       alert(err.message || 'Failed to delete record.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Handle Clear / Delete All Records in Collection
+  const handleExecuteClearCollection = async () => {
+    setIsClearingCol(true);
+    try {
+      const res: any = await apiClient.post('/system/database/clear-collection', {
+        collection: selectedColKey,
+        startDate: clearColScope === 'FILTERED' ? dateFilterStart || undefined : undefined,
+        endDate: clearColScope === 'FILTERED' ? dateFilterEnd || undefined : undefined,
+        search: clearColScope === 'FILTERED' ? searchQuery || undefined : undefined,
+        deleteAll: clearColScope === 'ALL'
+      });
+
+      if (res.success) {
+        alert(res.message || 'Records deleted successfully!');
+        setIsClearColModalOpen(false);
+        setClearColInput('');
+        queryRecords(1);
+        loadCollections();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete records.');
+    } finally {
+      setIsClearingCol(false);
     }
   };
 
@@ -695,6 +727,20 @@ export const DatabaseToolsPage: React.FC = () => {
                     title="Add new document"
                   >
                     <Plus size={14} /> Add Record
+                  </button>
+                )}
+                {(can('database.tools.delete') || can('database.tools.purge') || can('system.control.view')) && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1 shadow-sm fw-bold"
+                    onClick={() => {
+                      setClearColScope('ALL');
+                      setClearColInput('');
+                      setIsClearColModalOpen(true);
+                    }}
+                    title="Delete all records from this collection"
+                  >
+                    <Trash2 size={14} /> Delete All
                   </button>
                 )}
                 {(can('database.tools.export') || can('system.control.view')) && (
@@ -1226,6 +1272,110 @@ export const DatabaseToolsPage: React.FC = () => {
               onClick={handleDeleteRecord}
             >
               {isDeleting ? 'Deleting...' : 'Permanently Delete'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ========================================================= */}
+      {/* MODAL 4B: DELETE ALL / CLEAR COLLECTION MODAL             */}
+      {/* ========================================================= */}
+      <Modal
+        isOpen={isClearColModalOpen}
+        onClose={() => setIsClearColModalOpen(false)}
+        title={`🚨 Wipe Records: ${activeColMeta?.name}`}
+        size="md"
+      >
+        <div className="d-flex flex-column gap-3 py-1">
+          <div className="p-3 bg-danger-subtle text-danger-emphasis border border-danger-subtle rounded">
+            <h6 className="fw-bold mb-1 d-flex align-items-center gap-1.5">
+              <AlertTriangle size={18} className="text-danger flex-shrink-0" />
+              Caution: Bulk Deletion Warning
+            </h6>
+            <p className="small mb-0">
+              You are about to permanently delete records from <strong>{activeColMeta?.name}</strong>.
+              This will remove documents from the MongoDB database immediately and cannot be undone.
+            </p>
+          </div>
+
+          {/* Delete Scope Selection */}
+          <div>
+            <label className="form-label small text-secondary fw-bold mb-1.5">Select Deletion Scope:</label>
+            <div className="d-flex flex-column gap-2 bg-dark p-2.5 rounded border border-secondary">
+              <div className="form-check">
+                <input
+                  type="radio"
+                  id="scopeAll"
+                  name="clearScope"
+                  className="form-check-input"
+                  checked={clearColScope === 'ALL'}
+                  onChange={() => setClearColScope('ALL')}
+                />
+                <label className="form-check-label text-white small" htmlFor="scopeAll">
+                  <strong>Delete ALL {activeColMeta?.count.toLocaleString()} records</strong> in {activeColMeta?.name} (Complete Collection Wipe)
+                </label>
+              </div>
+
+              {(dateFilterStart || dateFilterEnd || searchQuery) && (
+                <div className="form-check">
+                  <input
+                    type="radio"
+                    id="scopeFiltered"
+                    name="clearScope"
+                    className="form-check-input"
+                    checked={clearColScope === 'FILTERED'}
+                    onChange={() => setClearColScope('FILTERED')}
+                  />
+                  <label className="form-check-label text-white small" htmlFor="scopeFiltered">
+                    <strong>Delete only matching {totalRecords.toLocaleString()} filtered records</strong>
+                    <div className="text-secondary small">
+                      {dateFilterStart && `From: ${dateFilterStart} `}
+                      {dateFilterEnd && `To: ${dateFilterEnd} `}
+                      {searchQuery && `Search: "${searchQuery}"`}
+                    </div>
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Confirmation Phrase */}
+          <div>
+            <label className="form-label small text-secondary fw-bold mb-1">
+              Type <code className="text-danger">DELETE ALL</code> to confirm:
+            </label>
+            <input
+              type="text"
+              className="form-control form-control-sm bg-dark text-white border-secondary text-center font-monospace fw-bold"
+              placeholder='Type "DELETE ALL"'
+              value={clearColInput}
+              onChange={(e) => setClearColInput(e.target.value)}
+            />
+          </div>
+
+          <div className="d-flex justify-content-end gap-2 pt-2 border-top border-secondary">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm px-3"
+              onClick={() => setIsClearColModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger btn-sm fw-bold px-3 shadow-sm d-flex align-items-center gap-1"
+              disabled={isClearingCol || clearColInput.trim().toUpperCase() !== 'DELETE ALL'}
+              onClick={handleExecuteClearCollection}
+            >
+              {isClearingCol ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" role="status" /> Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 size={14} /> Confirm & Delete All
+                </>
+              )}
             </button>
           </div>
         </div>

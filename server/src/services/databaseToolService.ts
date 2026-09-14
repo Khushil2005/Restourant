@@ -1,4 +1,4 @@
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
 import { Bill } from '../models/Billing';
 import { Payment } from '../models/Payment';
@@ -275,6 +275,16 @@ const buildDateQuery = (dateField: string, startDate?: string, endDate?: string)
   return { [dateField]: filter };
 };
 
+const buildIdFilter = (id: string) => {
+  if (!id) return { _id: null };
+  const strId = String(id).trim();
+  const isObjectId = mongoose.isValidObjectId(strId) && strId.length === 24 && /^[0-9a-fA-F]{24}$/.test(strId);
+  if (isObjectId) {
+    return { $or: [{ id: strId }, { _id: strId }] };
+  }
+  return { id: strId };
+};
+
 export class DatabaseToolService {
   /**
    * 1. Get metadata and live record counts for all registered collections
@@ -391,8 +401,9 @@ export class DatabaseToolService {
 
     delete data._id; // Never mutate MongoDB _id
 
+    const filter = buildIdFilter(id);
     const updated = await meta.model.findOneAndUpdate(
-      { $or: [{ id }, { _id: id }] },
+      filter,
       { $set: data },
       { new: true }
     );
@@ -416,7 +427,8 @@ export class DatabaseToolService {
     const meta = COLLECTION_REGISTRY[key];
     if (!meta) throw new Error(`Collection '${key}' is not recognized.`);
 
-    const deleted = await meta.model.findOneAndDelete({ $or: [{ id }, { _id: id }] });
+    const filter = buildIdFilter(id);
+    const deleted = await meta.model.findOneAndDelete(filter);
     if (!deleted) throw new Error(`Record with ID '${id}' not found in '${key}'.`);
 
     await createAuditLog({
@@ -654,6 +666,87 @@ export class DatabaseToolService {
       dateRange: { startDate: options.startDate, endDate: end },
       totalDeleted,
       deletedCounts
+    };
+  }
+
+  /**
+   * 10. Delete All / Clear records from a specific collection
+   */
+  static async clearCollection(
+    key: string,
+    options?: {
+      startDate?: string;
+      endDate?: string;
+      search?: string;
+      deleteAll?: boolean;
+    },
+    user?: { userId?: string; username?: string }
+  ) {
+    const meta = COLLECTION_REGISTRY[key];
+    if (!meta) throw new Error(`Collection '${key}' is not recognized.`);
+
+    if (meta.category === 'SYSTEM') {
+      throw new Error(`Cannot clear system-protected security collection '${meta.name}'.`);
+    }
+
+    let filter: any = {};
+    const queryConditions: any[] = [];
+
+    // If not clearing 100% of the collection, apply date or search filter
+    if (!options?.deleteAll) {
+      if (meta.dateField && (options?.startDate || options?.endDate)) {
+        const dateQ = buildDateQuery(meta.dateField, options?.startDate, options?.endDate);
+        if (dateQ) queryConditions.push(dateQ);
+      }
+
+      if (options?.search && options.search.trim()) {
+        const s = options.search.trim();
+        const searchOr = meta.searchFields.map((field) => ({
+          [field]: { $regex: s, $options: 'i' }
+        }));
+        queryConditions.push({ $or: searchOr });
+      }
+
+      if (queryConditions.length > 0) {
+        filter = { $and: queryConditions };
+      }
+    }
+
+    const res = await meta.model.deleteMany(filter);
+    const deletedCount = res.deletedCount || 0;
+
+    // If orders or bills were cleared, sanitize dining table states
+    if (key === 'orders' || key === 'bills') {
+      try {
+        const occupiedTables = await DiningTable.find({ status: 'OCCUPIED' });
+        for (const tbl of occupiedTables) {
+          if (tbl.currentOrderId) {
+            const orderStillExists = await Order.exists({ id: tbl.currentOrderId });
+            if (!orderStillExists) {
+              await DiningTable.updateOne(
+                { id: tbl.id },
+                { $set: { status: 'AVAILABLE', currentOrderId: null } }
+              );
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    await createAuditLog({
+      userId: user?.userId,
+      username: user?.username,
+      module: 'Database Tools',
+      action: 'CLEAR_COLLECTION',
+      newValue: { collection: key, deletedCount, filter }
+    });
+
+    return {
+      success: true,
+      collection: key,
+      collectionName: meta.name,
+      deletedCount,
+      message: `Successfully deleted ${deletedCount} record(s) from '${meta.name}'.`
     };
   }
 }
