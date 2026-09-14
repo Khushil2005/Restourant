@@ -9,9 +9,13 @@ export class TableService {
     const tables = await DiningTable.find().sort({ tableNumber: 1 });
     const orders = await Order.find({ status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] } });
     
-    // Attach live order data to tables (and associate parent order with merged child tables)
+    // Attach live order data to tables (and associate parent order with merged tables)
     return tables.map(t => {
-      const activeOrder = orders.find(o => o.tableId === t.id || (t.isMergedChild && t.primaryTableId && o.tableId === t.primaryTableId));
+      const activeOrder = orders.find(o => 
+        o.tableId === t.id || 
+        (t.isMergedChild && t.primaryTableId && o.tableId === t.primaryTableId) ||
+        (t.isMerged && t.mergedTableIds && t.mergedTableIds.includes(o.tableId || ''))
+      );
       return {
         ...t.toObject(),
         activeOrder: activeOrder ? {
@@ -27,7 +31,13 @@ export class TableService {
   }
 
   static async updateStatus(tableId: string, status: string, userId?: string, username?: string) {
-    const table = await DiningTable.findOne({ id: tableId });
+    const table = await DiningTable.findOne({
+      $or: [
+        { id: tableId },
+        { tableNumber: tableId },
+        ...(typeof tableId === 'string' && tableId.match(/^[0-9a-fA-F]{24}$/) ? [{ _id: tableId }] : [])
+      ]
+    });
     if (!table) throw { statusCode: 404, message: 'Table not found.' };
 
     const oldStatus = table.status;
@@ -35,7 +45,7 @@ export class TableService {
     // If table is being set to AVAILABLE (cleaned or vacated) and it was part of a merged group, automatically unmerge all linked tables!
     if (status === 'AVAILABLE' && (table.isMerged || table.isMergedChild || (table.mergedTableIds && table.mergedTableIds.length > 0) || (table.mergedWith && table.mergedWith.length > 0))) {
       await this.splitTables([tableId], userId, username);
-      const refreshed = await DiningTable.findOne({ id: tableId });
+      const refreshed = await DiningTable.findOne({ id: table.id });
       return refreshed || table;
     }
 
@@ -63,8 +73,20 @@ export class TableService {
   }
 
   static async transferTable(sourceTableId: string, destTableId: string, userId?: string, username?: string) {
-    const sourceTable = await DiningTable.findOne({ id: sourceTableId });
-    const destTable = await DiningTable.findOne({ id: destTableId });
+    const sourceTable = await DiningTable.findOne({
+      $or: [
+        { id: sourceTableId },
+        { tableNumber: sourceTableId },
+        ...(typeof sourceTableId === 'string' && sourceTableId.match(/^[0-9a-fA-F]{24}$/) ? [{ _id: sourceTableId }] : [])
+      ]
+    });
+    const destTable = await DiningTable.findOne({
+      $or: [
+        { id: destTableId },
+        { tableNumber: destTableId },
+        ...(typeof destTableId === 'string' && destTableId.match(/^[0-9a-fA-F]{24}$/) ? [{ _id: destTableId }] : [])
+      ]
+    });
 
     if (!sourceTable || !destTable) {
       throw { statusCode: 404, message: 'Table not found.' };
@@ -77,13 +99,13 @@ export class TableService {
     // Find active order on source table (including BILLED status)
     const activeOrder = await Order.findOne({ 
       $or: [
-        { tableId: sourceTableId, status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] } },
+        { tableId: sourceTable.id, status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] } },
         ...(sourceTable.currentOrderId ? [{ id: sourceTable.currentOrderId, status: { $ne: 'PAID' } }] : [])
       ]
     });
 
     if (activeOrder) {
-      activeOrder.tableId = destTableId;
+      activeOrder.tableId = destTable.id;
       activeOrder.tableNumber = destTable.tableNumber;
       await activeOrder.save();
     }
@@ -106,7 +128,7 @@ export class TableService {
       module: 'Tables',
       submodule: 'Floor',
       action: 'TRANSFER_TABLE',
-      recordId: destTableId,
+      recordId: destTable.id,
       oldValue: { fromTable: sourceTable.tableNumber },
       newValue: { toTable: destTable.tableNumber, orderId: activeOrder?.id }
     });
@@ -127,26 +149,32 @@ export class TableService {
       throw { statusCode: 400, message: 'At least 2 unique tables are required to merge.' };
     }
 
-    const tables = await DiningTable.find({ id: { $in: allTableIds } });
-    if (tables.length !== allTableIds.length) {
-      throw { statusCode: 404, message: 'One or more selected tables were not found.' };
+    const tables = await DiningTable.find({
+      $or: [
+        { id: { $in: allTableIds } },
+        { tableNumber: { $in: allTableIds } },
+        ...(allTableIds.filter(id => typeof id === 'string' && id.match(/^[0-9a-fA-F]{24}$/)).map(id => ({ _id: id })))
+      ]
+    });
+
+    if (tables.length < 2) {
+      throw { statusCode: 404, message: 'Selected tables were not found in database.' };
     }
 
-    const primaryTable = tables.find(t => t.id === primaryTableId);
-    if (!primaryTable) {
-      throw { statusCode: 404, message: 'Primary table not found.' };
-    }
-
-    const secondaryTables = tables.filter(t => t.id !== primaryTableId);
+    const primaryTable = tables.find(t => t.id === primaryTableId || (t as any)._id?.toString() === primaryTableId || t.tableNumber === primaryTableId) || tables[0];
+    const secondaryTables = tables.filter(t => t.id !== primaryTable.id && (t as any)._id?.toString() !== (primaryTable as any)._id?.toString());
 
     // Calculate aggregated capacity & combined table labels
     const totalCapacity = tables.reduce((sum, t) => sum + (t.capacity || 4), 0);
     const allTableNumbers = [primaryTable.tableNumber, ...secondaryTables.map(s => s.tableNumber)];
     const combinedTableName = allTableNumbers.join(' + ');
 
+    // Normalize IDs list
+    const finalAllIds = [primaryTable.id, ...secondaryTables.map(s => s.id)];
+
     // 1. Find ALL active orders across all selected tables to combine them
     const activeOrders = await Order.find({
-      tableId: { $in: allTableIds },
+      tableId: { $in: finalAllIds },
       status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] }
     }).sort({ createdAt: 1 });
 
@@ -162,7 +190,7 @@ export class TableService {
       // Update KOT tickets table header
       await KOTTicket.updateMany(
         { orderId: combinedActiveOrder.id },
-        { $set: { tableNumber: combinedTableName } }
+        { $set: { tableNumber: combinedTableName, tableId: primaryTable.id } }
       );
       SocketEvents.emitOrderUpdated(combinedActiveOrder);
     } else if (activeOrders.length > 1) {
@@ -188,7 +216,8 @@ export class TableService {
             $set: { 
               orderId: primaryOrder.id, 
               orderNumber: primaryOrder.orderNumber, 
-              tableNumber: combinedTableName 
+              tableNumber: combinedTableName,
+              tableId: primaryTable.id
             } 
           }
         );
@@ -212,7 +241,7 @@ export class TableService {
       // Update KOT tickets for primary order
       await KOTTicket.updateMany(
         { orderId: primaryOrder.id },
-        { $set: { tableNumber: combinedTableName } }
+        { $set: { tableNumber: combinedTableName, tableId: primaryTable.id } }
       );
 
       combinedActiveOrder = primaryOrder;
@@ -221,8 +250,8 @@ export class TableService {
 
     // 2. Update primary table
     primaryTable.isMerged = true;
-    primaryTable.mergedWith = allTableIds;
-    primaryTable.mergedTableIds = allTableIds;
+    primaryTable.mergedWith = finalAllIds;
+    primaryTable.mergedTableIds = finalAllIds;
     primaryTable.mergedTableNumbers = allTableNumbers;
     primaryTable.mergedCapacity = totalCapacity;
     primaryTable.isMergedChild = false;
@@ -242,10 +271,11 @@ export class TableService {
       sec.isMergedChild = true;
       sec.primaryTableId = primaryTable.id;
       sec.parentTableNumber = primaryTable.tableNumber;
-      sec.mergedWith = allTableIds;
-      sec.mergedTableIds = allTableIds;
+      sec.mergedWith = finalAllIds;
+      sec.mergedTableIds = finalAllIds;
       sec.mergedTableNumbers = allTableNumbers;
-      sec.status = 'OCCUPIED'; // Secondary tables locked as part of merged group
+      sec.mergedCapacity = totalCapacity;
+      sec.status = combinedActiveOrder ? 'OCCUPIED' : 'OCCUPIED'; // Secondary tables locked as part of merged group
       if (combinedActiveOrder) {
         sec.currentOrderId = combinedActiveOrder.id;
       }
@@ -265,7 +295,7 @@ export class TableService {
       module: 'Tables',
       submodule: 'Floor',
       action: 'MERGE_TABLES',
-      recordId: primaryTableId,
+      recordId: primaryTable.id,
       newValue: {
         primaryTable: primaryTable.tableNumber,
         mergedTables: allTableNumbers,
@@ -299,7 +329,13 @@ export class TableService {
     }
 
     // Find any tables matching targetIds to locate primary/parent IDs
-    const matchedTables = await DiningTable.find({ id: { $in: targetIds } });
+    const matchedTables = await DiningTable.find({
+      $or: [
+        { id: { $in: targetIds } },
+        { tableNumber: { $in: targetIds } },
+        ...(targetIds.filter(id => typeof id === 'string' && id.match(/^[0-9a-fA-F]{24}$/)).map(id => ({ _id: id })))
+      ]
+    });
     if (matchedTables.length === 0) {
       throw { statusCode: 404, message: 'Tables not found.' };
     }
@@ -323,7 +359,12 @@ export class TableService {
     const childTables = await DiningTable.find({ primaryTableId: { $in: Array.from(allGroupTableIds) } });
     childTables.forEach(c => allGroupTableIds.add(c.id));
 
-    const finalTables = await DiningTable.find({ id: { $in: Array.from(allGroupTableIds) } });
+    const finalTables = await DiningTable.find({
+      $or: [
+        { id: { $in: Array.from(allGroupTableIds) } },
+        { primaryTableId: { $in: Array.from(allGroupTableIds) } }
+      ]
+    });
 
     for (const t of finalTables) {
       t.isMerged = false;

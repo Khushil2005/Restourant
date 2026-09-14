@@ -74,14 +74,58 @@ export class OrderService {
       };
     });
 
-    const netAmount = totalAmount + taxAmount - (data.discountAmount || 0);
+    // Look up table and handle merged table group
+    let effectiveTableId = data.tableId;
+    let effectiveTableNumber = data.tableNumber || tableNumber;
+
+    if (data.tableId) {
+      const targetTable = await DiningTable.findOne({
+        $or: [
+          { id: data.tableId },
+          { tableNumber: data.tableId },
+          ...(typeof data.tableId === 'string' && data.tableId.match(/^[0-9a-fA-F]{24}$/) ? [{ _id: data.tableId }] : [])
+        ]
+      });
+
+      if (targetTable) {
+        effectiveTableId = targetTable.id;
+        if (targetTable.isMergedChild && targetTable.primaryTableId) {
+          effectiveTableId = targetTable.primaryTableId;
+          const parentTbl = await DiningTable.findOne({ id: targetTable.primaryTableId });
+          if (parentTbl) {
+            effectiveTableNumber = (parentTbl.mergedTableNumbers && parentTbl.mergedTableNumbers.length > 0)
+              ? parentTbl.mergedTableNumbers.join(' + ')
+              : parentTbl.tableNumber;
+          }
+        } else if (targetTable.isMerged && targetTable.mergedTableNumbers && targetTable.mergedTableNumbers.length > 0) {
+          effectiveTableNumber = targetTable.mergedTableNumbers.join(' + ');
+        } else {
+          effectiveTableNumber = effectiveTableNumber || targetTable.tableNumber;
+        }
+
+        // Update all tables in this merged group to OCCUPIED with this order ID
+        const allGroupIds = [
+          effectiveTableId,
+          ...(targetTable.mergedTableIds || []),
+          ...(targetTable.mergedWith || [])
+        ];
+
+        await DiningTable.updateMany(
+          { $or: [{ id: { $in: allGroupIds } }, { primaryTableId: effectiveTableId }] },
+          { $set: { status: 'OCCUPIED', currentOrderId: id } }
+        );
+
+        SocketEvents.emitTableUpdated({ id: effectiveTableId, status: 'OCCUPIED' });
+        SocketEvents.emitDataChanged('tables');
+      }
+    }
 
     const order = await Order.create({
       id,
       orderNumber,
       orderType: data.orderType || 'DINE_IN',
-      tableId: data.tableId,
-      tableNumber: data.tableNumber || tableNumber,
+      tableId: effectiveTableId,
+      tableNumber: effectiveTableNumber,
       customerId: data.customerId,
       customerName: data.customerName,
       customerPhone: data.customerPhone,
@@ -96,15 +140,6 @@ export class OrderService {
       createdBy: userId,
       notes: data.notes
     });
-
-    // Update Table status
-    if (data.tableId) {
-      await DiningTable.findOneAndUpdate(
-        { id: data.tableId },
-        { $set: { status: 'OCCUPIED', currentOrderId: id } }
-      );
-      SocketEvents.emitTableUpdated({ tableId: data.tableId, status: 'OCCUPIED' });
-    }
 
     // Auto-generate initial KOT ticket
     const kotCount = await KOTTicket.countDocuments();
@@ -125,8 +160,8 @@ export class OrderService {
       id: kotId,
       kotNumber,
       orderId: id,
-      tableId: data.tableId,
-      tableNumber: data.tableNumber || tableNumber,
+      tableId: effectiveTableId,
+      tableNumber: effectiveTableNumber,
       orderType: data.orderType || 'DINE_IN',
       status: 'NEW',
       priority: data.priority || 'NORMAL',

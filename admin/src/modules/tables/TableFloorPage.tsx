@@ -418,7 +418,11 @@ export const TableFloorPage: React.FC = () => {
         {filteredTables.map(table => {
           const color = getStatusColor(table.status);
           const isOccupied = table.status === 'OCCUPIED';
-          const isMergedPrimary = !!table.isMerged;
+          const isMergedPrimary = !!table.isMerged || (table.mergedTableNumbers && table.mergedTableNumbers.length > 1);
+          const displayTableNumber = isMergedPrimary && table.mergedTableNumbers && table.mergedTableNumbers.length > 0
+            ? table.mergedTableNumbers.join(' + ')
+            : table.tableNumber;
+          const displayCapacity = isMergedPrimary ? (table.mergedCapacity || table.capacity) : table.capacity;
 
           return (
             <div key={table.id} className="col-6 col-md-4 col-xl-3">
@@ -433,10 +437,8 @@ export const TableFloorPage: React.FC = () => {
                 <div className={`card-header ${isMergedPrimary ? 'bg-warning-subtle' : `bg-${color}-subtle`} border-0 d-flex justify-content-between align-items-center p-2 px-sm-3 gap-1`}>
                   <div className="d-flex align-items-center gap-1 text-truncate">
                     {isMergedPrimary && <Link2 size={14} className="text-warning-emphasis flex-shrink-0" />}
-                    <span className="fw-bold text-dark font-monospace fs-6 fs-sm-5 text-truncate" title={isMergedPrimary ? table.mergedTableNumbers?.join(' + ') : table.tableNumber}>
-                      {isMergedPrimary 
-                        ? (table.mergedTableNumbers && table.mergedTableNumbers.length > 0 ? table.mergedTableNumbers.join(' + ') : table.tableNumber)
-                        : table.tableNumber}
+                    <span className="fw-bold text-dark font-monospace fs-6 fs-sm-5 text-truncate" title={displayTableNumber}>
+                      {displayTableNumber}
                     </span>
                   </div>
 
@@ -459,11 +461,11 @@ export const TableFloorPage: React.FC = () => {
                       <span 
                         className={`badge ${isMergedPrimary ? 'bg-warning-subtle text-warning-emphasis border border-warning' : 'bg-light text-dark border'} d-inline-flex align-items-center gap-1 py-1 px-1.5 flex-shrink-0`} 
                         style={{ fontSize: '0.72rem' }} 
-                        title={`Seats ${isMergedPrimary ? (table.mergedCapacity || table.capacity) : table.capacity}`}
+                        title={`Seats ${displayCapacity}`}
                       >
                         <Users size={11} className="text-secondary flex-shrink-0" />
                         <span className="fw-bold">
-                          {isMergedPrimary ? `${table.mergedCapacity || table.capacity} (Merged)` : table.capacity}
+                          {isMergedPrimary ? `${displayCapacity} (Merged)` : displayCapacity}
                         </span>
                       </span>
 
@@ -481,14 +483,6 @@ export const TableFloorPage: React.FC = () => {
                         {zoneCodeMap.get(table.floorZone)?.name || table.floorZone.replace('_', ' ')}
                       </span>
                     </div>
-
-                    {/* Merged Child Notice banner */}
-                    {isMergedChild && (
-                      <div className="alert alert-warning py-1 px-2 mb-2 d-flex align-items-center gap-1 rounded" style={{ fontSize: '0.72rem' }}>
-                        <Link2 size={12} className="text-warning-emphasis flex-shrink-0" />
-                        <span className="text-truncate">Merged with <strong>{table.parentTableNumber || 'Primary Table'}</strong></span>
-                      </div>
-                    )}
 
                     {isOccupied && table.activeOrder && (
                       <div className="bg-light p-1.5 p-sm-2 rounded border small mb-2">
@@ -520,11 +514,11 @@ export const TableFloorPage: React.FC = () => {
                         <button
                           className="btn btn-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1 px-1"
                           style={{ fontSize: '0.75rem' }}
-                          onClick={() => navigate(`/pos?tableId=${table.id}&tableNumber=${encodeURIComponent(isMergedPrimary && table.mergedTableNumbers ? table.mergedTableNumbers.join(' + ') : table.tableNumber)}`)}
+                          onClick={() => navigate(`/pos?tableId=${table.id}&tableNumber=${encodeURIComponent(displayTableNumber)}`)}
                         >
                           <ShoppingBag size={13} /> Take Order
                         </button>
-                        {can('tables.merge') && !isMergedPrimary && !isMergedChild && (
+                        {can('tables.merge') && !isMergedPrimary && (
                           <button
                             className="btn btn-outline-warning btn-sm p-1 px-1.5"
                             onClick={() => handleOpenMergeModal(table.id)}
@@ -536,25 +530,21 @@ export const TableFloorPage: React.FC = () => {
                       </>
                     )}
 
-                    {/* OCCUPIED / MERGED CHILD */}
-                    {(isOccupied || isMergedChild) && (
+                    {/* OCCUPIED */}
+                    {isOccupied && (
                       <>
                         <button
                           className="btn btn-outline-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1 px-1"
                           style={{ fontSize: '0.75rem' }}
                           onClick={() => {
-                            const targetId = isMergedChild && table.primaryTableId ? table.primaryTableId : table.id;
-                            const targetNumber = isMergedPrimary && table.mergedTableNumbers 
-                              ? table.mergedTableNumbers.join(' + ') 
-                              : (isMergedChild ? (table.parentTableNumber || table.tableNumber) : table.tableNumber);
                             const orderParam = table.activeOrder?.id ? `&orderId=${table.activeOrder.id}` : '';
-                            navigate(`/pos?tableId=${targetId}&tableNumber=${encodeURIComponent(targetNumber)}${orderParam}`);
+                            navigate(`/pos?tableId=${table.id}&tableNumber=${encodeURIComponent(displayTableNumber)}${orderParam}`);
                           }}
                         >
                           <ShoppingBag size={13} /> {table.activeOrder ? 'View Order' : 'Take Order'}
                         </button>
 
-                        {can('tables.transfer') && isOccupied && !isMergedChild && (
+                        {can('tables.transfer') && !isMergedPrimary && (
                           <button
                             className="btn btn-outline-secondary btn-sm p-1 px-1.5"
                             onClick={() => setTransferSource(table)}
@@ -566,8 +556,8 @@ export const TableFloorPage: React.FC = () => {
                       </>
                     )}
 
-                    {/* UNMERGE ACTION BUTTON FOR MERGED PRIMARY OR CHILD */}
-                    {(isMergedPrimary || isMergedChild) && can('tables.split') && (
+                    {/* UNMERGE ACTION BUTTON FOR MERGED TABLE */}
+                    {isMergedPrimary && can('tables.split') && (
                       <button
                         className="btn btn-outline-danger btn-sm p-1 px-1.5 d-flex align-items-center gap-1"
                         onClick={() => handleUnmergeTable(table)}

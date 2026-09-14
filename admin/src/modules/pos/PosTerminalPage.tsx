@@ -253,10 +253,16 @@ export const PosTerminalPage: React.FC = () => {
           loadData();
         }
       } else {
+        const selectedTbl = tables.find(t => t.id === selectedTableId || (t as any)._id === selectedTableId);
+        const isMerged = !!selectedTbl?.isMerged || (selectedTbl?.mergedTableNumbers && selectedTbl.mergedTableNumbers.length > 1);
+        const finalTableNum = isMerged && selectedTbl?.mergedTableNumbers && selectedTbl.mergedTableNumbers.length > 0
+          ? selectedTbl.mergedTableNumbers.join(' + ')
+          : (selectedTableNumber || selectedTbl?.tableNumber);
+
         const orderPayload = {
           orderType,
           tableId: selectedTableId || undefined,
-          tableNumber: selectedTableNumber || undefined,
+          tableNumber: finalTableNum || undefined,
           customerName: customerName || undefined,
           customerPhone: customerPhone || undefined,
           items: cart.map(it => ({
@@ -385,8 +391,9 @@ export const PosTerminalPage: React.FC = () => {
               onChange={e => {
                 const val = e.target.value;
                 setSelectedTableId(val);
-                const t = tables.find(tbl => tbl.id === val);
-                const tNum = t?.isMerged && t?.mergedTableNumbers && t.mergedTableNumbers.length > 0
+                const t = tables.find(tbl => tbl.id === val || (tbl as any)._id === val);
+                const isMerged = !!t?.isMerged || (t?.mergedTableNumbers && t.mergedTableNumbers.length > 1);
+                const tNum = isMerged && t?.mergedTableNumbers && t.mergedTableNumbers.length > 0
                   ? t.mergedTableNumbers.join(' + ')
                   : (t?.tableNumber || '');
                 setSelectedTableNumber(tNum);
@@ -394,12 +401,12 @@ export const PosTerminalPage: React.FC = () => {
             >
               <option value="">Select Table</option>
               {tables
-                .filter(t => !t.isMergedChild)
+                .filter(t => !(t.isMergedChild === true || t.isMergedChild === 'true' as any || (t.primaryTableId && t.primaryTableId !== t.id && !t.isMerged)))
                 .map(t => {
-                  const isMerged = t.isMerged && t.mergedTableNumbers && t.mergedTableNumbers.length > 0;
-                  const label = isMerged
-                    ? `Table ${t.mergedTableNumbers!.join(' + ')} (Merged: ${t.mergedCapacity || t.capacity} Seats - ${t.status})`
-                    : `Table ${t.tableNumber} (${t.status})`;
+                  const isMerged = !!t.isMerged || (t.mergedTableNumbers && t.mergedTableNumbers.length > 1);
+                  const label = isMerged && t.mergedTableNumbers && t.mergedTableNumbers.length > 0
+                    ? `Table ${t.mergedTableNumbers.join(' + ')} (Merged: ${t.mergedCapacity || t.capacity} Seats - ${t.status})`
+                    : `Table ${t.tableNumber} (${t.capacity} Seats - ${t.status})`;
                   return (
                     <option key={t.id} value={t.id}>
                       {label}
