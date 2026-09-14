@@ -379,9 +379,12 @@ export const TableFloorPage: React.FC = () => {
                         <button
                           className="btn btn-outline-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1 px-1"
                           style={{ fontSize: '0.75rem' }}
-                          onClick={() => navigate(`/pos?orderId=${table.activeOrder?.id}`)}
+                          onClick={() => {
+                            const orderParam = table.activeOrder?.id ? `&orderId=${table.activeOrder.id}` : '';
+                            navigate(`/pos?tableId=${table.id}&tableNumber=${encodeURIComponent(table.tableNumber)}${orderParam}`);
+                          }}
                         >
-                          <ShoppingBag size={13} /> View
+                          <ShoppingBag size={13} /> {table.activeOrder ? 'View Order' : 'Take Order'}
                         </button>
                         {can('tables.transfer') && (
                           <button

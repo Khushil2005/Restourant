@@ -118,6 +118,43 @@ export const PosTerminalPage: React.FC = () => {
     loadData(true);
   }, [activeOrderId]);
 
+  // Reactive URL searchParams listener: Auto-select table & customer info from URL (Token page, TableFloor, etc.)
+  useEffect(() => {
+    const qTableId = searchParams.get('tableId');
+    const qTableNumber = searchParams.get('tableNumber');
+    const qCustomerName = searchParams.get('customerName');
+    const qCustomerPhone = searchParams.get('customerPhone');
+
+    if (qCustomerName) {
+      setCustomerName(prev => prev || qCustomerName);
+    }
+    if (qCustomerPhone) {
+      setCustomerPhone(prev => prev || qCustomerPhone);
+    }
+
+    if (qTableId || qTableNumber) {
+      setOrderType('DINE_IN');
+      if (tables.length > 0) {
+        const matched = tables.find(t =>
+          t.id === qTableId ||
+          t.tableNumber === qTableNumber ||
+          t.tableNumber === qTableId ||
+          t.id === qTableNumber
+        );
+        if (matched) {
+          setSelectedTableId(matched.id);
+          setSelectedTableNumber(matched.tableNumber);
+        } else {
+          if (qTableId) setSelectedTableId(qTableId);
+          if (qTableNumber) setSelectedTableNumber(qTableNumber);
+        }
+      } else {
+        if (qTableId) setSelectedTableId(qTableId);
+        if (qTableNumber) setSelectedTableNumber(qTableNumber);
+      }
+    }
+  }, [searchParams, tables]);
+
   useAutoRefresh(() => loadData(true), {
     entities: ['tables', 'menu', 'categories', 'daily-menu', 'masters', 'orders'],
     intervalMs: 4000,
@@ -335,19 +372,20 @@ export const PosTerminalPage: React.FC = () => {
           {/* Table Selector for Dine-in */}
           {orderType === 'DINE_IN' && (
             <select
-              className="form-select form-select-sm bg-dark text-white border-secondary"
-              style={{ width: 120 }}
+              className="form-select form-select-sm bg-dark text-white border-secondary fw-semibold"
+              style={{ minWidth: 130, maxWidth: 160 }}
               value={selectedTableId}
               onChange={e => {
-                setSelectedTableId(e.target.value);
-                const t = tables.find(tbl => tbl.id === e.target.value);
+                const val = e.target.value;
+                setSelectedTableId(val);
+                const t = tables.find(tbl => tbl.id === val);
                 setSelectedTableNumber(t?.tableNumber || '');
               }}
             >
-              <option value="">Table</option>
+              <option value="">Select Table</option>
               {tables.map(t => (
                 <option key={t.id} value={t.id}>
-                  {t.tableNumber} ({t.status})
+                  Table {t.tableNumber} ({t.status})
                 </option>
               ))}
             </select>
@@ -504,14 +542,52 @@ export const PosTerminalPage: React.FC = () => {
                 <h6 className="fw-bold mb-0 text-dark">
                   {activeOrder ? `Order: ${activeOrder.orderNumber}` : 'Order Ticket'}
                 </h6>
-                <small className="text-muted">
-                  {orderType} {selectedTableNumber ? `• Table ${selectedTableNumber}` : ''}
-                </small>
+                <div className="small text-muted d-flex align-items-center gap-1 flex-wrap mt-0.5">
+                  <span className="badge bg-secondary-subtle text-secondary-emphasis border" style={{ fontSize: '0.7rem' }}>
+                    {orderType}
+                  </span>
+                  {selectedTableNumber && (
+                    <span className="badge bg-primary text-white fw-bold" style={{ fontSize: '0.7rem' }}>
+                      Table {selectedTableNumber}
+                    </span>
+                  )}
+                  {searchParams.get('tokenCode') && (
+                    <span className="badge bg-warning text-dark fw-bold font-monospace" style={{ fontSize: '0.7rem' }}>
+                      {searchParams.get('tokenCode')}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <span className="badge bg-primary rounded-pill">
               {(activeOrder?.items.length || 0) + cart.length} Items
             </span>
+          </div>
+
+          {/* Guest Details Bar (Auto-populated from Token seating if available) */}
+          <div className="px-3 py-1.5 bg-light border-bottom d-flex gap-2 align-items-center">
+            <div className="input-group input-group-sm flex-grow-1" style={{ minWidth: 120 }}>
+              <span className="input-group-text bg-white py-0 px-1.5 text-secondary" style={{ fontSize: '0.72rem' }}>Guest</span>
+              <input
+                type="text"
+                className="form-control form-control-sm py-0"
+                placeholder="Guest Name"
+                value={customerName}
+                onChange={e => setCustomerName(e.target.value)}
+                style={{ fontSize: '0.78rem' }}
+              />
+            </div>
+            <div className="input-group input-group-sm flex-grow-1" style={{ minWidth: 110 }}>
+              <span className="input-group-text bg-white py-0 px-1.5 text-secondary" style={{ fontSize: '0.72rem' }}>Phone</span>
+              <input
+                type="tel"
+                className="form-control form-control-sm py-0"
+                placeholder="Phone No."
+                value={customerPhone}
+                onChange={e => setCustomerPhone(e.target.value)}
+                style={{ fontSize: '0.78rem' }}
+              />
+            </div>
           </div>
 
           {/* Cart & Active Items List */}

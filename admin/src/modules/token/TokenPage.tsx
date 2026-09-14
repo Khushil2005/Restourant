@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../api/client';
 import { useSocket } from '../../context/SocketContext';
 import { QueueToken, DiningTable } from '../../types';
@@ -20,7 +21,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Tv,
-  Printer
+  Printer,
+  ShoppingBag
 } from 'lucide-react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
@@ -33,6 +35,7 @@ const getLocalDateString = (d = new Date()): string => {
 };
 
 export const TokenPage: React.FC = () => {
+  const navigate = useNavigate();
   const { socket } = useSocket();
 
   // Current system clock
@@ -254,12 +257,28 @@ export const TokenPage: React.FC = () => {
     if (!seatingToken) return;
     setSeatingSubmitting(true);
     try {
-      await apiClient.patch(`/tokens/${seatingToken.id}/seat`, {
-        tableId: selectedTableId || undefined
+      const assignedTableId = selectedTableId;
+      const assignedTable = tables.find(t => t.id === assignedTableId);
+      const currentToken = seatingToken;
+
+      await apiClient.patch(`/tokens/${currentToken.id}/seat`, {
+        tableId: assignedTableId || undefined
       });
       setSeatingToken(null);
       setSelectedTableId('');
       loadQueue(false, true, selectedDate);
+
+      // If seated at a specific table, offer immediate order taking in POS with table pre-selected
+      if (assignedTable) {
+        const shouldTakeOrder = window.confirm(
+          `Guest "${currentToken.customerName}" seated at Table ${assignedTable.tableNumber}.\n\nDo you want to take an order now in POS? (ટેબલ ${assignedTable.tableNumber} માટે POS માં ઓર્ડર લેવો છે?)`
+        );
+        if (shouldTakeOrder) {
+          navigate(
+            `/pos?tableId=${assignedTable.id}&tableNumber=${encodeURIComponent(assignedTable.tableNumber)}&customerName=${encodeURIComponent(currentToken.customerName)}&customerPhone=${encodeURIComponent(currentToken.customerPhone)}&tokenCode=${encodeURIComponent(currentToken.tokenCode)}`
+          );
+        }
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to seat guest.');
     } finally {
@@ -973,17 +992,27 @@ export const TokenPage: React.FC = () => {
 
                           {/* STATUS */}
                           <td className="px-3 py-2.5">
-                            <span className={`badge px-2 py-1 ${
-                              token.status === 'WAITING' 
-                                ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' 
-                                : token.status === 'CALLED' || token.status === 'RECALLED'
-                                  ? 'bg-primary text-white'
-                                  : token.status === 'SEATED' || token.status === 'COMPLETED'
-                                    ? 'bg-success text-white'
-                                    : 'bg-secondary text-white'
-                            }`}>
-                              {token.status}
-                            </span>
+                            <div className="d-flex align-items-center gap-1 flex-wrap">
+                              <span className={`badge px-2 py-1 ${
+                                token.status === 'WAITING' 
+                                  ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' 
+                                  : token.status === 'CALLED' || token.status === 'RECALLED'
+                                    ? 'bg-primary text-white'
+                                    : token.status === 'SEATED' || token.status === 'COMPLETED'
+                                      ? 'bg-success text-white'
+                                      : 'bg-secondary text-white'
+                              }`}>
+                                {token.status}
+                              </span>
+                              {token.tableId && (() => {
+                                const seatedTbl = tables.find(t => t.id === token.tableId);
+                                return seatedTbl ? (
+                                  <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: '0.72rem' }} title={`Seated at Table ${seatedTbl.tableNumber}`}>
+                                    🪑 Table {seatedTbl.tableNumber}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
                           </td>
 
                           {/* ACTIONS */}
@@ -1025,6 +1054,23 @@ export const TokenPage: React.FC = () => {
                                   title="Seat Guest at Dining Table"
                                 >
                                   <UserCheck size={13} /> Seat
+                                </button>
+                              )}
+
+                              {(token.status === 'SEATED' || token.tableId) && (
+                                <button
+                                  onClick={() => {
+                                    const seatedTbl = tables.find(t => t.id === token.tableId);
+                                    const tId = seatedTbl?.id || token.tableId || '';
+                                    const tNum = seatedTbl?.tableNumber || '';
+                                    navigate(
+                                      `/pos?tableId=${tId}&tableNumber=${encodeURIComponent(tNum)}&customerName=${encodeURIComponent(token.customerName)}&customerPhone=${encodeURIComponent(token.customerPhone)}&tokenCode=${encodeURIComponent(token.tokenCode)}`
+                                    );
+                                  }}
+                                  className="btn btn-primary btn-sm p-1 px-2 d-flex align-items-center gap-1 shadow-sm"
+                                  title="Take / View Order in POS with Auto-selected Table"
+                                >
+                                  <ShoppingBag size={13} /> Order
                                 </button>
                               )}
 
