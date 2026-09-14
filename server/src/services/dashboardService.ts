@@ -31,7 +31,7 @@ export class DashboardService {
       purchaseSummary,
       attendanceSummary,
       accounts
-    ]: any[] = await Promise.all([
+    ] = await Promise.all([
       Order.find({ createdAt: { $gte: startOfToday } }, { items: 1, totalAmount: 1 }).lean(),
       Order.countDocuments({ status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED'] } }),
       Order.countDocuments({ status: 'COMPLETED', createdAt: { $gte: startOfToday } }),
@@ -48,17 +48,17 @@ export class DashboardService {
       ChartOfAccount.find({ isActive: true }, { id: 1, subType: 1, currentBalance: 1 }).lean()
     ]);
 
-    const todaySales = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const todayExpenseTotal = todayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const todaySales = (todayPayments as any[]).reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+    const todayExpenseTotal = (todayExpenses as any[]).reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
-    const occupiedTables = tables.filter(t => t.status === 'OCCUPIED').length;
-    const availableTables = tables.filter(t => t.status === 'AVAILABLE').length;
+    const occupiedTables = (tables as any[]).filter((t: any) => t.status === 'OCCUPIED').length;
+    const availableTables = (tables as any[]).filter((t: any) => t.status === 'AVAILABLE').length;
 
     // Payment Methods breakdown
     const paymentMethodsBreakdown: Record<string, number> = { CASH: 0, UPI: 0, CARD: 0, ONLINE: 0 };
-    todayPayments.forEach(p => {
+    (todayPayments as any[]).forEach((p: any) => {
       if (p.paymentMethod === 'SPLIT' && p.transactions) {
-        p.transactions.forEach(tx => {
+        p.transactions.forEach((tx: any) => {
           paymentMethodsBreakdown[tx.method] = (paymentMethodsBreakdown[tx.method] || 0) + tx.amount;
         });
       } else {
@@ -68,8 +68,8 @@ export class DashboardService {
 
     // Top selling items
     const itemSalesCount: Record<string, { name: string; count: number; revenue: number }> = {};
-    todayOrders.forEach(o => {
-      o.items?.forEach(it => {
+    (todayOrders as any[]).forEach((o: any) => {
+      o.items?.forEach((it: any) => {
         if (!itemSalesCount[it.menuItemId]) {
           itemSalesCount[it.menuItemId] = { name: it.itemName, count: 0, revenue: 0 };
         }
@@ -83,27 +83,27 @@ export class DashboardService {
       .slice(0, 5);
 
     // Accounts summary
-    const cashDrawer = accounts.find(a => a.subType === 'CASH')?.currentBalance || 0;
-    const bankBalance = accounts.find(a => a.subType === 'BANK')?.currentBalance || 0;
-    const totalInventoryValue = accounts.find(a => a.id === 'acc_inventory_asset')?.currentBalance || 0;
+    const cashDrawer = (accounts as any[]).find((a: any) => a.subType === 'CASH')?.currentBalance || 0;
+    const bankBalance = (accounts as any[]).find((a: any) => a.subType === 'BANK')?.currentBalance || 0;
+    const totalInventoryValue = (accounts as any[]).find((a: any) => a.id === 'acc_inventory_asset')?.currentBalance || 0;
 
     return {
       sales: {
         todaySales,
-        todayOrdersCount: todayOrders.length,
+        todayOrdersCount: (todayOrders as any[]).length,
         pendingOrdersCount,
         completedOrdersCount,
-        averageOrderValue: todayOrders.length > 0 ? Math.round(todaySales / todayOrders.length) : 0
+        averageOrderValue: (todayOrders as any[]).length > 0 ? Math.round(todaySales / (todayOrders as any[]).length) : 0
       },
       bookings: {
         todayBookingsCount,
         waitingTokensCount
       },
       tables: {
-        totalTables: tables.length,
+        totalTables: (tables as any[]).length,
         occupiedTables,
         availableTables,
-        occupancyRate: tables.length > 0 ? Math.round((occupiedTables / tables.length) * 100) : 0
+        occupancyRate: (tables as any[]).length > 0 ? Math.round((occupiedTables / (tables as any[]).length) * 100) : 0
       },
       kitchen: {
         pendingKOT: pendingKOTCount,
@@ -117,16 +117,16 @@ export class DashboardService {
         totalInventoryValue
       },
       inventory: {
-        lowStockCount: lowStockItems.length,
-        lowStockItems: lowStockItems.slice(0, 5).map(i => ({ id: i.id, name: i.name, currentStock: i.currentStock, min: i.minimumStockLevel, unit: i.unitSymbol || 'units' }))
+        lowStockCount: (lowStockItems as any[]).length,
+        lowStockItems: (lowStockItems as any[]).slice(0, 5).map((i: any) => ({ id: i.id, name: i.name, currentStock: i.currentStock, min: i.minimumStockLevel, unit: i.unitSymbol || 'units' }))
       },
       purchase: {
-        pendingPOCount: purchaseSummary.length,
-        pendingPOAmount: purchaseSummary.reduce((sum, p) => sum + (p.totalAmount || 0), 0)
+        pendingPOCount: (purchaseSummary as any[]).length,
+        pendingPOAmount: (purchaseSummary as any[]).reduce((sum: number, p: any) => sum + (p.totalAmount || 0), 0)
       },
       hr: {
-        presentCount: attendanceSummary.filter(a => a.status === 'PRESENT').length,
-        totalStaff: attendanceSummary.length
+        presentCount: (attendanceSummary as any[]).filter((a: any) => a.status === 'PRESENT').length,
+        totalStaff: (attendanceSummary as any[]).length
       },
       charts: {
         paymentMethods: paymentMethodsBreakdown,
