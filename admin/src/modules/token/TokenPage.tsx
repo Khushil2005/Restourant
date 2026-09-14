@@ -1123,16 +1123,31 @@ export const TokenPage: React.FC = () => {
                 onChange={e => setSelectedTableId(e.target.value)}
               >
                 <option value="">-- No Specific Table (Direct Seat) --</option>
-                {tables.filter(t => t.status === 'AVAILABLE').map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.tableNumber} (Seats: {t.capacity} | Zone: {t.floorZone?.replace('_', ' ')})
-                  </option>
-                ))}
+                {tables.filter(t => t.status === 'AVAILABLE' && !t.isMergedChild).map(t => {
+                  const tLabel = t.isMerged 
+                    ? `${t.mergedTableNumbers?.join(' + ') || t.tableNumber} (Merged: ${t.mergedCapacity || t.capacity} Seats | Zone: ${t.floorZone?.replace('_', ' ')})`
+                    : `${t.tableNumber} (Seats: ${t.capacity} | Zone: ${t.floorZone?.replace('_', ' ')})`;
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {tLabel}
+                    </option>
+                  );
+                })}
               </select>
-              <div className="form-text small mt-1">
-                {tables.filter(t => t.status === 'AVAILABLE').length === 0
-                  ? 'No tables are currently marked AVAILABLE.'
-                  : 'Assigning a table will automatically mark it OCCUPIED on the Dining Floor map.'}
+              <div className="form-text small mt-1 d-flex justify-content-between align-items-center">
+                <span>
+                  {tables.filter(t => t.status === 'AVAILABLE').length === 0
+                    ? 'No tables are currently marked AVAILABLE.'
+                    : 'Assigning a table will automatically mark it OCCUPIED on the Dining Floor map.'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/tables')}
+                  className="btn btn-link p-0 text-decoration-none fw-semibold"
+                  style={{ fontSize: '0.75rem' }}
+                >
+                  🔗 Merge Tables
+                </button>
               </div>
             </div>
 

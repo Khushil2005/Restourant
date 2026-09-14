@@ -3,6 +3,7 @@ import { KOTTicket, IKOTItem } from '../models/KOT';
 import { DiningTable, MenuItem } from '../models/Master';
 import { Recipe } from '../models/Inventory';
 import { InventoryItem, StockTransaction } from '../models/Inventory';
+import { TableService } from './tableService';
 import { SocketEvents } from '../sockets/socketManager';
 import { createAuditLog } from '../middleware/auditMiddleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -285,11 +286,15 @@ export class OrderService {
     if (order.tableId) {
       const table = await DiningTable.findOne({ id: order.tableId });
       if (table) {
-        table.status = 'AVAILABLE';
-        table.currentOrderId = undefined;
-        await table.save();
-        SocketEvents.emitTableUpdated(table);
-        SocketEvents.emitDataChanged('tables');
+        if (table.isMerged || table.isMergedChild || (table.mergedTableIds && table.mergedTableIds.length > 0) || (table.mergedWith && table.mergedWith.length > 0)) {
+          await TableService.splitTables([order.tableId], userId, username);
+        } else {
+          table.status = 'AVAILABLE';
+          table.currentOrderId = undefined;
+          await table.save();
+          SocketEvents.emitTableUpdated(table);
+          SocketEvents.emitDataChanged('tables');
+        }
       }
     }
 
@@ -326,11 +331,15 @@ export class OrderService {
     if (order.tableId) {
       const table = await DiningTable.findOne({ id: order.tableId });
       if (table) {
-        table.status = 'AVAILABLE';
-        table.currentOrderId = undefined;
-        await table.save();
-        SocketEvents.emitTableUpdated(table);
-        SocketEvents.emitDataChanged('tables');
+        if (table.isMerged || table.isMergedChild || (table.mergedTableIds && table.mergedTableIds.length > 0) || (table.mergedWith && table.mergedWith.length > 0)) {
+          await TableService.splitTables([order.tableId], userId, username);
+        } else {
+          table.status = 'AVAILABLE';
+          table.currentOrderId = undefined;
+          await table.save();
+          SocketEvents.emitTableUpdated(table);
+          SocketEvents.emitDataChanged('tables');
+        }
       }
     }
 

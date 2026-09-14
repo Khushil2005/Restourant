@@ -186,3 +186,44 @@ tableRouter.post('/transfer', authenticate, authorize('tables.transfer'), async 
     return ApiResponse.error(res, err.message, err.statusCode || 400);
   }
 });
+
+tableRouter.post('/merge', authenticate, authorize('tables.merge'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const primaryTableId = req.body.primaryTableId;
+    const secondaryTableIds = req.body.tableIdsToMerge || req.body.secondaryTableIds || req.body.mergedWith || [];
+    const result = await TableService.mergeTables(primaryTableId, secondaryTableIds, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, result, result.message);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
+  }
+});
+
+tableRouter.post('/unmerge', authenticate, authorize('tables.split'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const tableIds = req.body.tableIds || (req.body.tableId ? [req.body.tableId] : (req.body.primaryTableId ? [req.body.primaryTableId] : []));
+    const result = await TableService.splitTables(tableIds, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, result, result.message);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
+  }
+});
+
+tableRouter.post('/split', authenticate, authorize('tables.split'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const tableIds = req.body.tableIds || (req.body.tableId ? [req.body.tableId] : []);
+    const result = await TableService.splitTables(tableIds, req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, result, result.message);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
+  }
+});
+
+tableRouter.post('/:id/unmerge', authenticate, authorize('tables.split'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await TableService.splitTables([req.params.id], req.user!.userId, req.user!.username);
+    return ApiResponse.success(res, result, result.message);
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, err.statusCode || 400);
+  }
+});
+

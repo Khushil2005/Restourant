@@ -379,15 +379,25 @@ export const PosTerminalPage: React.FC = () => {
                 const val = e.target.value;
                 setSelectedTableId(val);
                 const t = tables.find(tbl => tbl.id === val);
-                setSelectedTableNumber(t ? t.tableNumber : '');
+                const tNum = t?.isMerged && t?.mergedTableNumbers && t.mergedTableNumbers.length > 0
+                  ? t.mergedTableNumbers.join(' + ')
+                  : (t?.tableNumber || '');
+                setSelectedTableNumber(tNum);
               }}
             >
               <option value="">Select Table</option>
-              {tables.map(t => (
-                <option key={t.id} value={t.id}>
-                  Table {t.tableNumber} ({t.status})
-                </option>
-              ))}
+              {tables.map(t => {
+                const label = t.isMerged
+                  ? `Table ${t.mergedTableNumbers?.join(' + ') || t.tableNumber} (Merged: ${t.mergedCapacity || t.capacity} Seats)`
+                  : t.isMergedChild
+                    ? `Table ${t.tableNumber} (Linked to ${t.parentTableNumber || 'Group'})`
+                    : `Table ${t.tableNumber} (${t.status})`;
+                return (
+                  <option key={t.id} value={t.id}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           )}
 

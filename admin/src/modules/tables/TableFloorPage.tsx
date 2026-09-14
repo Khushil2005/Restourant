@@ -16,6 +16,8 @@ import {
   Download, 
   Printer, 
   CreditCard,
+  Link2,
+  Unlink,
   AlertCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -52,6 +54,13 @@ export const TableFloorPage: React.FC = () => {
     isActive: true
   });
   const [savingZone, setSavingZone] = useState(false);
+
+  // Table Merge Modal State
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [selectedMergeTableIds, setSelectedMergeTableIds] = useState<string[]>([]);
+  const [primaryMergeTableId, setPrimaryMergeTableId] = useState<string>('');
+  const [mergeZoneFilter, setMergeZoneFilter] = useState<string>('ALL');
+  const [mergingSubmitting, setMergingSubmitting] = useState(false);
 
   // Transfer Modal
   const [transferSource, setTransferSource] = useState<DiningTable | null>(null);
@@ -134,6 +143,84 @@ export const TableFloorPage: React.FC = () => {
       loadFloor(false, true);
     } catch (err: any) {
       alert(err.message || 'Transfer failed.');
+    }
+  };
+
+  // Table Merge Handlers
+  const handleOpenMergeModal = (preselectedTableId?: string) => {
+    if (preselectedTableId) {
+      setSelectedMergeTableIds([preselectedTableId]);
+      setPrimaryMergeTableId(preselectedTableId);
+    } else {
+      setSelectedMergeTableIds([]);
+      setPrimaryMergeTableId('');
+    }
+    setMergeZoneFilter(selectedZone !== 'ALL' ? selectedZone : 'ALL');
+    setIsMergeModalOpen(true);
+  };
+
+  const handleToggleMergeTable = (tableId: string) => {
+    setSelectedMergeTableIds(prev => {
+      const exists = prev.includes(tableId);
+      const updated = exists ? prev.filter(id => id !== tableId) : [...prev, tableId];
+      if (exists && primaryMergeTableId === tableId) {
+        setPrimaryMergeTableId(updated[0] || '');
+      } else if (!exists && updated.length === 1) {
+        setPrimaryMergeTableId(tableId);
+      }
+      return updated;
+    });
+  };
+
+  const handleExecuteMerge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedMergeTableIds.length < 2) {
+      alert('Please select at least 2 tables to merge.');
+      return;
+    }
+    const primaryId = primaryMergeTableId || selectedMergeTableIds[0];
+    const secondaryIds = selectedMergeTableIds.filter(id => id !== primaryId);
+
+    setMergingSubmitting(true);
+    try {
+      const res: any = await apiClient.post('/tables/merge', {
+        primaryTableId: primaryId,
+        secondaryTableIds: secondaryIds
+      });
+      if (res?.success) {
+        setIsMergeModalOpen(false);
+        setSelectedMergeTableIds([]);
+        setPrimaryMergeTableId('');
+        await loadFloor(false, true);
+
+        const primaryTbl = tables.find(t => t.id === primaryId);
+        const shouldOpenPos = window.confirm(
+          `Tables merged successfully into ${primaryTbl?.tableNumber || 'Primary Table'}!\n\nOpen POS to take order now for the merged table?`
+        );
+        if (shouldOpenPos && primaryTbl) {
+          navigate(`/pos?tableId=${primaryTbl.id}&tableNumber=${encodeURIComponent(primaryTbl.tableNumber)}`);
+        }
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to merge tables.');
+    } finally {
+      setMergingSubmitting(false);
+    }
+  };
+
+  const handleUnmergeTable = async (table: DiningTable) => {
+    const tableLabel = table.mergedTableNumbers?.join(' + ') || table.tableNumber;
+    if (!window.confirm(`Are you sure you want to unmerge table group "${tableLabel}"?\nAll linked tables will be restored back to individual available tables.`)) {
+      return;
+    }
+
+    try {
+      const res: any = await apiClient.post(`/tables/${table.id}/unmerge`);
+      if (res?.success) {
+        await loadFloor(false, true);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to unmerge tables.');
     }
   };
 
@@ -234,6 +321,15 @@ export const TableFloorPage: React.FC = () => {
           <p className="text-muted small mb-0">Visual seating plan, live table statuses, order turnover and transfers</p>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
+          {can('tables.merge') && (
+            <button
+              className="btn btn-warning btn-sm d-flex align-items-center gap-1 shadow-sm fw-bold text-dark"
+              onClick={() => handleOpenMergeModal()}
+              title="Merge Multiple Tables for Extra Seating"
+            >
+              <Link2 size={15} /> Merge Tables
+            </button>
+          )}
           {can('masters.table.create') && (
             <button
               className="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-sm"
@@ -319,18 +415,42 @@ export const TableFloorPage: React.FC = () => {
         {filteredTables.map(table => {
           const color = getStatusColor(table.status);
           const isOccupied = table.status === 'OCCUPIED';
+          const isMergedPrimary = !!table.isMerged;
+          const isMergedChild = !!table.isMergedChild;
 
           return (
             <div key={table.id} className="col-6 col-md-4 col-xl-3">
-              <div className={`card h-100 shadow-sm border-2 border-${color}`}>
-                <div className={`card-header bg-${color}-subtle border-0 d-flex justify-content-between align-items-center p-2 px-sm-3 gap-1`}>
+              <div 
+                className={`card h-100 shadow-sm position-relative ${
+                  isMergedPrimary 
+                    ? 'border-3 border-warning' 
+                    : isMergedChild 
+                      ? 'border-2 border-info border-dashed opacity-90' 
+                      : `border-2 border-${color}`
+                }`}
+                style={isMergedPrimary ? { boxShadow: '0 0 12px rgba(255, 193, 7, 0.25)' } : undefined}
+              >
+                <div className={`card-header ${isMergedPrimary ? 'bg-warning-subtle' : isMergedChild ? 'bg-info-subtle' : `bg-${color}-subtle`} border-0 d-flex justify-content-between align-items-center p-2 px-sm-3 gap-1`}>
                   <div className="d-flex align-items-center gap-1 text-truncate">
-                    <span className="fw-bold text-dark font-monospace fs-6 fs-sm-5 text-truncate" title={table.tableNumber}>
-                      {table.tableNumber}
+                    {isMergedPrimary && <Link2 size={14} className="text-warning-emphasis flex-shrink-0" />}
+                    <span className="fw-bold text-dark font-monospace fs-6 fs-sm-5 text-truncate" title={isMergedPrimary ? table.mergedTableNumbers?.join(' + ') : table.tableNumber}>
+                      {isMergedPrimary 
+                        ? (table.mergedTableNumbers && table.mergedTableNumbers.length > 0 ? table.mergedTableNumbers.join('+') : table.tableNumber)
+                        : table.tableNumber}
                     </span>
                   </div>
 
                   <div className="d-flex align-items-center gap-1 flex-shrink-0">
+                    {isMergedPrimary && (
+                      <span className="badge bg-warning text-dark text-uppercase fw-bold" style={{ fontSize: '0.62rem' }}>
+                        MERGED
+                      </span>
+                    )}
+                    {isMergedChild && (
+                      <span className="badge bg-info text-dark text-uppercase fw-bold" style={{ fontSize: '0.62rem' }}>
+                        LINKED
+                      </span>
+                    )}
                     <span className={`badge bg-${color} text-${color === 'warning' ? 'dark' : 'white'} text-uppercase`} style={{ fontSize: '0.62rem' }}>
                       {table.status}
                     </span>
@@ -342,13 +462,13 @@ export const TableFloorPage: React.FC = () => {
                     {/* Capacity & Floor Zone Tag */}
                     <div className="d-flex align-items-center gap-1 mb-2 overflow-hidden flex-wrap" style={{ maxWidth: '100%' }}>
                       <span 
-                        className="badge bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-1.5 flex-shrink-0" 
+                        className={`badge ${isMergedPrimary ? 'bg-warning-subtle text-warning-emphasis border border-warning' : 'bg-light text-dark border'} d-inline-flex align-items-center gap-1 py-1 px-1.5 flex-shrink-0`} 
                         style={{ fontSize: '0.72rem' }} 
-                        title={`Seats ${table.capacity}`}
+                        title={`Seats ${isMergedPrimary ? (table.mergedCapacity || table.capacity) : table.capacity}`}
                       >
                         <Users size={11} className="text-secondary flex-shrink-0" />
                         <span className="fw-bold">
-                          {table.capacity}
+                          {isMergedPrimary ? `${table.mergedCapacity || table.capacity} (Merged)` : table.capacity}
                         </span>
                       </span>
 
@@ -366,6 +486,14 @@ export const TableFloorPage: React.FC = () => {
                         {zoneCodeMap.get(table.floorZone)?.name || table.floorZone.replace('_', ' ')}
                       </span>
                     </div>
+
+                    {/* Merged Child Notice banner */}
+                    {isMergedChild && (
+                      <div className="alert alert-warning py-1 px-2 mb-2 d-flex align-items-center gap-1 rounded" style={{ fontSize: '0.72rem' }}>
+                        <Link2 size={12} className="text-warning-emphasis flex-shrink-0" />
+                        <span className="text-truncate">Merged with <strong>{table.parentTableNumber || 'Primary Table'}</strong></span>
+                      </div>
+                    )}
 
                     {isOccupied && table.activeOrder && (
                       <div className="bg-light p-1.5 p-sm-2 rounded border small mb-2">
@@ -393,30 +521,45 @@ export const TableFloorPage: React.FC = () => {
                   <div className="d-flex flex-wrap gap-1 mt-auto pt-2 border-top">
                     {/* AVAILABLE TABLE */}
                     {table.status === 'AVAILABLE' && can('orders.create') && (
-                      <button
-                        className="btn btn-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1 px-1"
-                        style={{ fontSize: '0.75rem' }}
-                        onClick={() => navigate(`/pos?tableId=${table.id}&tableNumber=${encodeURIComponent(table.tableNumber)}`)}
-                      >
-                        <ShoppingBag size={13} /> Take Order
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1 px-1"
+                          style={{ fontSize: '0.75rem' }}
+                          onClick={() => navigate(`/pos?tableId=${table.id}&tableNumber=${encodeURIComponent(isMergedPrimary && table.mergedTableNumbers ? table.mergedTableNumbers.join(' + ') : table.tableNumber)}`)}
+                        >
+                          <ShoppingBag size={13} /> Take Order
+                        </button>
+                        {can('tables.merge') && !isMergedPrimary && !isMergedChild && (
+                          <button
+                            className="btn btn-outline-warning btn-sm p-1 px-1.5"
+                            onClick={() => handleOpenMergeModal(table.id)}
+                            title="Merge this table with other tables for extra seating"
+                          >
+                            <Link2 size={13} />
+                          </button>
+                        )}
+                      </>
                     )}
 
-                    {/* OCCUPIED */}
-                    {isOccupied && (
+                    {/* OCCUPIED / MERGED CHILD */}
+                    {(isOccupied || isMergedChild) && (
                       <>
                         <button
                           className="btn btn-outline-primary btn-sm flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1 px-1"
                           style={{ fontSize: '0.75rem' }}
                           onClick={() => {
+                            const targetId = isMergedChild && table.primaryTableId ? table.primaryTableId : table.id;
+                            const targetNumber = isMergedPrimary && table.mergedTableNumbers 
+                              ? table.mergedTableNumbers.join(' + ') 
+                              : (isMergedChild ? (table.parentTableNumber || table.tableNumber) : table.tableNumber);
                             const orderParam = table.activeOrder?.id ? `&orderId=${table.activeOrder.id}` : '';
-                            navigate(`/pos?tableId=${table.id}&tableNumber=${encodeURIComponent(table.tableNumber)}${orderParam}`);
+                            navigate(`/pos?tableId=${targetId}&tableNumber=${encodeURIComponent(targetNumber)}${orderParam}`);
                           }}
                         >
                           <ShoppingBag size={13} /> {table.activeOrder ? 'View Order' : 'Take Order'}
                         </button>
 
-                        {can('tables.transfer') && (
+                        {can('tables.transfer') && isOccupied && !isMergedChild && (
                           <button
                             className="btn btn-outline-secondary btn-sm p-1 px-1.5"
                             onClick={() => setTransferSource(table)}
@@ -426,6 +569,17 @@ export const TableFloorPage: React.FC = () => {
                           </button>
                         )}
                       </>
+                    )}
+
+                    {/* UNMERGE ACTION BUTTON FOR MERGED PRIMARY OR CHILD */}
+                    {(isMergedPrimary || isMergedChild) && can('tables.split') && (
+                      <button
+                        className="btn btn-outline-danger btn-sm p-1 px-1.5 d-flex align-items-center gap-1"
+                        onClick={() => handleUnmergeTable(table)}
+                        title="Unmerge tables back to individual available tables"
+                      >
+                        <Unlink size={13} />
+                      </button>
                     )}
 
                     {table.status === 'CLEANING' && (
@@ -444,6 +598,165 @@ export const TableFloorPage: React.FC = () => {
           );
         })}
       </div>
+
+      {/* MERGE TABLES MODAL */}
+      <Modal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        title="Merge Tables for Large Parties"
+      >
+        <form onSubmit={handleExecuteMerge} className="d-flex flex-column gap-3">
+          <div className="p-2.5 bg-warning-subtle text-warning-emphasis border border-warning rounded d-flex align-items-center gap-2 small">
+            <Link2 size={18} className="flex-shrink-0" />
+            <span>
+              Select 2 or more dining tables to merge them into a single unified table with combined seating capacity. Once the bill is settled or vacated, the tables will automatically unmerge.
+            </span>
+          </div>
+
+          {/* Aggregated Capacity Summary Banner */}
+          <div className="p-3 bg-light rounded border d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <span className="text-secondary small d-block">Selected Tables to Merge:</span>
+              <strong className="text-dark fs-6">
+                {selectedMergeTableIds.length === 0 
+                  ? 'None selected' 
+                  : selectedMergeTableIds
+                      .map(id => tables.find(t => t.id === id)?.tableNumber)
+                      .filter(Boolean)
+                      .join(' + ')}
+              </strong>
+            </div>
+            <div className="text-end">
+              <span className="text-secondary small d-block">Combined Capacity:</span>
+              <span className="badge bg-warning text-dark fs-6 font-monospace px-2.5 py-1">
+                👥 {selectedMergeTableIds.reduce((sum, id) => {
+                  const t = tables.find(tbl => tbl.id === id);
+                  return sum + (t?.capacity || 0);
+                }, 0)} Seats
+              </span>
+            </div>
+          </div>
+
+          {/* Zone Filter Pill Bar */}
+          <div className="d-flex align-items-center gap-1 overflow-auto py-1">
+            <button
+              type="button"
+              className={`btn btn-xs ${mergeZoneFilter === 'ALL' ? 'btn-primary fw-bold' : 'btn-light border'} rounded-pill px-2.5 py-1`}
+              style={{ fontSize: '0.75rem' }}
+              onClick={() => setMergeZoneFilter('ALL')}
+            >
+              All Zones
+            </button>
+            {activeZoneList.map(z => (
+              <button
+                key={z.code}
+                type="button"
+                className={`btn btn-xs ${mergeZoneFilter === z.code ? 'btn-primary fw-bold' : 'btn-light border'} rounded-pill px-2.5 py-1`}
+                style={{ fontSize: '0.75rem' }}
+                onClick={() => setMergeZoneFilter(z.code)}
+              >
+                {z.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Table Selection Grid */}
+          <div>
+            <label className="form-label small fw-bold mb-2">
+              Select Tables to Merge (Click to select/deselect):
+            </label>
+            <div className="row g-2" style={{ maxHeight: '260px', overflowY: 'auto' }}>
+              {tables
+                .filter(t => (mergeZoneFilter === 'ALL' || t.floorZone === mergeZoneFilter) && !t.isMergedChild)
+                .map(table => {
+                  const isSelected = selectedMergeTableIds.includes(table.id);
+                  const isPrimary = primaryMergeTableId === table.id;
+
+                  return (
+                    <div key={table.id} className="col-6 col-sm-4">
+                      <div
+                        onClick={() => handleToggleMergeTable(table.id)}
+                        className={`p-2 rounded border h-100 d-flex flex-column justify-content-between ${
+                          isSelected 
+                            ? 'bg-warning-subtle border-warning shadow-xs' 
+                            : 'bg-white'
+                        }`}
+                        style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+                      >
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.9rem' }}>
+                            {table.tableNumber}
+                          </span>
+                          <input
+                            type="checkbox"
+                            className="form-check-input mt-0"
+                            checked={isSelected}
+                            onChange={() => {}} // handled by parent div click
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </div>
+
+                        <div className="d-flex justify-content-between align-items-center small mt-1">
+                          <span className="text-secondary d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                            <Users size={11} /> {table.capacity} Seats
+                          </span>
+                          <span className={`badge ${
+                            table.status === 'AVAILABLE' ? 'bg-success' : 'bg-secondary'
+                          }`} style={{ fontSize: '0.62rem' }}>
+                            {table.status}
+                          </span>
+                        </div>
+
+                        {isSelected && (
+                          <div className="mt-2 pt-1 border-top d-flex justify-content-between align-items-center">
+                            <span className="text-muted" style={{ fontSize: '0.68rem' }}>Primary Table?</span>
+                            <button
+                              type="button"
+                              className={`btn btn-xs py-0 px-1.5 ${isPrimary ? 'btn-dark fw-bold' : 'btn-outline-secondary'}`}
+                              style={{ fontSize: '0.68rem' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrimaryMergeTableId(table.id);
+                              }}
+                            >
+                              {isPrimary ? '★ Primary' : 'Set Primary'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="d-flex justify-content-between align-items-center pt-3 border-top">
+            <span className="small text-muted">
+              {selectedMergeTableIds.length >= 2 
+                ? `Ready to merge ${selectedMergeTableIds.length} tables` 
+                : 'Select at least 2 tables to enable merge'}
+            </span>
+            <div className="d-flex gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setIsMergeModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-warning btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm text-dark"
+                disabled={selectedMergeTableIds.length < 2 || mergingSubmitting}
+              >
+                <Link2 size={15} />
+                {mergingSubmitting ? 'Merging Tables...' : 'Confirm & Merge Tables'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </Modal>
 
       {/* TRANSFER MODAL */}
       <Modal
