@@ -204,11 +204,12 @@ export interface IDiningTable extends Document {
   status: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'BLOCKED' | 'MAINTENANCE';
   currentOrderId?: string;
   isMerged?: boolean;
-  mergedWithTableIds?: string[];
-  mergedWithTableNumbers?: string[];
+  mergedTableIds?: string[];
+  mergedTableNumbers?: string[];
+  mergedCapacity?: number;
+  isMergedChild?: boolean;
   parentTableId?: string;
   parentTableNumber?: string;
-  mergedCapacity?: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -221,11 +222,12 @@ const DiningTableSchema = new Schema<IDiningTable>({
   status: { type: String, default: 'AVAILABLE' },
   currentOrderId: { type: String },
   isMerged: { type: Boolean, default: false },
-  mergedWithTableIds: { type: [String], default: [] },
-  mergedWithTableNumbers: { type: [String], default: [] },
+  mergedTableIds: { type: [String], default: [] },
+  mergedTableNumbers: { type: [String], default: [] },
+  mergedCapacity: { type: Number },
+  isMergedChild: { type: Boolean, default: false },
   parentTableId: { type: String },
   parentTableNumber: { type: String },
-  mergedCapacity: { type: Number },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

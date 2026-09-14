@@ -13,8 +13,7 @@ import {
   Search,
   Utensils,
   ArrowLeft,
-  MessageSquare,
-  Link2
+  MessageSquare
 } from 'lucide-react';
 
 interface CartItem {
@@ -374,40 +373,28 @@ export const PosTerminalPage: React.FC = () => {
           {orderType === 'DINE_IN' && (
             <select
               className="form-select form-select-sm bg-dark text-white border-secondary fw-semibold"
-              style={{ minWidth: 140, maxWidth: 220 }}
+              style={{ minWidth: 140, maxWidth: 200 }}
               value={selectedTableId}
               onChange={e => {
                 const val = e.target.value;
+                setSelectedTableId(val);
                 const t = tables.find(tbl => tbl.id === val);
-                if (t?.parentTableId) {
-                  const prim = tables.find(tbl => tbl.id === t.parentTableId);
-                  setSelectedTableId(prim?.id || t.parentTableId);
-                  setSelectedTableNumber(prim?.tableNumber || t.parentTableNumber || '');
-                } else {
-                  setSelectedTableId(val);
-                  setSelectedTableNumber(t?.tableNumber || '');
-                }
+                const tNum = t?.isMerged && t?.mergedTableNumbers && t.mergedTableNumbers.length > 0
+                  ? t.mergedTableNumbers.join(' + ')
+                  : (t?.tableNumber || '');
+                setSelectedTableNumber(tNum);
               }}
             >
               <option value="">Select Table</option>
               {tables.map(t => {
-                if (t.isMerged && !t.parentTableId) {
-                  return (
-                    <option key={t.id} value={t.id}>
-                      Table {t.tableNumber} + {t.mergedWithTableNumbers?.join(', ')} (Merged • {t.mergedCapacity || t.capacity} seats)
-                    </option>
-                  );
-                }
-                if (t.isMerged && t.parentTableId) {
-                  return (
-                    <option key={t.id} value={t.id}>
-                      Table {t.tableNumber} (↳ Merged under T-{t.parentTableNumber})
-                    </option>
-                  );
-                }
+                const label = t.isMerged
+                  ? `Table ${t.mergedTableNumbers?.join(' + ') || t.tableNumber} (Merged: ${t.mergedCapacity || t.capacity} Seats)`
+                  : t.isMergedChild
+                    ? `Table ${t.tableNumber} (Linked to ${t.parentTableNumber || 'Group'})`
+                    : `Table ${t.tableNumber} (${t.status})`;
                 return (
                   <option key={t.id} value={t.id}>
-                    Table {t.tableNumber} ({t.status} • {t.capacity} seats)
+                    {label}
                   </option>
                 );
               })}
@@ -569,24 +556,11 @@ export const PosTerminalPage: React.FC = () => {
                   <span className="badge bg-secondary-subtle text-secondary-emphasis border" style={{ fontSize: '0.7rem' }}>
                     {orderType}
                   </span>
-                  {(() => {
-                    const selectedTableObj = tables.find(t => t.id === selectedTableId || t.tableNumber === selectedTableNumber);
-                    if (selectedTableObj?.isMerged && !selectedTableObj.parentTableId) {
-                      return (
-                        <span className="badge text-white fw-bold d-inline-flex align-items-center gap-1" style={{ backgroundColor: '#6f42c1', fontSize: '0.7rem' }}>
-                          <Link2 size={10} /> Table {selectedTableObj.tableNumber} + {selectedTableObj.mergedWithTableNumbers?.join(', ')} ({selectedTableObj.mergedCapacity || selectedTableObj.capacity} Seats)
-                        </span>
-                      );
-                    }
-                    if (selectedTableNumber) {
-                      return (
-                        <span className="badge bg-primary text-white fw-bold" style={{ fontSize: '0.7rem' }}>
-                          Table {selectedTableNumber}
-                        </span>
-                      );
-                    }
-                    return null;
-                  })()}
+                  {selectedTableNumber && (
+                    <span className="badge bg-primary text-white fw-bold" style={{ fontSize: '0.7rem' }}>
+                      Table {selectedTableNumber}
+                    </span>
+                  )}
                   {searchParams.get('tokenCode') && (
                     <span className="badge bg-warning text-dark fw-bold font-monospace" style={{ fontSize: '0.7rem' }}>
                       {searchParams.get('tokenCode')}

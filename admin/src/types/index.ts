@@ -119,11 +119,12 @@ export interface DiningTable {
   status: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'BLOCKED' | 'MAINTENANCE';
   currentOrderId?: string;
   isMerged?: boolean;
-  mergedWithTableIds?: string[];
-  mergedWithTableNumbers?: string[];
+  mergedTableIds?: string[];
+  mergedTableNumbers?: string[];
+  mergedCapacity?: number;
+  isMergedChild?: boolean;
   parentTableId?: string;
   parentTableNumber?: string;
-  mergedCapacity?: number;
   activeOrder?: {
     id: string;
     orderNumber: string;

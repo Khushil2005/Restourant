@@ -8,72 +8,44 @@ export class TableService {
     const tables = await DiningTable.find().sort({ tableNumber: 1 });
     const orders = await Order.find({ status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] } });
     
-    const orderMap = new Map<string, any>();
-    orders.forEach(o => {
-      if (o.tableId) {
-        orderMap.set(o.tableId, {
-          id: o.id,
-          orderNumber: o.orderNumber,
-          netAmount: o.netAmount,
-          itemCount: o.items.length,
-          status: o.status,
-          createdAt: o.createdAt
-        });
-      }
-    });
-
-    // Attach live order data to tables (resolving primary order for secondary merged tables)
+    // Attach live order data to tables (and associate parent order with merged child tables)
     return tables.map(t => {
-      const activeOrder = orderMap.get(t.id) || (t.parentTableId ? orderMap.get(t.parentTableId) : null) || null;
+      const activeOrder = orders.find(o => o.tableId === t.id || (t.isMergedChild && t.parentTableId && o.tableId === t.parentTableId));
       return {
         ...t.toObject(),
-        activeOrder
+        activeOrder: activeOrder ? {
+          id: activeOrder.id,
+          orderNumber: activeOrder.orderNumber,
+          netAmount: activeOrder.netAmount,
+          itemCount: activeOrder.items.length,
+          status: activeOrder.status,
+          createdAt: activeOrder.createdAt
+        } : null
       };
     });
   }
 
   static async updateStatus(tableId: string, status: string, userId?: string, username?: string) {
-    const old = await DiningTable.findOne({ id: tableId });
-    if (!old) throw { statusCode: 404, message: 'Table not found.' };
+    const table = await DiningTable.findOne({ id: tableId });
+    if (!table) throw { statusCode: 404, message: 'Table not found.' };
 
-    const updateFields: any = { status };
+    const oldStatus = table.status;
+
+    // If table is being set to AVAILABLE (cleaned or vacated) and it was part of a merged group, automatically unmerge all linked tables!
+    if (status === 'AVAILABLE' && (table.isMerged || table.isMergedChild || (table.mergedTableIds && table.mergedTableIds.length > 0))) {
+      await this.splitTables([tableId], userId, username);
+      const refreshed = await DiningTable.findOne({ id: tableId });
+      return refreshed || table;
+    }
+
+    table.status = status as any;
     if (status === 'AVAILABLE') {
-      updateFields.currentOrderId = undefined;
-      updateFields.isMerged = false;
-      updateFields.mergedWithTableIds = [];
-      updateFields.mergedWithTableNumbers = [];
-      updateFields.parentTableId = undefined;
-      updateFields.parentTableNumber = undefined;
-      updateFields.mergedCapacity = undefined;
+      table.currentOrderId = undefined;
     }
 
-    const updated = await DiningTable.findOneAndUpdate(
-      { id: tableId },
-      { $set: updateFields },
-      { new: true }
-    );
-
-    // If this table was primary in a merge and is cleared/cleaned, also reset secondary tables
-    if (old.isMerged && old.mergedWithTableIds && old.mergedWithTableIds.length > 0 && (status === 'AVAILABLE' || status === 'CLEANING')) {
-      await DiningTable.updateMany(
-        { id: { $in: old.mergedWithTableIds } },
-        { 
-          $set: { 
-            status, 
-            currentOrderId: undefined,
-            isMerged: false,
-            mergedWithTableIds: [],
-            mergedWithTableNumbers: [],
-            parentTableId: undefined,
-            parentTableNumber: undefined,
-            mergedCapacity: undefined
-          } 
-        }
-      );
-      old.mergedWithTableIds.forEach(secId => SocketEvents.emitTableUpdated({ tableId: secId, status }));
-    }
-
-    SocketEvents.emitTableUpdated(updated);
+    await table.save();
+    SocketEvents.emitTableUpdated(table);
+    SocketEvents.emitDataChanged('tables');
 
     await createAuditLog({
       userId,
@@ -82,11 +54,11 @@ export class TableService {
       submodule: 'Floor',
       action: 'STATUS_CHANGE',
       recordId: tableId,
-      oldValue: { status: old?.status },
+      oldValue: { status: oldStatus },
       newValue: { status }
     });
 
-    return updated;
+    return table;
   }
 
   static async transferTable(sourceTableId: string, destTableId: string, userId?: string, username?: string) {
@@ -117,12 +89,6 @@ export class TableService {
 
     sourceTable.status = 'AVAILABLE';
     sourceTable.currentOrderId = undefined;
-    sourceTable.isMerged = false;
-    sourceTable.mergedWithTableIds = [];
-    sourceTable.mergedWithTableNumbers = [];
-    sourceTable.parentTableId = undefined;
-    sourceTable.parentTableNumber = undefined;
-    sourceTable.mergedCapacity = undefined;
     await sourceTable.save();
 
     destTable.status = 'OCCUPIED';
@@ -131,6 +97,7 @@ export class TableService {
 
     SocketEvents.emitTableUpdated(sourceTable);
     SocketEvents.emitTableUpdated(destTable);
+    SocketEvents.emitDataChanged('tables');
 
     await createAuditLog({
       userId,
@@ -147,67 +114,61 @@ export class TableService {
   }
 
   /**
-   * Merges multiple tables for a Big Family / Group with a SINGLE order and bill.
+   * Merges two or more tables together for large parties.
    */
   static async mergeTables(primaryTableId: string, secondaryTableIds: string[], userId?: string, username?: string) {
     if (!primaryTableId || !Array.isArray(secondaryTableIds) || secondaryTableIds.length === 0) {
-      throw { statusCode: 400, message: 'Please provide a primary table and at least one secondary table to merge.' };
+      throw { statusCode: 400, message: 'Please select a primary table and at least one secondary table to merge.' };
     }
 
-    const filteredSecondaryIds = secondaryTableIds.filter(id => id && id !== primaryTableId);
-    if (filteredSecondaryIds.length === 0) {
-      throw { statusCode: 400, message: 'Cannot merge a table with itself.' };
+    const allTableIds = Array.from(new Set([primaryTableId, ...secondaryTableIds]));
+    if (allTableIds.length < 2) {
+      throw { statusCode: 400, message: 'At least 2 unique tables are required to merge.' };
     }
 
-    const primaryTable = await DiningTable.findOne({ id: primaryTableId });
-    if (!primaryTable) throw { statusCode: 404, message: 'Primary table not found.' };
-
-    if (primaryTable.parentTableId) {
-      throw { statusCode: 400, message: `Table ${primaryTable.tableNumber} is already merged as secondary under Table ${primaryTable.parentTableNumber}.` };
+    const tables = await DiningTable.find({ id: { $in: allTableIds } });
+    if (tables.length !== allTableIds.length) {
+      throw { statusCode: 404, message: 'One or more selected tables were not found.' };
     }
 
-    const secondaryTables = await DiningTable.find({ id: { $in: filteredSecondaryIds } });
-    if (secondaryTables.length !== filteredSecondaryIds.length) {
-      throw { statusCode: 404, message: 'One or more secondary tables not found.' };
+    const primaryTable = tables.find(t => t.id === primaryTableId);
+    if (!primaryTable) {
+      throw { statusCode: 404, message: 'Primary table not found.' };
     }
 
-    // Check if any secondary table is already merged or under maintenance
-    for (const sec of secondaryTables) {
-      if (sec.status === 'MAINTENANCE') {
-        throw { statusCode: 400, message: `Table ${sec.tableNumber} is under maintenance and cannot be merged.` };
-      }
-      if (sec.parentTableId && sec.parentTableId !== primaryTableId) {
-        throw { statusCode: 400, message: `Table ${sec.tableNumber} is already merged with Table ${sec.parentTableNumber}.` };
-      }
-    }
+    const secondaryTables = tables.filter(t => t.id !== primaryTableId);
 
-    // Combine existing secondary IDs if already merged
-    const combinedSecondaryIds = Array.from(new Set([...(primaryTable.mergedWithTableIds || []), ...filteredSecondaryIds]));
-    const allSecondaryTables = await DiningTable.find({ id: { $in: combinedSecondaryIds } });
-    const secondaryTableNumbers = allSecondaryTables.map(t => t.tableNumber);
-
-    const totalCapacity = (primaryTable.capacity || 4) + allSecondaryTables.reduce((sum, t) => sum + (t.capacity || 4), 0);
+    // Calculate aggregated capacity & table labels
+    const totalCapacity = tables.reduce((sum, t) => sum + (t.capacity || 4), 0);
+    const allTableNumbers = [primaryTable.tableNumber, ...secondaryTables.map(s => s.tableNumber)];
 
     // Update primary table
     primaryTable.isMerged = true;
-    primaryTable.mergedWithTableIds = combinedSecondaryIds;
-    primaryTable.mergedWithTableNumbers = secondaryTableNumbers;
+    primaryTable.mergedTableIds = allTableIds;
+    primaryTable.mergedTableNumbers = allTableNumbers;
     primaryTable.mergedCapacity = totalCapacity;
-    primaryTable.status = 'OCCUPIED';
+    primaryTable.isMergedChild = false;
+    primaryTable.parentTableId = undefined;
+    primaryTable.parentTableNumber = undefined;
     await primaryTable.save();
 
-    // Update secondary tables
-    for (const sec of allSecondaryTables) {
-      sec.isMerged = true;
+    // Update secondary / child tables
+    for (const sec of secondaryTables) {
+      sec.isMerged = false;
+      sec.isMergedChild = true;
       sec.parentTableId = primaryTable.id;
       sec.parentTableNumber = primaryTable.tableNumber;
-      sec.currentOrderId = primaryTable.currentOrderId;
-      sec.status = 'OCCUPIED';
+      sec.mergedTableIds = allTableIds;
+      sec.mergedTableNumbers = allTableNumbers;
+      sec.status = 'OCCUPIED'; // Lock secondary table as part of merged group
       await sec.save();
-      SocketEvents.emitTableUpdated(sec);
     }
 
-    SocketEvents.emitTableUpdated(primaryTable);
+    // Broadcast table updates
+    for (const t of tables) {
+      SocketEvents.emitTableUpdated(t);
+    }
+    SocketEvents.emitDataChanged('tables');
 
     await createAuditLog({
       userId,
@@ -218,58 +179,74 @@ export class TableService {
       recordId: primaryTableId,
       newValue: {
         primaryTable: primaryTable.tableNumber,
-        mergedWith: secondaryTableNumbers,
-        totalCapacity
+        mergedTables: allTableNumbers,
+        combinedCapacity: totalCapacity
       }
     });
 
     return {
       success: true,
-      message: `Tables ${primaryTable.tableNumber} + ${secondaryTableNumbers.join(' + ')} merged successfully! Total Capacity: ${totalCapacity} Seats for Big Family.`,
+      message: `Tables ${allTableNumbers.join(' + ')} merged successfully (${totalCapacity} Seats).`,
       primaryTable,
-      secondaryTables: allSecondaryTables
+      secondaryTables
     };
   }
 
   /**
-   * Splits / Unmerges tables back to individual tables.
+   * Unmerges a merged table group back to original individual tables.
    */
-  static async splitTables(tableIds: string[], userId?: string, username?: string) {
-    if (!Array.isArray(tableIds) || tableIds.length === 0) {
-      throw { statusCode: 400, message: 'Please specify tables to unmerge.' };
+  static async splitTables(tableIds?: string[] | string, userId?: string, username?: string) {
+    let targetIds: string[] = [];
+    if (typeof tableIds === 'string') {
+      targetIds = [tableIds];
+    } else if (Array.isArray(tableIds)) {
+      targetIds = tableIds;
     }
 
-    const tables = await DiningTable.find({ id: { $in: tableIds } });
-    if (tables.length === 0) throw { statusCode: 404, message: 'No tables found.' };
+    if (targetIds.length === 0) {
+      throw { statusCode: 400, message: 'No table IDs provided for split/unmerge.' };
+    }
 
-    const affectedIds = new Set<string>();
+    // Find any tables matching targetIds to locate primary/parent IDs
+    const matchedTables = await DiningTable.find({ id: { $in: targetIds } });
+    if (matchedTables.length === 0) {
+      throw { statusCode: 404, message: 'Tables not found.' };
+    }
 
-    for (const tbl of tables) {
-      affectedIds.add(tbl.id);
-      if (tbl.parentTableId) {
-        affectedIds.add(tbl.parentTableId);
+    // Collect all primary table IDs and all child table IDs
+    const allGroupTableIds = new Set<string>();
+    for (const t of matchedTables) {
+      allGroupTableIds.add(t.id);
+      if (t.mergedTableIds && t.mergedTableIds.length > 0) {
+        t.mergedTableIds.forEach(id => allGroupTableIds.add(id));
       }
-      if (tbl.mergedWithTableIds && tbl.mergedWithTableIds.length > 0) {
-        tbl.mergedWithTableIds.forEach(id => affectedIds.add(id));
+      if (t.parentTableId) {
+        allGroupTableIds.add(t.parentTableId);
       }
     }
 
-    const allAffectedTables = await DiningTable.find({ id: { $in: Array.from(affectedIds) } });
+    // Also find any tables that have parentTableId matching any of the identified primary tables
+    const childTables = await DiningTable.find({ parentTableId: { $in: Array.from(allGroupTableIds) } });
+    childTables.forEach(c => allGroupTableIds.add(c.id));
 
-    for (const tbl of allAffectedTables) {
-      const hasActiveOrder = tbl.currentOrderId ? true : false;
-      tbl.isMerged = false;
-      tbl.mergedWithTableIds = [];
-      tbl.mergedWithTableNumbers = [];
-      tbl.parentTableId = undefined;
-      tbl.parentTableNumber = undefined;
-      tbl.mergedCapacity = undefined;
-      if (!hasActiveOrder) {
-        tbl.status = 'AVAILABLE';
-      }
-      await tbl.save();
-      SocketEvents.emitTableUpdated(tbl);
+    const finalTables = await DiningTable.find({ id: { $in: Array.from(allGroupTableIds) } });
+
+    for (const t of finalTables) {
+      t.isMerged = false;
+      t.isMergedChild = false;
+      t.parentTableId = undefined;
+      t.parentTableNumber = undefined;
+      t.mergedTableIds = [];
+      t.mergedTableNumbers = [];
+      t.mergedCapacity = undefined;
+      // Reset to AVAILABLE
+      t.status = 'AVAILABLE';
+      t.currentOrderId = undefined;
+      await t.save();
+      SocketEvents.emitTableUpdated(t);
     }
+
+    SocketEvents.emitDataChanged('tables');
 
     await createAuditLog({
       userId,
@@ -277,10 +254,16 @@ export class TableService {
       module: 'Tables',
       submodule: 'Floor',
       action: 'SPLIT_TABLES',
-      recordId: tableIds.join(','),
-      newValue: { unmergedTableIds: Array.from(affectedIds) }
+      recordId: targetIds[0],
+      newValue: {
+        unmergedTables: finalTables.map(t => t.tableNumber)
+      }
     });
 
-    return { success: true, message: 'Tables successfully unmerged and split.' };
+    return {
+      success: true,
+      message: `Tables unmerged back to individual available tables.`,
+      tables: finalTables
+    };
   }
 }
