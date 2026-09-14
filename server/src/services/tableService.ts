@@ -31,8 +31,8 @@ export class TableService {
 
     const oldStatus = table.status;
 
-    // If table is being set to AVAILABLE (cleaned or vacated) and it was part of a merged group, automatically unmerge all linked tables!
-    if (status === 'AVAILABLE' && (table.isMerged || table.isMergedChild || (table.mergedTableIds && table.mergedTableIds.length > 0))) {
+    // Only auto-unmerge if an OCCUPIED/CLEANING table is explicitly transitioning to AVAILABLE (cleared/vacated)
+    if (oldStatus !== 'AVAILABLE' && status === 'AVAILABLE' && (table.isMerged || table.isMergedChild || (table.mergedTableIds && table.mergedTableIds.length > 0))) {
       await this.splitTables([tableId], userId, username);
       const refreshed = await DiningTable.findOne({ id: tableId });
       return refreshed || table;
@@ -142,6 +142,12 @@ export class TableService {
     const totalCapacity = tables.reduce((sum, t) => sum + (t.capacity || 4), 0);
     const allTableNumbers = [primaryTable.tableNumber, ...secondaryTables.map(s => s.tableNumber)];
 
+    // Check if any of the merged tables already has an active order
+    const activeOrder = await Order.findOne({
+      tableId: { $in: allTableIds },
+      status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] }
+    });
+
     // Update primary table
     primaryTable.isMerged = true;
     primaryTable.mergedTableIds = allTableIds;
@@ -150,6 +156,16 @@ export class TableService {
     primaryTable.isMergedChild = false;
     primaryTable.parentTableId = undefined;
     primaryTable.parentTableNumber = undefined;
+
+    if (activeOrder) {
+      activeOrder.tableId = primaryTable.id;
+      activeOrder.tableNumber = allTableNumbers.join(' + ');
+      await activeOrder.save();
+
+      primaryTable.status = 'OCCUPIED';
+      primaryTable.currentOrderId = activeOrder.id;
+    }
+
     await primaryTable.save();
 
     // Update secondary / child tables
@@ -161,6 +177,9 @@ export class TableService {
       sec.mergedTableIds = allTableIds;
       sec.mergedTableNumbers = allTableNumbers;
       sec.status = 'OCCUPIED'; // Lock secondary table as part of merged group
+      if (activeOrder) {
+        sec.currentOrderId = activeOrder.id;
+      }
       await sec.save();
     }
 

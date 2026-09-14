@@ -192,14 +192,15 @@ export const TableFloorPage: React.FC = () => {
         setIsMergeModalOpen(false);
         setSelectedMergeTableIds([]);
         setPrimaryMergeTableId('');
-        await loadFloor(false, true);
-
-        const primaryTbl = tables.find(t => t.id === primaryId);
+        const primaryTbl = res.data?.primaryTable || tables.find(t => t.id === primaryId);
+        const mergedLabel = primaryTbl?.mergedTableNumbers?.length 
+          ? primaryTbl.mergedTableNumbers.join(' + ') 
+          : (primaryTbl?.tableNumber || 'Merged Table');
         const shouldOpenPos = window.confirm(
-          `Tables merged successfully into ${primaryTbl?.tableNumber || 'Primary Table'}!\n\nOpen POS to take order now for the merged table? (મર્જ થયેલા ટેબલ માટે POS માં ઓર્ડર લેવો છે?)`
+          `Tables merged successfully into "${mergedLabel}"!\n\nOpen POS to take order now for the merged table? (મર્જ થયેલા ટેબલ માટે POS માં ઓર્ડર લેવો છે?)`
         );
         if (shouldOpenPos && primaryTbl) {
-          navigate(`/pos?tableId=${primaryTbl.id}&tableNumber=${encodeURIComponent(primaryTbl.tableNumber)}`);
+          navigate(`/pos?tableId=${primaryTbl.id}&tableNumber=${encodeURIComponent(mergedLabel)}`);
         }
       }
     } catch (err: any) {
