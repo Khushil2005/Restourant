@@ -79,10 +79,10 @@ export function generateThermalReceiptPdf(
   doc.setTextColor(255, 255, 255);
   doc.text(isPaid ? 'PAID TAX INVOICE' : 'UNPAID INVOICE', centerX, currentY + 0.5, { align: 'center' });
 
-  // Dashed divider line
+  // Divider line
   currentY += 4;
-  doc.setDrawColor(140, 140, 140);
-  doc.setLineDashPattern([0.8, 0.8], 0);
+  doc.setDrawColor(210, 210, 210);
+  doc.setLineWidth(0.2);
   doc.line(marginX, currentY, rightX, currentY);
 
   // 3. Metadata Rows
@@ -92,44 +92,44 @@ export function generateThermalReceiptPdf(
   doc.setTextColor(30, 30, 30);
   doc.text('Bill No:', marginX, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${bill.billNumber}`, marginX + 12, currentY);
+  doc.text(`${bill.billNumber}`, marginX + 11, currentY);
 
   if (settings.showTable) {
     doc.setFont('helvetica', 'bold');
-    doc.text('Table:', centerX + 2, currentY);
+    doc.text('Table:', centerX + 4, currentY);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${bill.tableNumber || 'Dine-In'}`, centerX + 11, currentY);
+    doc.text(`${bill.tableNumber || 'Dine-In'}`, centerX + 12, currentY);
   }
 
   currentY += 3.5;
   const billDate = bill.createdAt ? new Date(bill.createdAt) : new Date();
-  const formattedDate = billDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formattedDate = `${billDate.getDate()}/${billDate.getMonth() + 1}/${billDate.getFullYear()}`;
   const formattedTime = billDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   doc.setFont('helvetica', 'bold');
   doc.text('Date:', marginX, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${formattedDate}`, marginX + 12, currentY);
+  doc.text(`${formattedDate}`, marginX + 11, currentY);
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Time:', centerX + 2, currentY);
+  doc.text('Time:', centerX + 4, currentY);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${formattedTime}`, centerX + 11, currentY);
+  doc.text(`${formattedTime}`, centerX + 12, currentY);
 
   if (settings.showCustomer && bill.customerName) {
     currentY += 3.5;
     doc.setFont('helvetica', 'bold');
     doc.text('Guest:', marginX, currentY);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${bill.customerName}`, marginX + 12, currentY);
+    doc.text(`${bill.customerName}`, marginX + 11, currentY);
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Status:', centerX + 2, currentY);
+    doc.text('Status:', centerX + 4, currentY);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${bill.status}`, centerX + 12, currentY);
+    doc.text(`${bill.status}`, centerX + 14, currentY);
   }
 
-  // Dashed divider line
+  // Divider line
   currentY += 3;
   doc.line(marginX, currentY, rightX, currentY);
 
@@ -148,17 +148,17 @@ export function generateThermalReceiptPdf(
     currentY += 3.2;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.setTextColor(110, 110, 110);
-    doc.text(`${item.quantity}  ×  ₹${Number(item.unitPrice).toFixed(2)}`, marginX, currentY);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${item.quantity} × ₹${Number(item.unitPrice).toFixed(2)}`, marginX, currentY);
     currentY += 3.5;
   });
 
-  // Dashed divider line
+  // Divider line
   doc.line(marginX, currentY, rightX, currentY);
   currentY += 3.5;
 
   // 5. Financial Summary Rows
-  const drawSlipRow = (label: string, value: string, bold = false, textColor = [40, 40, 40]) => {
+  const drawSlipRow = (label: string, value: string, bold = false, textColor = [60, 60, 60]) => {
     doc.setFont('helvetica', bold ? 'bold' : 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(textColor[0], textColor[1], textColor[2]);
@@ -187,10 +187,9 @@ export function generateThermalReceiptPdf(
     drawSlipRow('Round Off:', `${bill.roundOff > 0 ? '+' : ''}₹${Number(bill.roundOff).toFixed(2)}`);
   }
 
-  // Solid Double Line for Grand Total
+  // Solid Lines for Grand Total
   currentY += 0.5;
-  doc.setLineDashPattern([], 0); // Solid line
-  doc.setDrawColor(20, 20, 20);
+  doc.setDrawColor(30, 30, 30);
   doc.setLineWidth(0.4);
   doc.line(marginX, currentY, rightX, currentY);
   currentY += 4.2;
@@ -221,9 +220,9 @@ export function generateThermalReceiptPdf(
     currentY += 3.5;
   }
 
-  // Dashed divider line
-  doc.setDrawColor(140, 140, 140);
-  doc.setLineDashPattern([0.8, 0.8], 0);
+  // Divider line
+  doc.setDrawColor(210, 210, 210);
+  doc.setLineWidth(0.2);
   doc.line(marginX, currentY, rightX, currentY);
 
   // 6. Footer Thank You Note
@@ -514,18 +513,18 @@ export function printInvoiceReceipt(bill: Bill, customSettings?: PrintAndBillSet
   }
 
   const billDate = bill.createdAt ? new Date(bill.createdAt) : new Date();
-  const formattedDate = billDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formattedDate = `${billDate.getDate()}/${billDate.getMonth() + 1}/${billDate.getFullYear()}`;
   const formattedTime = billDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   const renderSingleReceipt = (copyLabel?: string) => `
     <div class="receipt">
       ${copyLabel ? `<div class="copy-badge text-center">--- ${copyLabel} ---</div>` : ''}
       <div class="text-center">
-        ${settings.showLogo ? `<img src="/logo.jpg" style="width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 4px auto; display: block; object-fit: contain;" />` : ''}
+        ${settings.showLogo ? `<img src="/logo.jpg" style="width: 58px; height: 58px; border-radius: 50%; border: 2px solid #D48B28; margin: 0 auto 6px auto; display: block; object-fit: contain;" />` : ''}
         <h1 class="brand-title">${settings.restaurantName || 'BHATIGAL BHANU'}</h1>
-        <p class="brand-sub">${settings.tagline || 'Traditional Kathiyawadi Dining'}</p>
-        <p style="font-size: 10px; color: #666; margin: 0;">${settings.address || 'Kothariya Ring Road, Rajkot - 360022'}</p>
-        ${settings.showGstin ? `<p style="font-size: 10px; color: #666; margin: 0;">GSTIN: ${settings.gstin || '24AAAFB1234A1Z8'} | ${settings.phone || '+91 98790 12345'}</p>` : ''}
+        <p class="brand-sub">${settings.tagline || 'Traditional Kathiyawadi & Gujarati Dining'}</p>
+        <p style="font-size: 10.5px; color: #666; margin: 1px 0;">${settings.address || 'Kothariya Ring Road, Rajkot, Gujarat - 360022'}</p>
+        ${settings.showGstin ? `<p style="font-size: 10.5px; color: #666; margin: 1px 0;">GSTIN: ${settings.gstin || '24AAAFB1234A1Z8'} | ${settings.phone || '+91 98790 12345'}</p>` : ''}
         <div>
           <span class="${bill.status === 'PAID' ? 'paid-tag' : 'unpaid-tag'}">
             ${bill.status === 'PAID' ? 'PAID TAX INVOICE' : 'UNPAID INVOICE'}
@@ -556,10 +555,10 @@ export function printInvoiceReceipt(bill: Bill, customSettings?: PrintAndBillSet
         ${(bill.items || []).map(it => `
           <tr>
             <td style="padding: 3px 0; text-align: left;">
-              <div style="font-weight: 600;">${it.itemName}</div>
-              <small style="color: #666;">${it.quantity} x ₹${Number(it.unitPrice).toFixed(2)}</small>
+              <div style="font-weight: 700; color: #111;">${it.itemName}</div>
+              <small style="color: #666; font-size: 11px;">${it.quantity} × ₹${Number(it.unitPrice).toFixed(2)}</small>
             </td>
-            <td style="padding: 3px 0; text-align: right; vertical-align: top; font-weight: 600;">
+            <td style="padding: 3px 0; text-align: right; vertical-align: top; font-weight: 700; color: #111;">
               ₹${Number(it.totalPrice).toFixed(2)}
             </td>
           </tr>
@@ -607,16 +606,21 @@ export function printInvoiceReceipt(bill: Bill, customSettings?: PrintAndBillSet
       </div>
 
       ${bill.status === 'PAID' ? `
-        <div class="total-row" style="margin-top: 4px; font-weight: 600; color: #198754;">
+        <div class="total-row" style="margin-top: 5px; font-weight: 700; color: #198754; font-size: 13.5px;">
           <span>Amount Paid:</span>
           <span>₹${Number(bill.paidAmount || bill.totalPayable).toFixed(2)}</span>
+        </div>
+      ` : bill.balanceAmount > 0 ? `
+        <div class="total-row" style="margin-top: 5px; font-weight: 700; color: #dc3545; font-size: 13.5px;">
+          <span>Balance Due:</span>
+          <span>₹${Number(bill.balanceAmount).toFixed(2)}</span>
         </div>
       ` : ''}
 
       <div class="divider"></div>
 
       ${settings.showFooterNote ? `
-        <div class="text-center" style="font-size: 11px; color: #555; margin-top: 8px;">
+        <div class="text-center" style="font-size: 11px; color: #666; margin-top: 8px;">
           <p style="margin: 2px 0;">${settings.customFooterText || 'Thank you for dining with us! Please Visit Again 🙏'}</p>
         </div>
       ` : ''}
@@ -645,9 +649,9 @@ export function printInvoiceReceipt(bill: Bill, customSettings?: PrintAndBillSet
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             margin: 0;
-            padding: 10px;
+            padding: 12px;
             color: #111;
-            font-size: 13px;
+            font-size: 12.5px;
             line-height: 1.35;
           }
           .receipt {
@@ -676,14 +680,14 @@ export function printInvoiceReceipt(bill: Bill, customSettings?: PrintAndBillSet
             margin-bottom: 6px;
           }
           .divider {
-            border-top: 1px dashed #555;
-            margin: 7px 0;
+            border-top: 1px solid #e0e0e0;
+            margin: 8px 0;
           }
           .meta-row {
             display: flex;
             justify-content: space-between;
             font-size: 11.5px;
-            margin: 2px 0;
+            margin: 2.5px 0;
           }
           table.items {
             width: 100%;
@@ -694,35 +698,39 @@ export function printInvoiceReceipt(bill: Bill, customSettings?: PrintAndBillSet
             display: flex;
             justify-content: space-between;
             font-size: 12px;
-            margin: 2.5px 0;
+            margin: 3px 0;
+            color: #555;
           }
           .grand-total {
-            font-size: 16px;
+            font-size: 16.5px;
             font-weight: 800;
             border-top: 1.5px solid #111;
             border-bottom: 1.5px solid #111;
-            padding: 5px 0;
-            margin-top: 5px;
+            padding: 6px 0;
+            margin-top: 6px;
+            color: #111;
           }
           .paid-tag {
             display: inline-block;
             background: #198754;
             color: #fff;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 3px 12px;
+            border-radius: 6px;
             font-size: 11px;
-            font-weight: 700;
-            margin-top: 4px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-top: 6px;
           }
           .unpaid-tag {
             display: inline-block;
             background: #dc3545;
             color: #fff;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 3px 12px;
+            border-radius: 6px;
             font-size: 11px;
-            font-weight: 700;
-            margin-top: 4px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-top: 6px;
           }
         </style>
       </head>

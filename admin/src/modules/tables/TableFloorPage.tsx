@@ -599,13 +599,12 @@ export const TableFloorPage: React.FC = () => {
                 <img
                   src="/logo.jpg"
                   alt="Logo"
-                  className="rounded-circle mx-auto d-block mb-1.5 shadow-sm border border-warning"
-                  style={{ width: 52, height: 52, objectFit: 'contain' }}
+                  style={{ width: 58, height: 58, borderRadius: '50%', border: '2px solid #D48B28', margin: '0 auto 6px auto', display: 'block', objectFit: 'contain' }}
                 />
-                <h5 className="fw-bold mb-0" style={{ color: '#b8731d', letterSpacing: '0.5px' }}>
+                <h5 className="fw-bold mb-0" style={{ color: '#b8731d', letterSpacing: '0.5px', fontSize: '1.15rem' }}>
                   BHATIGAL BHANU
                 </h5>
-                <p className="text-muted mb-0" style={{ fontSize: '0.7rem' }}>
+                <p className="text-muted mb-0" style={{ fontSize: '0.72rem' }}>
                   Traditional Kathiyawadi & Gujarati Dining
                 </p>
                 <p className="text-muted mb-0" style={{ fontSize: '0.68rem' }}>
@@ -614,116 +613,121 @@ export const TableFloorPage: React.FC = () => {
                 <p className="text-muted mb-0" style={{ fontSize: '0.68rem' }}>
                   GSTIN: 24AAAFB1234A1Z8 | +91 98790 12345
                 </p>
-                <div className="mt-1">
+                <div className="mt-1.5">
                   <span
-                    className={`badge ${
-                      tableBill.status === 'PAID' ? 'bg-success' : 'bg-danger'
-                    } text-white px-2 py-0.5`}
-                    style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}
+                    className="text-white px-3 py-0.5 rounded-pill fw-bold"
+                    style={{
+                      backgroundColor: tableBill.status === 'PAID' ? '#198754' : '#dc3545',
+                      fontSize: '0.68rem',
+                      letterSpacing: '0.5px'
+                    }}
                   >
                     {tableBill.status === 'PAID' ? 'PAID TAX INVOICE' : 'UNPAID INVOICE'}
                   </span>
                 </div>
               </div>
 
-              {/* Dashed divider */}
-              <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
+              {/* Solid divider */}
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '8px 0' }}></div>
 
               {/* Meta Rows */}
-              <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
+              <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                 <span><strong>Bill No:</strong> {tableBill.billNumber}</span>
                 <span><strong>Table:</strong> {tableBill.tableNumber || 'Dining'}</span>
               </div>
-              <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
-                <span><strong>Date:</strong> {new Date(tableBill.createdAt).toLocaleDateString('en-IN')}</span>
-                <span><strong>Time:</strong> {new Date(tableBill.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+              <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
+                <span><strong>Date:</strong> {new Date(tableBill.createdAt).getDate()}/{new Date(tableBill.createdAt).getMonth() + 1}/{new Date(tableBill.createdAt).getFullYear()}</span>
+                <span><strong>Time:</strong> {new Date(tableBill.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
               </div>
               {tableBill.customerName && (
-                <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                   <span><strong>Guest:</strong> {tableBill.customerName}</span>
                   <span><strong>Status:</strong> {tableBill.status}</span>
                 </div>
               )}
 
-              {/* Dashed divider */}
-              <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
+              {/* Solid divider */}
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '8px 0' }}></div>
 
               {/* Items List */}
-              <div className="d-flex flex-column gap-1">
+              <div className="d-flex flex-column gap-1.5">
                 {(tableBill.items || []).map((item, idx) => (
                   <div key={idx} className="d-flex justify-content-between align-items-start">
                     <div>
-                      <div className="fw-semibold text-dark">{item.itemName}</div>
+                      <div className="fw-bold text-dark" style={{ fontSize: '0.78rem' }}>{item.itemName}</div>
                       <div className="text-muted" style={{ fontSize: '0.68rem' }}>
                         {item.quantity} × ₹{Number(item.unitPrice).toFixed(2)}
                       </div>
                     </div>
-                    <div className="fw-semibold text-dark">
+                    <div className="fw-bold text-dark" style={{ fontSize: '0.78rem' }}>
                       ₹{Number(item.totalPrice).toFixed(2)}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Dashed divider */}
-              <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
+              {/* Solid divider */}
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '8px 0' }}></div>
 
               {/* Subtotal & Taxes */}
-              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                 <span>Subtotal:</span>
                 <span>₹{Number(tableBill.subtotal).toFixed(2)}</span>
               </div>
 
               {tableBill.discountAmount > 0 && (
-                <div className="d-flex justify-content-between text-danger" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between text-danger" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                   <span>Discount:</span>
                   <span>-₹{Number(tableBill.discountAmount).toFixed(2)}</span>
                 </div>
               )}
 
-              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                 <span>CGST (2.5%):</span>
                 <span>₹{((tableBill.taxAmount || 0) / 2).toFixed(2)}</span>
               </div>
-              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                 <span>SGST (2.5%):</span>
                 <span>₹{((tableBill.taxAmount || 0) / 2).toFixed(2)}</span>
               </div>
 
               {tableBill.serviceCharge > 0 && (
-                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                   <span>Service Charge:</span>
                   <span>₹{Number(tableBill.serviceCharge).toFixed(2)}</span>
                 </div>
               )}
 
               {tableBill.roundOff !== 0 && (
-                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                   <span>Round Off:</span>
                   <span>{tableBill.roundOff > 0 ? '+' : ''}₹{Number(tableBill.roundOff).toFixed(2)}</span>
                 </div>
               )}
 
               {/* Solid border Grand Total */}
-              <div className="my-1.5 py-1 border-top border-bottom border-dark d-flex justify-content-between align-items-center">
-                <span className="fw-bold fs-6">GRAND TOTAL:</span>
-                <span className="fw-bold fs-6">₹{Number(tableBill.totalPayable).toFixed(2)}</span>
+              <div
+                className="my-1.5 py-1 d-flex justify-content-between align-items-center"
+                style={{ borderTop: '1.5px solid #111', borderBottom: '1.5px solid #111', color: '#111' }}
+              >
+                <span className="fw-bold" style={{ fontSize: '0.95rem' }}>GRAND TOTAL:</span>
+                <span className="fw-bold" style={{ fontSize: '0.95rem' }}>₹{Number(tableBill.totalPayable).toFixed(2)}</span>
               </div>
 
               {tableBill.status === 'PAID' ? (
-                <div className="d-flex justify-content-between text-success fw-bold" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between fw-bold" style={{ fontSize: '0.78rem', color: '#198754', margin: '3px 0' }}>
                   <span>Amount Paid:</span>
                   <span>₹{Number(tableBill.paidAmount || tableBill.totalPayable).toFixed(2)}</span>
                 </div>
               ) : tableBill.balanceAmount > 0 ? (
-                <div className="d-flex justify-content-between text-danger fw-bold" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between fw-bold" style={{ fontSize: '0.78rem', color: '#dc3545', margin: '3px 0' }}>
                   <span>Balance Due:</span>
                   <span>₹{Number(tableBill.balanceAmount).toFixed(2)}</span>
                 </div>
               ) : null}
 
-              {/* Dashed divider */}
-              <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
+              {/* Solid divider */}
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '8px 0' }}></div>
 
               {/* Footer Note */}
               <div className="text-center text-muted mt-1" style={{ fontSize: '0.68rem' }}>

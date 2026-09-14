@@ -651,9 +651,9 @@ export const PosTerminalPage: React.FC = () => {
                     <button
                       className={`btn ${isServed ? 'btn-success' : 'btn-outline-secondary'} py-2 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm`}
                       onClick={handleGenerateBill}
-                      title={isServed ? 'Generate Tax Invoice' : `Order is ${activeOrder?.status || 'IN_KITCHEN'} - Must be SERVED before billing`}
+                      title={isServed ? 'Generate Tax Invoice' : `Order is ${activeOrder?.status || 'IN_KITCHEN'} - All items must be SERVED before billing`}
                     >
-                      <Receipt size={18} /> {isServed ? 'Request & Generate Bill' : 'Serve & Generate Bill'}
+                      <Receipt size={18} /> {isServed ? 'Generate Tax Invoice / Bill' : 'Generate Bill (Must Be Served First)'}
                     </button>
                   </div>
                 );

@@ -1503,86 +1503,87 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
                   <img
                     src="/logo.jpg"
                     alt="Logo"
-                    className="rounded-circle mx-auto d-block mb-1.5 shadow-sm border border-warning"
-                    style={{ width: 52, height: 52, objectFit: 'contain' }}
+                    style={{ width: 58, height: 58, borderRadius: '50%', border: '2px solid #D48B28', margin: '0 auto 6px auto', display: 'block', objectFit: 'contain' }}
                   />
                 )}
-                <h5 className="fw-bold mb-0" style={{ color: '#b8731d', letterSpacing: '0.5px' }}>
+                <h5 className="fw-bold mb-0" style={{ color: '#b8731d', letterSpacing: '0.5px', fontSize: '1.15rem' }}>
                   {settings.restaurantName || 'BHATIGAL BHANU'}
                 </h5>
-                <p className="text-muted mb-0" style={{ fontSize: '0.7rem' }}>
-                  {settings.tagline || 'Traditional Kathiyawadi Dining'}
+                <p className="text-muted mb-0" style={{ fontSize: '0.72rem' }}>
+                  {settings.tagline || 'Traditional Kathiyawadi & Gujarati Dining'}
                 </p>
                 <p className="text-muted mb-0" style={{ fontSize: '0.68rem' }}>
-                  {settings.address || 'Kothariya Ring Road, Rajkot - 360022'}
+                  {settings.address || 'Kothariya Ring Road, Rajkot, Gujarat - 360022'}
                 </p>
                 {settings.showGstin && (
                   <p className="text-muted mb-0" style={{ fontSize: '0.68rem' }}>
                     GSTIN: {settings.gstin || '24AAAFB1234A1Z8'} | {settings.phone || '+91 98790 12345'}
                   </p>
                 )}
-                <div className="mt-1">
+                <div className="mt-1.5">
                   <span
-                    className={`badge ${
-                      selectedBill.status === 'PAID' ? 'bg-success' : 'bg-danger'
-                    } text-white px-2 py-0.5`}
-                    style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}
+                    className="text-white px-3 py-0.5 rounded-pill fw-bold"
+                    style={{
+                      backgroundColor: selectedBill.status === 'PAID' ? '#198754' : '#dc3545',
+                      fontSize: '0.68rem',
+                      letterSpacing: '0.5px'
+                    }}
                   >
                     {selectedBill.status === 'PAID' ? 'PAID TAX INVOICE' : 'UNPAID INVOICE'}
                   </span>
                 </div>
               </div>
 
-              {/* Dashed divider */}
-              <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
+              {/* Solid divider */}
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '8px 0' }}></div>
 
               {/* Meta Rows */}
-              <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
+              <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                 <span><strong>Bill No:</strong> {selectedBill.billNumber}</span>
                 {settings.showTable && <span><strong>Table:</strong> {selectedBill.tableNumber || 'Dine-In'}</span>}
               </div>
-              <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
-                <span><strong>Date:</strong> {new Date(selectedBill.createdAt).toLocaleDateString('en-IN')}</span>
-                <span><strong>Time:</strong> {new Date(selectedBill.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+              <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
+                <span><strong>Date:</strong> {new Date(selectedBill.createdAt).getDate()}/{new Date(selectedBill.createdAt).getMonth() + 1}/{new Date(selectedBill.createdAt).getFullYear()}</span>
+                <span><strong>Time:</strong> {new Date(selectedBill.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
               </div>
               {settings.showCustomer && selectedBill.customerName && (
-                <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                   <span><strong>Guest:</strong> {selectedBill.customerName}</span>
                   <span><strong>Status:</strong> {selectedBill.status}</span>
                 </div>
               )}
 
-              {/* Dashed divider */}
-              <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
+              {/* Solid divider */}
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '8px 0' }}></div>
 
               {/* Items List */}
-              <div className="d-flex flex-column gap-1">
+              <div className="d-flex flex-column gap-1.5">
                 {(selectedBill.items || []).map((item, idx) => (
                   <div key={idx} className="d-flex justify-content-between align-items-start">
                     <div>
-                      <div className="fw-semibold text-dark">{item.itemName}</div>
+                      <div className="fw-bold text-dark" style={{ fontSize: '0.78rem' }}>{item.itemName}</div>
                       <div className="text-muted" style={{ fontSize: '0.68rem' }}>
                         {item.quantity} × ₹{Number(item.unitPrice).toFixed(2)}
                       </div>
                     </div>
-                    <div className="fw-semibold text-dark">
+                    <div className="fw-bold text-dark" style={{ fontSize: '0.78rem' }}>
                       ₹{Number(item.totalPrice).toFixed(2)}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Dashed divider */}
-              <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
+              {/* Solid divider */}
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '8px 0' }}></div>
 
               {/* Subtotal & Taxes */}
-              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                 <span>Subtotal:</span>
                 <span>₹{Number(selectedBill.subtotal).toFixed(2)}</span>
               </div>
 
               {selectedBill.discountAmount > 0 && (
-                <div className="d-flex justify-content-between text-danger" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between text-danger" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                   <span>Discount:</span>
                   <span>-₹{Number(selectedBill.discountAmount).toFixed(2)}</span>
                 </div>
@@ -1590,11 +1591,11 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
 
               {settings.showTaxBreakdown && (
                 <>
-                  <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                  <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                     <span>CGST (2.5%):</span>
                     <span>₹{((selectedBill.taxAmount || 0) / 2).toFixed(2)}</span>
                   </div>
-                  <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                  <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                     <span>SGST (2.5%):</span>
                     <span>₹{((selectedBill.taxAmount || 0) / 2).toFixed(2)}</span>
                   </div>
@@ -1602,39 +1603,42 @@ export const BillingPage: React.FC<BillingPageProps> = ({ defaultTab = 'invoices
               )}
 
               {settings.showServiceCharge && selectedBill.serviceCharge > 0 && (
-                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                   <span>Service Charge:</span>
                   <span>₹{Number(selectedBill.serviceCharge).toFixed(2)}</span>
                 </div>
               )}
 
               {selectedBill.roundOff !== 0 && (
-                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem', margin: '2px 0' }}>
                   <span>Round Off:</span>
                   <span>{selectedBill.roundOff > 0 ? '+' : ''}₹{Number(selectedBill.roundOff).toFixed(2)}</span>
                 </div>
               )}
 
               {/* Solid border Grand Total */}
-              <div className="my-1.5 py-1 border-top border-bottom border-dark d-flex justify-content-between align-items-center">
-                <span className="fw-bold fs-6">GRAND TOTAL:</span>
-                <span className="fw-bold fs-6">₹{Number(selectedBill.totalPayable).toFixed(2)}</span>
+              <div
+                className="my-1.5 py-1 d-flex justify-content-between align-items-center"
+                style={{ borderTop: '1.5px solid #111', borderBottom: '1.5px solid #111', color: '#111' }}
+              >
+                <span className="fw-bold" style={{ fontSize: '0.95rem' }}>GRAND TOTAL:</span>
+                <span className="fw-bold" style={{ fontSize: '0.95rem' }}>₹{Number(selectedBill.totalPayable).toFixed(2)}</span>
               </div>
 
               {selectedBill.status === 'PAID' ? (
-                <div className="d-flex justify-content-between text-success fw-bold" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between fw-bold" style={{ fontSize: '0.78rem', color: '#198754', margin: '3px 0' }}>
                   <span>Amount Paid:</span>
                   <span>₹{Number(selectedBill.paidAmount || selectedBill.totalPayable).toFixed(2)}</span>
                 </div>
               ) : selectedBill.balanceAmount > 0 ? (
-                <div className="d-flex justify-content-between text-danger fw-bold" style={{ fontSize: '0.72rem' }}>
+                <div className="d-flex justify-content-between fw-bold" style={{ fontSize: '0.78rem', color: '#dc3545', margin: '3px 0' }}>
                   <span>Balance Due:</span>
                   <span>₹{Number(selectedBill.balanceAmount).toFixed(2)}</span>
                 </div>
               ) : null}
 
-              {/* Dashed divider */}
-              <div className="my-2 border-top" style={{ borderStyle: 'dashed !important', borderColor: '#777' }}></div>
+              {/* Solid divider */}
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '8px 0' }}></div>
 
               {/* Footer Note */}
               {settings.showFooterNote && (
