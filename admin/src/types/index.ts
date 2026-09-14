@@ -153,6 +153,7 @@ export interface QueueToken {
   id: string;
   tokenNumber: number;
   tokenCode: string;
+  tokenDate?: string;
   customerName: string;
   customerPhone: string;
   partySize: number;
@@ -161,6 +162,8 @@ export interface QueueToken {
   estimatedWaitMinutes: number;
   calledAt?: string;
   seatedAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
   createdAt: string;
 }
 

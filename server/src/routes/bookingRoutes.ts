@@ -76,8 +76,20 @@ export const tokenRouter = Router();
 // Allow public access to token queue display if needed
 tokenRouter.get('/queue', async (req, res: Response) => {
   try {
-    const queue = await TokenService.getQueue(req.query.status as string);
-    return ApiResponse.success(res, queue, 'Live queue retrieved.');
+    const status = req.query.status as string;
+    const date = req.query.date as string;
+    const queue = await TokenService.getQueue(status, date);
+    return ApiResponse.success(res, queue, 'Queue retrieved successfully.');
+  } catch (err: any) {
+    return ApiResponse.error(res, err.message, 500);
+  }
+});
+
+tokenRouter.get('/metrics', authenticate, authorize('token.view'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const date = req.query.date as string;
+    const metrics = await TokenService.getTokenMetrics(date);
+    return ApiResponse.success(res, metrics, 'Token metrics retrieved.');
   } catch (err: any) {
     return ApiResponse.error(res, err.message, 500);
   }

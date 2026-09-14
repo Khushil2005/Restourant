@@ -5,7 +5,7 @@ import { Department, Designation, Unit, TaxMaster, MenuCategory, MenuItem, Dinin
 import { InventoryItem, Recipe } from '../models/Inventory';
 import { ChartOfAccount } from '../models/Account';
 import { Employee, SalaryStructure } from '../models/HR';
-import { SystemSetting } from '../models/System';
+import { QueueToken } from '../models/QueueToken';
 import { ALL_PERMISSIONS, DEFAULT_ROLES } from '../constants/permissions';
 import { hashPassword } from '../utils/password';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,6 +13,11 @@ import { v4 as uuidv4 } from 'uuid';
 export async function runDatabaseMigrationsAndSeeds(): Promise<void> {
   console.log('[MongoDB Seed] Initializing connection for seeding...');
   await connectDatabase();
+
+  // Drop legacy unique index on QueueToken if present
+  try {
+    await QueueToken.collection.dropIndex('tokenCode_1');
+  } catch (_) {}
 
   // 1. Seed & Synchronize Permissions (Instant bulkWrite)
   console.log(`[MongoDB Seed] Synchronizing ${ALL_PERMISSIONS.length} permissions in bulk...`);
