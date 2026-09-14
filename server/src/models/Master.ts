@@ -203,13 +203,6 @@ export interface IDiningTable extends Document {
   floorZone: string;
   status: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'BLOCKED' | 'MAINTENANCE';
   currentOrderId?: string;
-  isMerged?: boolean;
-  mergedTableIds?: string[];
-  mergedTableNumbers?: string[];
-  mergedCapacity?: number;
-  isMergedChild?: boolean;
-  parentTableId?: string;
-  parentTableNumber?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -221,13 +214,6 @@ const DiningTableSchema = new Schema<IDiningTable>({
   floorZone: { type: String, default: 'MAIN_HALL' },
   status: { type: String, default: 'AVAILABLE' },
   currentOrderId: { type: String },
-  isMerged: { type: Boolean, default: false },
-  mergedTableIds: { type: [String], default: [] },
-  mergedTableNumbers: { type: [String], default: [] },
-  mergedCapacity: { type: Number },
-  isMergedChild: { type: Boolean, default: false },
-  parentTableId: { type: String },
-  parentTableNumber: { type: String },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

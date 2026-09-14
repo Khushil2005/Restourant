@@ -118,13 +118,6 @@ export interface DiningTable {
   floorZone: string;
   status: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'BLOCKED' | 'MAINTENANCE';
   currentOrderId?: string;
-  isMerged?: boolean;
-  mergedTableIds?: string[];
-  mergedTableNumbers?: string[];
-  mergedCapacity?: number;
-  isMergedChild?: boolean;
-  parentTableId?: string;
-  parentTableNumber?: string;
   activeOrder?: {
     id: string;
     orderNumber: string;
