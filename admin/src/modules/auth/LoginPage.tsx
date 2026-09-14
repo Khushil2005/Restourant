@@ -45,11 +45,11 @@ export const LoginPage: React.FC = () => {
     <div 
       className="min-vh-100 vw-100 d-flex align-items-center justify-content-center p-3 position-relative"
       style={{
-        backgroundImage: `radial-gradient(circle at center, rgba(122, 27, 40, 0.85) 0%, rgba(62, 11, 19, 0.95) 100%), url('/login-bg.jpg')`,
+        backgroundImage: `linear-gradient(135deg, rgba(20, 5, 8, 0.72) 0%, rgba(60, 15, 22, 0.55) 50%, rgba(15, 3, 6, 0.78) 100%), url('/login-bg.jpg')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        backgroundColor: '#4A101A'
+        backgroundColor: '#1E080C'
       }}
     >
       {/* Decorative Golden Ambient Aura */}
@@ -73,8 +73,8 @@ export const LoginPage: React.FC = () => {
           width: '100%',
           borderRadius: '24px',
           backgroundColor: '#FFFFFF',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 25px rgba(212, 139, 40, 0.15)',
-          border: '1px solid rgba(212, 139, 40, 0.25)'
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(212, 139, 40, 0.2)',
+          border: '1px solid rgba(212, 139, 40, 0.35)'
         }}
       >
         {/* Brand Circular Logo with Gold & Maroon Double Ring */}
@@ -183,11 +183,12 @@ export const LoginPage: React.FC = () => {
               </span>
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="form-control form-control-lg border-start-0 border-end-0 border"
+                className="form-control form-control-lg border-start-0 border-end-0 border hide-password-toggle"
                 placeholder="Enter your password..."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
                 style={{
                   borderColor: '#E8DCCF',
                   fontSize: '0.92rem',
