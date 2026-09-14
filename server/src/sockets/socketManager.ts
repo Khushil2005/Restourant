@@ -99,6 +99,9 @@ export const SocketEvents = {
   emitTableUpdated: (table: any) => {
     ioInstance?.emit('table.updated', table);
   },
+  emitDataChanged: (entity: string, data?: any) => {
+    ioInstance?.emit('data.changed', { entity, data });
+  },
   emitMasterUpdated: (entity: string, action: string, data: any) => {
     ioInstance?.emit('master.updated', { entity, action, data });
     ioInstance?.emit('data.changed', { entity, action, data });

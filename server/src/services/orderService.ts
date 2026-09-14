@@ -120,6 +120,8 @@ export class OrderService {
       }
     }
 
+    const netAmount = totalAmount + taxAmount - (data.discountAmount || 0);
+
     const order = await Order.create({
       id,
       orderNumber,

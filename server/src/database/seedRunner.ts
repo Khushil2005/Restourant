@@ -6,6 +6,7 @@ import { InventoryItem, Recipe } from '../models/Inventory';
 import { ChartOfAccount } from '../models/Account';
 import { Employee, SalaryStructure } from '../models/HR';
 import { QueueToken } from '../models/QueueToken';
+import { SystemSetting } from '../models/System';
 import { ALL_PERMISSIONS, DEFAULT_ROLES } from '../constants/permissions';
 import { hashPassword } from '../utils/password';
 import { v4 as uuidv4 } from 'uuid';
