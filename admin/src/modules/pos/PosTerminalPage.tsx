@@ -386,18 +386,18 @@ export const PosTerminalPage: React.FC = () => {
               }}
             >
               <option value="">Select Table</option>
-              {tables.map(t => {
-                const label = t.isMerged
-                  ? `Table ${t.mergedTableNumbers?.join(' + ') || t.tableNumber} (Merged: ${t.mergedCapacity || t.capacity} Seats)`
-                  : t.isMergedChild
-                    ? `Table ${t.tableNumber} (Linked to ${t.parentTableNumber || 'Group'})`
+              {tables
+                .filter(t => !t.isMergedChild)
+                .map(t => {
+                  const label = t.isMerged
+                    ? `Table ${t.mergedTableNumbers?.join(' + ') || t.tableNumber} (Merged: ${t.mergedCapacity || t.capacity} Seats)`
                     : `Table ${t.tableNumber} (${t.status})`;
-                return (
-                  <option key={t.id} value={t.id}>
-                    {label}
-                  </option>
-                );
-              })}
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {label}
+                    </option>
+                  );
+                })}
             </select>
           )}
 

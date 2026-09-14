@@ -1,5 +1,6 @@
 import { DiningTable } from '../models/Master';
 import { Order } from '../models/Order';
+import { KOTTicket } from '../models/KOT';
 import { SocketEvents } from '../sockets/socketManager';
 import { createAuditLog } from '../middleware/auditMiddleware';
 
@@ -8,16 +9,20 @@ export class TableService {
     const tables = await DiningTable.find().sort({ tableNumber: 1 });
     const orders = await Order.find({ status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] } });
     
-    // Attach live order data to tables (and associate parent order with merged child tables)
+    // Attach live order data to tables (and associate parent/child orders with merged tables)
     return tables.map(t => {
-      const activeOrder = orders.find(o => o.tableId === t.id || (t.isMergedChild && t.parentTableId && o.tableId === t.parentTableId));
+      const activeOrder = orders.find(o => 
+        o.tableId === t.id || 
+        (t.mergedTableIds && t.mergedTableIds.length > 0 && t.mergedTableIds.includes(o.tableId)) ||
+        (t.isMergedChild && t.parentTableId && (o.tableId === t.parentTableId || (t.mergedTableIds && t.mergedTableIds.includes(o.tableId))))
+      );
       return {
         ...t.toObject(),
         activeOrder: activeOrder ? {
           id: activeOrder.id,
           orderNumber: activeOrder.orderNumber,
           netAmount: activeOrder.netAmount,
-          itemCount: activeOrder.items.length,
+          itemCount: activeOrder.items?.length || 0,
           status: activeOrder.status,
           createdAt: activeOrder.createdAt
         } : null
@@ -115,6 +120,7 @@ export class TableService {
 
   /**
    * Merges two or more tables together for large parties.
+   * Seamlessly combines all active orders and items across all tables.
    */
   static async mergeTables(primaryTableId: string, secondaryTableIds: string[], userId?: string, username?: string) {
     if (!primaryTableId || !Array.isArray(secondaryTableIds) || secondaryTableIds.length === 0) {
@@ -138,17 +144,87 @@ export class TableService {
 
     const secondaryTables = tables.filter(t => t.id !== primaryTableId);
 
-    // Calculate aggregated capacity & table labels
+    // Calculate aggregated capacity & combined table labels
     const totalCapacity = tables.reduce((sum, t) => sum + (t.capacity || 4), 0);
     const allTableNumbers = [primaryTable.tableNumber, ...secondaryTables.map(s => s.tableNumber)];
+    const combinedTableName = allTableNumbers.join(' + ');
 
-    // Check if any of the merged tables already has an active order
-    const activeOrder = await Order.findOne({
+    // 1. Find ALL active orders across all selected tables to combine them
+    const activeOrders = await Order.find({
       tableId: { $in: allTableIds },
       status: { $in: ['NEW', 'IN_KITCHEN', 'READY', 'SERVED', 'BILLED'] }
-    });
+    }).sort({ createdAt: 1 });
 
-    // Update primary table
+    let combinedActiveOrder: any = null;
+
+    if (activeOrders.length === 1) {
+      // Exactly one table had an order: reassign to primary merged group
+      combinedActiveOrder = activeOrders[0];
+      combinedActiveOrder.tableId = primaryTable.id;
+      combinedActiveOrder.tableNumber = combinedTableName;
+      await combinedActiveOrder.save();
+
+      // Update KOT tickets table header
+      await KOTTicket.updateMany(
+        { orderId: combinedActiveOrder.id },
+        { $set: { tableNumber: combinedTableName } }
+      );
+      SocketEvents.emitOrderUpdated(combinedActiveOrder);
+    } else if (activeOrders.length > 1) {
+      // Multiple tables each had running orders: combine all items into primary order!
+      const primaryOrder = activeOrders[0];
+      const otherOrders = activeOrders.slice(1);
+
+      let allItems = [...primaryOrder.items];
+      let totalAmount = primaryOrder.totalAmount;
+      let taxAmount = primaryOrder.taxAmount;
+      let discountAmount = primaryOrder.discountAmount || 0;
+
+      for (const ord of otherOrders) {
+        allItems = [...allItems, ...ord.items];
+        totalAmount += ord.totalAmount;
+        taxAmount += ord.taxAmount;
+        discountAmount += (ord.discountAmount || 0);
+
+        // Re-link KOT tickets from secondary order to primary order
+        await KOTTicket.updateMany(
+          { orderId: ord.id },
+          { 
+            $set: { 
+              orderId: primaryOrder.id, 
+              orderNumber: primaryOrder.orderNumber, 
+              tableNumber: combinedTableName 
+            } 
+          }
+        );
+
+        // Mark secondary order as merged/cancelled
+        ord.status = 'CANCELLED';
+        ord.notes = (ord.notes ? `${ord.notes}; ` : '') + `Items merged into ${primaryOrder.orderNumber} (${combinedTableName})`;
+        await ord.save();
+        SocketEvents.emitOrderUpdated(ord);
+      }
+
+      primaryOrder.items = allItems;
+      primaryOrder.totalAmount = totalAmount;
+      primaryOrder.taxAmount = taxAmount;
+      primaryOrder.discountAmount = discountAmount;
+      primaryOrder.netAmount = totalAmount + taxAmount - discountAmount;
+      primaryOrder.tableId = primaryTable.id;
+      primaryOrder.tableNumber = combinedTableName;
+      await primaryOrder.save();
+
+      // Update KOT tickets for primary order
+      await KOTTicket.updateMany(
+        { orderId: primaryOrder.id },
+        { $set: { tableNumber: combinedTableName } }
+      );
+
+      combinedActiveOrder = primaryOrder;
+      SocketEvents.emitOrderUpdated(primaryOrder);
+    }
+
+    // 2. Update primary table
     primaryTable.isMerged = true;
     primaryTable.mergedTableIds = allTableIds;
     primaryTable.mergedTableNumbers = allTableNumbers;
@@ -157,18 +233,17 @@ export class TableService {
     primaryTable.parentTableId = undefined;
     primaryTable.parentTableNumber = undefined;
 
-    if (activeOrder) {
-      activeOrder.tableId = primaryTable.id;
-      activeOrder.tableNumber = allTableNumbers.join(' + ');
-      await activeOrder.save();
-
+    if (combinedActiveOrder) {
       primaryTable.status = 'OCCUPIED';
-      primaryTable.currentOrderId = activeOrder.id;
+      primaryTable.currentOrderId = combinedActiveOrder.id;
+    } else {
+      primaryTable.status = 'AVAILABLE';
+      primaryTable.currentOrderId = undefined;
     }
 
     await primaryTable.save();
 
-    // Update secondary / child tables
+    // 3. Update secondary / child tables
     for (const sec of secondaryTables) {
       sec.isMerged = false;
       sec.isMergedChild = true;
@@ -176,18 +251,19 @@ export class TableService {
       sec.parentTableNumber = primaryTable.tableNumber;
       sec.mergedTableIds = allTableIds;
       sec.mergedTableNumbers = allTableNumbers;
-      sec.status = 'OCCUPIED'; // Lock secondary table as part of merged group
-      if (activeOrder) {
-        sec.currentOrderId = activeOrder.id;
+      sec.status = 'OCCUPIED'; // Secondary tables locked as part of merged group
+      if (combinedActiveOrder) {
+        sec.currentOrderId = combinedActiveOrder.id;
       }
       await sec.save();
     }
 
-    // Broadcast table updates
+    // 4. Broadcast table updates
     for (const t of tables) {
       SocketEvents.emitTableUpdated(t);
     }
     SocketEvents.emitDataChanged('tables');
+    SocketEvents.emitDataChanged('orders');
 
     await createAuditLog({
       userId,
@@ -199,15 +275,17 @@ export class TableService {
       newValue: {
         primaryTable: primaryTable.tableNumber,
         mergedTables: allTableNumbers,
-        combinedCapacity: totalCapacity
+        combinedCapacity: totalCapacity,
+        combinedOrder: combinedActiveOrder?.orderNumber
       }
     });
 
     return {
       success: true,
-      message: `Tables ${allTableNumbers.join(' + ')} merged successfully (${totalCapacity} Seats).`,
+      message: `Tables ${combinedTableName} merged successfully (${totalCapacity} Seats).`,
       primaryTable,
-      secondaryTables
+      secondaryTables,
+      combinedOrder: combinedActiveOrder
     };
   }
 

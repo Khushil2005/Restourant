@@ -192,6 +192,8 @@ export const TableFloorPage: React.FC = () => {
         setIsMergeModalOpen(false);
         setSelectedMergeTableIds([]);
         setPrimaryMergeTableId('');
+        await loadFloor(false, true);
+
         const primaryTbl = res.data?.primaryTable || tables.find(t => t.id === primaryId);
         const mergedLabel = primaryTbl?.mergedTableNumbers?.length 
           ? primaryTbl.mergedTableNumbers.join(' + ') 
