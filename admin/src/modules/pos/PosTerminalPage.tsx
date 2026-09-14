@@ -35,7 +35,7 @@ export const PosTerminalPage: React.FC = () => {
 
   const cachedCategories = appCache.get('/masters/menu-categories')?.data || appCache.get('/masters/menu-categories');
   const cachedItems = appCache.get('/masters/menu-items')?.data || appCache.get('/masters/menu-items');
-  const cachedTables = appCache.get('/masters/tables')?.data || appCache.get('/masters/tables');
+  const cachedTables = appCache.get('/tables/floor-layout')?.data || appCache.get('/tables/floor-layout') || appCache.get('/masters/tables')?.data || appCache.get('/masters/tables');
   const cachedDaily = appCache.get('/daily-menu/today')?.data || appCache.get('/daily-menu/today');
 
   const [categories, setCategories] = useState<MenuCategory[]>(() => Array.isArray(cachedCategories) ? cachedCategories : []);
@@ -71,7 +71,7 @@ export const PosTerminalPage: React.FC = () => {
       const [cRes, mRes, tRes, dRes]: any = await Promise.all([
         apiClient.get('/masters/menu-categories', config),
         apiClient.get('/masters/menu-items', config),
-        apiClient.get('/masters/tables', config),
+        apiClient.get('/tables/floor-layout', config),
         apiClient.get('/daily-menu/today', config)
       ]);
       if (cRes.success) setCategories(cRes.data);
@@ -139,11 +139,18 @@ export const PosTerminalPage: React.FC = () => {
           t.id === qTableId ||
           t.tableNumber === qTableNumber ||
           t.tableNumber === qTableId ||
-          t.id === qTableNumber
+          t.id === qTableNumber ||
+          (t.mergedTableNumbers && t.mergedTableNumbers.includes(qTableNumber || ''))
         );
         if (matched) {
-          setSelectedTableId(matched.id);
-          setSelectedTableNumber(matched.tableNumber);
+          const effectiveTable = matched.isMergedChild && matched.primaryTableId
+            ? tables.find(tbl => tbl.id === matched.primaryTableId) || matched
+            : matched;
+          setSelectedTableId(effectiveTable.id);
+          const tNum = effectiveTable.isMerged && effectiveTable.mergedTableNumbers && effectiveTable.mergedTableNumbers.length > 0
+            ? effectiveTable.mergedTableNumbers.join(' + ')
+            : effectiveTable.tableNumber;
+          setSelectedTableNumber(tNum);
         } else {
           if (qTableId) setSelectedTableId(qTableId);
           if (qTableNumber) setSelectedTableNumber(qTableNumber);
@@ -373,7 +380,7 @@ export const PosTerminalPage: React.FC = () => {
           {orderType === 'DINE_IN' && (
             <select
               className="form-select form-select-sm bg-dark text-white border-secondary fw-semibold"
-              style={{ minWidth: 140, maxWidth: 200 }}
+              style={{ minWidth: 150, maxWidth: 240 }}
               value={selectedTableId}
               onChange={e => {
                 const val = e.target.value;
@@ -386,18 +393,19 @@ export const PosTerminalPage: React.FC = () => {
               }}
             >
               <option value="">Select Table</option>
-              {tables.map(t => {
-                const label = t.isMerged
-                  ? `Table ${t.mergedTableNumbers?.join(' + ') || t.tableNumber} (Merged: ${t.mergedCapacity || t.capacity} Seats)`
-                  : t.isMergedChild
-                    ? `Table ${t.tableNumber} (Linked to ${t.parentTableNumber || 'Group'})`
+              {tables
+                .filter(t => !t.isMergedChild)
+                .map(t => {
+                  const isMerged = t.isMerged && t.mergedTableNumbers && t.mergedTableNumbers.length > 0;
+                  const label = isMerged
+                    ? `Table ${t.mergedTableNumbers!.join(' + ')} (Merged: ${t.mergedCapacity || t.capacity} Seats - ${t.status})`
                     : `Table ${t.tableNumber} (${t.status})`;
-                return (
-                  <option key={t.id} value={t.id}>
-                    {label}
-                  </option>
-                );
-              })}
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {label}
+                    </option>
+                  );
+                })}
             </select>
           )}
 

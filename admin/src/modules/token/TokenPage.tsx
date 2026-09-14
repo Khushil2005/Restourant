@@ -97,7 +97,7 @@ export const TokenPage: React.FC = () => {
       const config = forceFresh ? { forceFresh: true } : undefined;
       const [res, tRes]: any = await Promise.all([
         apiClient.get(`/tokens/queue?date=${dateToFetch}`, config),
-        apiClient.get('/masters/tables', config).catch(() => null)
+        apiClient.get('/tables/floor-layout', config).catch(() => null)
       ]);
       if (res?.success) {
         setTokens(res.data || []);
@@ -270,12 +270,15 @@ export const TokenPage: React.FC = () => {
 
       // If seated at a specific table, offer immediate order taking in POS with table pre-selected
       if (assignedTable) {
+        const tNum = assignedTable.isMerged && assignedTable.mergedTableNumbers && assignedTable.mergedTableNumbers.length > 0
+          ? assignedTable.mergedTableNumbers.join(' + ')
+          : assignedTable.tableNumber;
         const shouldTakeOrder = window.confirm(
-          `Guest "${currentToken.customerName}" seated at Table ${assignedTable.tableNumber}.\n\nDo you want to take an order now in POS? (ટેબલ ${assignedTable.tableNumber} માટે POS માં ઓર્ડર લેવો છે?)`
+          `Guest "${currentToken.customerName}" seated at Table ${tNum}.\n\nDo you want to take an order now in POS? (ટેબલ ${tNum} માટે POS માં ઓર્ડર લેવો છે?)`
         );
         if (shouldTakeOrder) {
           navigate(
-            `/pos?tableId=${assignedTable.id}&tableNumber=${encodeURIComponent(assignedTable.tableNumber)}&customerName=${encodeURIComponent(currentToken.customerName)}&customerPhone=${encodeURIComponent(currentToken.customerPhone)}&tokenCode=${encodeURIComponent(currentToken.tokenCode)}`
+            `/pos?tableId=${assignedTable.id}&tableNumber=${encodeURIComponent(tNum)}&customerName=${encodeURIComponent(currentToken.customerName)}&customerPhone=${encodeURIComponent(currentToken.customerPhone)}&tokenCode=${encodeURIComponent(currentToken.tokenCode)}`
           );
         }
       }
@@ -1006,11 +1009,15 @@ export const TokenPage: React.FC = () => {
                               </span>
                               {token.tableId && (() => {
                                 const seatedTbl = tables.find(t => t.id === token.tableId);
-                                return seatedTbl ? (
-                                  <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: '0.72rem' }} title={`Seated at Table ${seatedTbl.tableNumber}`}>
-                                    🪑 Table {seatedTbl.tableNumber}
+                                if (!seatedTbl) return null;
+                                const tNum = seatedTbl.isMerged && seatedTbl.mergedTableNumbers && seatedTbl.mergedTableNumbers.length > 0
+                                  ? seatedTbl.mergedTableNumbers.join(' + ')
+                                  : seatedTbl.tableNumber;
+                                return (
+                                  <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: '0.72rem' }} title={`Seated at Table ${tNum}`}>
+                                    🪑 Table {tNum}
                                   </span>
-                                ) : null;
+                                );
                               })()}
                             </div>
                           </td>
